@@ -31,6 +31,7 @@ The Communication APIs manage notifications, email templates, and announcements.
 - Notifications are user-specific
 - Email templates may be reused by different events
 - Announcements should be auditable
+- Delivery status should be tracked for important messages
 
 ## Status
 
