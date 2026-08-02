@@ -31,6 +31,8 @@ The Administration APIs manage organization settings, business rules, lookup val
 - Audit logs are read-only
 - Organization settings should be editable only by authorized admins
 - Lookup records should be reusable and stable
+- Critical administration changes should be traceable
+- Configuration updates should be auditable and reversible when appropriate
 
 ## Status
 
