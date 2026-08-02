@@ -33,6 +33,7 @@ The Administration APIs manage organization settings, business rules, lookup val
 - Lookup records should be reusable and stable
 - Critical administration changes should be traceable
 - Configuration updates should be auditable and reversible when appropriate
+- Changes to admin configuration must be attributable to a user and timestamp
 
 ## Status
 
