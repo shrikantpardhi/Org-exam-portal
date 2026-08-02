@@ -22,9 +22,9 @@ The Administration APIs manage organization settings, business rules, lookup val
 
 ## Responsibilities
 
-- Manage organization-wide configuration
-- Manage business rules and lookup masters
-- Expose audit history for operational and compliance purposes
+- Manage organization-level settings
+- Manage rules and lookup masters
+- Expose audit history for compliance and support workflows
 
 ## Business Rules
 
