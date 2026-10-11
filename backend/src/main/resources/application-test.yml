@@ -1,0 +1,32 @@
+# Test profile.
+# The datasource is supplied at runtime by the test harness (an embedded, disposable
+# PostgreSQL instance) - see docs/decisions/ADR-0009-integration-test-datastore.md.
+# The placeholder below is only a fallback and is overridden by @DynamicPropertySource.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/exam_platform_test
+    username: postgres
+    password: postgres
+  data:
+    redis:
+      host: localhost
+      # Deliberately unreachable: tests assert graceful cache degradation.
+      port: 6399
+
+app:
+  environment: test
+  security:
+    jwt:
+      secret: ${JWT_SECRET:test-only-secret-value-at-least-32-characters-long}
+  content:
+    # Keep test asset uploads out of the working tree.
+    asset-storage-root: ${java.io.tmpdir}/exam-platform-test-assets
+  delivery:
+    # The snapshot worker is disabled in tests; preparation is invoked explicitly and deterministically.
+    worker:
+      enabled: false
+
+logging:
+  level:
+    root: WARN
+    com.company.exam: INFO

@@ -1,0 +1,12 @@
+# Taste
+- Prefers a spec-first workflow: read the provided specification/documentation files (in the stated order) before starting any implementation work. Confidence: 0.75
+- Wants the agent to confirm understanding by summarizing key points back before proceeding, and to hold off on implementation until explicitly given the first task / go-ahead. Confidence: 0.7
+- Expects completion claims to be backed by running the specification's full verification command set and reporting per-task evidence, rather than trusting existing status docs/checklists. Confidence: 0.65
+- For multi-task/phase work, wants numbered tasks executed sequentially in the stated order rather than in parallel or reordered. Confidence: 0.85
+- Wants incremental verification: after each individual task, run the tests and the build, and report the result — not just a single check at the end. Confidence: 0.7
+- Prefers staged delivery that stops for review at phase/milestone boundaries rather than auto-continuing into the next phase; explicitly asks the agent to "report and stop for review" before committing. Confidence: 0.9
+- Front-loads non-negotiable security/behavioral invariants as an explicit "Critical rules" section in task prompts and expects them enforced as hard requirements (e.g. reject raw HTML and executable MDX, restrict math delimiters, keep currency as plain text, never leak correct answers to student APIs, keep published versions immutable, block self-review), not as best-effort. Confidence: 0.8
+- States explicit negative scope boundaries ("Start Exam must not be in P4", "Do not create StudentAttempt or AttemptQuestion", "Start Exam must not create AttemptQuestion or AttemptQuestionOption rows") and expects strict phase containment: implement only what the current phase's frozen spec covers, never drifting into entities/features owned by later phases. Confidence: 0.7
+- For runtime/concurrency-sensitive features, expects explicit race-safety and burst/load verification (e.g. asking to "run the concurrent-user start burst load test") as a required acceptance step, not just correctness tests. Confidence: 0.6
+- Wants gaps, deferred items, and known limitations recorded as durable in-repo documentation (e.g., a consolidated gap register) and cross-linked from the related docs, rather than left in chat or silently resolved. Confidence: 0.75
+- Will issue terse directives (e.g. "document gap") and expects the agent to identify the relevant flagged gaps from its own prior report and record them without further hand-holding. Confidence: 0.6

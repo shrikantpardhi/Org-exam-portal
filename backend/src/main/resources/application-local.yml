@@ -1,0 +1,25 @@
+# Local development profile.
+#   application -> PostgreSQL (direct).
+# Start PostgreSQL with: docker compose up -d postgres redis
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:exam_platform}
+    username: ${POSTGRES_USER:exam_app}
+    password: ${POSTGRES_PASSWORD:exam_local_password}
+    hikari:
+      # Application-side pool. PgBouncer, when used, sits behind this pool.
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 5s
+      pool-name: exam-app-pool
+
+app:
+  environment: local
+  security:
+    jwt:
+      # Development-only default. Never used outside local (specs/09-… §33, §99).
+      secret: ${JWT_SECRET:local-development-only-secret-change-me-please-32b}
+
+logging:
+  level:
+    com.company.exam: DEBUG

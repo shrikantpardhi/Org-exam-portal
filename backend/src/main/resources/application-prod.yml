@@ -1,0 +1,21 @@
+# Production profile.
+#   application -> PgBouncer -> PostgreSQL   (specs/09-… §18, §27)
+# Secrets come from the environment/secret manager and have no defaults here.
+spring:
+  datasource:
+    url: jdbc:postgresql://${PGBOUNCER_HOST}:${PGBOUNCER_PORT:6432}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      connection-timeout: 5s
+      pool-name: exam-app-pool
+
+app:
+  environment: production
+
+logging:
+  level:
+    root: WARN
+    com.company.exam: INFO

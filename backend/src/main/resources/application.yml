@@ -1,0 +1,146 @@
+# ---------------------------------------------------------------------------
+# Base configuration shared by all environments.
+# Environment-specific values live in application-{profile}.yml and come from
+# environment variables. Secrets are never committed (specs/09-… §107).
+# ---------------------------------------------------------------------------
+spring:
+  application:
+    name: exam-platform-backend
+  profiles:
+    default: local
+  autoconfigure:
+    # P0 has no user store. Without this exclusion Spring Boot creates an inert in-memory
+    # default user and logs a generated password, which is an implicit credential we do not
+    # want. P1 Identity provides the real UserDetailsService.
+    exclude:
+      - org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+  jackson:
+    # Spring Boot 4 uses Jackson 3. Nulls are omitted so the standard envelopes keep
+    # their documented shape; instants serialize as ISO-8601 by default.
+    default-property-inclusion: non_null
+    time-zone: UTC
+    deserialization:
+      # Do not silently accept malformed client data (specs/09-… §17).
+      fail-on-unknown-properties: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    validate-on-migrate: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+      connect-timeout: 2s
+  servlet:
+    multipart:
+      max-file-size: ${APP_MAX_UPLOAD_SIZE:25MB}
+      max-request-size: ${APP_MAX_REQUEST_SIZE:30MB}
+  lifecycle:
+    # Graceful shutdown (specs/09-… §119).
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+  max-http-request-header-size: 16KB
+
+app:
+  environment: ${APP_ENVIRONMENT:local}
+  info:
+    version: "@project.version@"
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:exam-platform}
+      # Empty default fails fast with a clear validation message if not configured.
+      secret: ${JWT_SECRET:}
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT1H}
+    session:
+      # Absolute login-session lifetime; older ACTIVE sessions become EXPIRED (specs/10-P1 §41).
+      absolute-lifetime: ${SESSION_ABSOLUTE_LIFETIME:PT12H}
+      expiry-sweep-interval: ${SESSION_EXPIRY_SWEEP_INTERVAL:PT5M}
+      expiry-sweep-initial-delay: ${SESSION_EXPIRY_SWEEP_INITIAL_DELAY:PT1M}
+    # Trust X-Forwarded-For only behind the trusted edge; default false (specs/10-P1 §46).
+    trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
+    cors:
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  cache:
+    key-prefix: "exam:"
+    default-ttl: PT10M
+  storage:
+    provider: ${STORAGE_PROVIDER:local}
+    local-root: ${STORAGE_LOCAL_ROOT:./data/uploads}
+    max-file-size: ${APP_MAX_UPLOAD_SIZE:25MB}
+    allowed-content-types:
+      - image/png
+      - image/jpeg
+      - application/pdf
+  worker:
+    scheduler-pool-size: 4
+    shutdown-await-seconds: 20
+
+  content:
+    # Canonical content and asset limits (specs/12-P3-Content-V1.5.md §60).
+    max-content-length: ${CONTENT_MAX_LENGTH:100000}
+    max-asset-size-bytes: ${CONTENT_MAX_ASSET_BYTES:5000000}
+    asset-storage-root: ${CONTENT_ASSET_ROOT:./data/content-assets}
+
+  delivery:
+    # Asynchronous snapshot preparation worker (specs/14-P5-Delivery-V1.5.md §101-§103).
+    worker:
+      enabled: ${DELIVERY_WORKER_ENABLED:true}
+      batch-size: ${DELIVERY_WORKER_BATCH_SIZE:50}
+      interval: ${DELIVERY_WORKER_INTERVAL:PT30S}
+      initial-delay: ${DELIVERY_WORKER_INITIAL_DELAY:PT15S}
+      stale-timeout: ${DELIVERY_WORKER_STALE_TIMEOUT:PT5M}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      # Component statuses are visible; component details stay hidden to avoid
+      # exposing infrastructure configuration on a public endpoint (specs/09-… §37).
+      show-components: always
+      show-details: never
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: ${APP_ENVIRONMENT:local}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    root: INFO
+    com.company.exam: INFO
+  structured:
+    # JSON console logs for the Loki pipeline; includes MDC (requestId).
+    format:
+      console: logstash

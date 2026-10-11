@@ -1,0 +1,13 @@
+node_modules/
+.next/
+out/
+coverage/
+.env
+.env.local
+.env.*.local
+.git/
+.gitignore
+*.md
+vitest-diag.log
+Dockerfile
+.dockerignore

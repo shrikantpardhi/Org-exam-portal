@@ -1,0 +1,15 @@
+# Normalize line endings to LF in the repository; keep platform-specific scripts executable.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.zip binary
+*.jar binary
+
+*.sh text eol=lf
+
+# Exclude generated evidence assets from diffs where large/binary.
+docs/testing/**/*.png binary
