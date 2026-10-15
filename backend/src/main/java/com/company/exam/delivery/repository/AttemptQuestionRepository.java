@@ -11,6 +11,18 @@ public interface AttemptQuestionRepository extends JpaRepository<AttemptQuestion
 
     List<AttemptQuestion> findByAttemptIdOrderByDisplayOrderAsc(UUID attemptId);
 
+    /** Analytics: snapshot questions for a bounded set of attempts ({@code 17-P8 §50, §104}). */
+    List<AttemptQuestion> findByAttemptIdIn(java.util.Collection<UUID> attemptIds);
+
+    /** Analytics: snapshot population per question version ({@code 17-P8 §33}). */
+    @org.springframework.data.jpa.repository.Query("""
+            select q.questionVersionId, count(q) from AttemptQuestion q
+             where q.questionVersionId in :questionVersionIds
+             group by q.questionVersionId
+            """)
+    List<Object[]> countByQuestionVersionIds(
+            @org.springframework.data.repository.query.Param("questionVersionIds") java.util.Collection<UUID> questionVersionIds);
+
     Optional<AttemptQuestion> findByAttemptIdAndQuestionVersionId(UUID attemptId, UUID questionVersionId);
 
     boolean existsByAttemptIdAndQuestionVersionId(UUID attemptId, UUID questionVersionId);

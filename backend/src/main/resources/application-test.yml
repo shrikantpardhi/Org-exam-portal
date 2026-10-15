@@ -25,6 +25,31 @@ app:
     # The snapshot worker is disabled in tests; preparation is invoked explicitly and deterministically.
     worker:
       enabled: false
+  evaluation:
+    # Keep test scorecard artifacts out of the working tree.
+    scorecard-root: ${java.io.tmpdir}/exam-platform-test-scorecards
+    worker:
+      enabled: false
+  analytics:
+    # Analytics refresh/rebuild is invoked explicitly and deterministically in tests.
+    worker:
+      enabled: false
+  commerce:
+    # The deterministic reference gateway; the same secret is used by test callback signatures.
+    gateway: TEST
+    gateway-secret: commerce-test-gateway-secret
+  communication:
+    # The deterministic fake email provider; communication workers run explicitly in tests.
+    provider: FAKE
+    worker:
+      enabled: false
+  reporting:
+    # Artifacts are written under the build output so a test run never pollutes the working tree.
+    artifact-root: target/test-reports
+    download-signing-key: reporting-test-key
+    # The report worker is invoked explicitly and deterministically in tests.
+    worker:
+      enabled: false
 
 logging:
   level:

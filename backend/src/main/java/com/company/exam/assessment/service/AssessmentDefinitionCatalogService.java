@@ -67,6 +67,23 @@ public class AssessmentDefinitionCatalogService implements AssessmentDefinitionC
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public AssessmentScoringView requireScoringContext(UUID assessmentVersionId) {
+        AssessmentVersion version = versionRepository.findById(assessmentVersionId)
+                .orElseThrow(() -> NotFoundException.of("Assessment version", assessmentVersionId));
+        return new AssessmentScoringView(version.getId(), version.getAssessmentId(), version.isPublished(),
+                version.getTotalQuestions(), version.getTotalMarks());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UUID> assessmentVersionIds(UUID assessmentId) {
+        return versionRepository.findByAssessmentIdOrderByVersionAsc(assessmentId).stream()
+                .map(AssessmentVersion::getId)
+                .toList();
+    }
+
     private AssessmentQuestionView toView(AssessmentQuestion question) {
         return new AssessmentQuestionView(question.getQuestionVersionId(), question.getDisplayOrder(),
                 question.getSectionName(), question.getMarks(), question.getNegativeMarks());

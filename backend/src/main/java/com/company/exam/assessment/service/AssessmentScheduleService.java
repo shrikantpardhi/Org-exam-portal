@@ -36,13 +36,16 @@ public class AssessmentScheduleService {
     private final AssessmentVersionRepository versionRepository;
     private final AssessmentMapper mapper;
     private final SecurityEventLogger audit;
+    private final org.springframework.context.ApplicationEventPublisher events;
 
     public AssessmentScheduleService(AssessmentScheduleRepository scheduleRepository,
-            AssessmentVersionRepository versionRepository, AssessmentMapper mapper, SecurityEventLogger audit) {
+            AssessmentVersionRepository versionRepository, AssessmentMapper mapper, SecurityEventLogger audit,
+            org.springframework.context.ApplicationEventPublisher events) {
         this.scheduleRepository = scheduleRepository;
         this.versionRepository = versionRepository;
         this.mapper = mapper;
         this.audit = audit;
+        this.events = events;
     }
 
     @Transactional(readOnly = true)
@@ -74,6 +77,9 @@ public class AssessmentScheduleService {
         schedule.setStatus(Status.ACTIVE);
         AssessmentSchedule saved = scheduleRepository.save(schedule);
         audit.audit(actorId, "CREATE", "AssessmentSchedule", saved.getId(), "Created assessment schedule");
+        // Producer-owned business event; Communication consumes it after commit (§54, §115).
+        events.publishEvent(new com.company.exam.common.events.BusinessEvents.AssessmentScheduledEvent(
+                saved.getId(), saved.getAssessmentVersionId(), saved.getStartTime()));
         return mapper.toResponse(saved);
     }
 

@@ -107,6 +107,72 @@ app:
       initial-delay: ${DELIVERY_WORKER_INITIAL_DELAY:PT15S}
       stale-timeout: ${DELIVERY_WORKER_STALE_TIMEOUT:PT5M}
 
+  evaluation:
+    # Scorecard artifacts are written outside the scoring transaction (§84, §61).
+    scorecard-root: ${EVALUATION_SCORECARD_ROOT:./data/scorecards}
+    # The asynchronous evaluation worker is disabled by default: the P5 handoff carries no explicit
+    # answer key and §26 forbids defaulting to one (see GAP-071).
+    worker:
+      enabled: ${EVALUATION_WORKER_ENABLED:false}
+      batch-size: ${EVALUATION_WORKER_BATCH_SIZE:50}
+      interval: ${EVALUATION_WORKER_INTERVAL:PT30S}
+      initial-delay: ${EVALUATION_WORKER_INITIAL_DELAY:PT15S}
+
+  analytics:
+    # Derived, recalculable aggregates (specs/17-P8-Analytics-V1.5.md).
+    active-user-window: ${ANALYTICS_ACTIVE_USER_WINDOW:P30D}
+    stale-after: ${ANALYTICS_STALE_AFTER:PT15M}
+    average-time-upper-bound-seconds: ${ANALYTICS_TIME_UPPER_BOUND:86400}
+    weak-area-accuracy-threshold: ${ANALYTICS_WEAK_AREA_THRESHOLD:50.0}
+    minimum-sample-size: ${ANALYTICS_MIN_SAMPLE_SIZE:5}
+    calculation-version: ${ANALYTICS_CALC_VERSION:p8-1}
+    worker:
+      enabled: ${ANALYTICS_WORKER_ENABLED:true}
+      batch-size: ${ANALYTICS_WORKER_BATCH_SIZE:25}
+      interval: ${ANALYTICS_WORKER_INTERVAL:PT30S}
+      initial-delay: ${ANALYTICS_WORKER_INITIAL_DELAY:PT20S}
+
+  commerce:
+    # The single platform currency and pricing calculation version (specs/18-P9-Commerce-V1.5.md §15.2).
+    currency: ${COMMERCE_CURRENCY:INR}
+    calculation-version: ${COMMERCE_CALC_VERSION:p9-1}
+    # Only the reference test gateway ships with the platform; a real provider is a separate adapter.
+    gateway: ${COMMERCE_GATEWAY:TEST}
+    # Callback signature secret. Never persisted in a domain table; supply from the environment in a real deployment.
+    gateway-secret: ${COMMERCE_GATEWAY_SECRET:commerce-test-gateway-secret}
+    checkout-enabled: ${COMMERCE_CHECKOUT_ENABLED:false}
+
+  communication:
+    # Only the reference fake email provider ships with the platform (specs/19-P10 §29, §86).
+    provider: ${COMMUNICATION_PROVIDER:FAKE}
+    # Bounded retry with exponential backoff + jitter and a cap (specs/19-P10 §33, §35).
+    max-attempts: ${COMMUNICATION_MAX_ATTEMPTS:5}
+    backoff-base: ${COMMUNICATION_BACKOFF_BASE:PT1M}
+    backoff-multiplier: ${COMMUNICATION_BACKOFF_MULTIPLIER:5.0}
+    backoff-cap: ${COMMUNICATION_BACKOFF_CAP:PT30M}
+    backoff-jitter: ${COMMUNICATION_BACKOFF_JITTER:0.20}
+    fanout-batch-size: ${COMMUNICATION_FANOUT_BATCH_SIZE:500}
+    worker-batch-size: ${COMMUNICATION_WORKER_BATCH_SIZE:50}
+    worker:
+      enabled: ${COMMUNICATION_WORKER_ENABLED:true}
+      interval: ${COMMUNICATION_WORKER_INTERVAL:PT15S}
+      initial-delay: ${COMMUNICATION_WORKER_INITIAL_DELAY:PT20S}
+
+  reporting:
+    # Protected artifact store; files are written per job under this root (specs/22-P13 §21-§23, §32).
+    artifact-root: ${REPORTING_ARTIFACT_ROOT:./data/reports}
+    # Short-lived, artifact-scoped download token (§23).
+    download-token-lifetime: ${REPORTING_DOWNLOAD_TOKEN_LIFETIME:PT15M}
+    download-signing-key: ${REPORTING_DOWNLOAD_SIGNING_KEY:}
+    # Maximum report interval (specs/22-P13 §16).
+    max-interval: ${REPORTING_MAX_INTERVAL:P366D}
+    # The report worker is deliberately slower and smaller than exam-critical workers (§94).
+    worker:
+      enabled: ${REPORTING_WORKER_ENABLED:true}
+      batch-size: ${REPORTING_WORKER_BATCH_SIZE:5}
+      interval: ${REPORTING_WORKER_INTERVAL:PT60S}
+      initial-delay: ${REPORTING_WORKER_INITIAL_DELAY:PT45S}
+
 management:
   endpoints:
     web:

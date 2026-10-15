@@ -22,6 +22,19 @@ public interface StudentAttemptRepository extends JpaRepository<StudentAttempt, 
 
     Optional<StudentAttempt> findByIdAndUserId(UUID id, UUID userId);
 
+    /** Analytics: attempts in a given lifecycle state (qualifying set is SUBMITTED/EVALUATED). */
+    List<StudentAttempt> findByAttemptStatusIn(java.util.Collection<com.company.exam.delivery.entity.AttemptStatus> statuses);
+
+    /** Analytics: every attempt of a set of users. */
+    List<StudentAttempt> findByUserIdIn(java.util.Collection<UUID> userIds);
+
+    /** Analytics: every attempt bound to a set of assessment versions. */
+    List<StudentAttempt> findByAssessmentVersionIdIn(java.util.Collection<UUID> assessmentVersionIds);
+
+    /** Analytics: distinct users with an attempt started since a bound ({@code 17-P8 §44}). */
+    @Query("select distinct a.userId from StudentAttempt a where a.startedOn >= :since")
+    List<UUID> findActiveUserIdsSince(@Param("since") Instant since);
+
     List<StudentAttempt> findByUserIdOrderByStartedOnDesc(UUID userId);
 
     List<StudentAttempt> findByAssessmentScheduleIdOrderByCreatedOnAsc(UUID assessmentScheduleId);

@@ -1,8 +1,8 @@
 # Known Gaps and Deferred Items
 
 - **Version:** 1.5
-- **Updated:** 2026-10-10
-- **Applies to:** P0 (Foundation) through P5 (Assessment Delivery and Runtime Examination Engine)
+- **Updated:** 2026-10-15 (P13 reporting complete; 4 of 22 report types backed, 18 registered-disabled)
+- **Applies to:** P0 (Foundation) through P13 (Broader Reporting & Operational Reporting)
 
 ## Purpose
 
@@ -20,7 +20,7 @@ architecture-change process (`specs/09-P0-Foundation-V1.5.md §86`).
 
 | ID | Area | Gap | Impact | Reason / frozen constraint | Target | Status |
 |---|---|---|---|---|---|---|
-| GAP-001 | Identity audit | Immutable `audit_log` persistence is not written by P1; only structured `SECURITY` log events are emitted | No durable, queryable audit trail for login/logout/reset/role events until Administration lands | `audit_log` is owned by Administration (frozen migration `V11`); P1 must not invent a second audit table (`10-P1 §48, §196`) | P11 Administration | Deferred (ADR-0013) |
+| GAP-001 | Identity audit | Immutable `audit_log` persistence was not written by P1; only structured `SECURITY` log events were emitted | No durable, queryable audit trail for login/logout/reset/role events | `audit_log` is owned by Administration (frozen migration `V11`); P1 must not invent a second audit table (`10-P1 §48, §196`) | Delivered by P11: the table plus the shared `AuditTrail` boundary, so every module's audit call now persists transactionally | **Closed by P11** (ADR-0023) |
 | GAP-002 | Password reset | No delivery channel (email/SMS) for reset tokens | End users cannot receive a reset link through the product yet; the backend reset contract is complete | Email/notification platform is out of P1 scope (`10-P1 §184`) | P10 Communication | Deferred (ADR-0012) |
 | GAP-003 | Authentication | Refresh is bound to the current active session and cannot revive an expired access token | A user whose access token expired must log in again rather than silently refresh | No `refresh_token`/`token_hash`/`expires_on` column exists and `§42` forbids adding one | Revisit if a true refresh token is required (schema change + ADR) | By-design limitation (ADR-0011) |
 | GAP-004 | Sessions | No idle/inactivity timeout; only an absolute lifetime | A session stays valid until its absolute lifetime even if unused | `login_session` has no last-activity column (`10-P1 §41, §42`) | Revisit with a schema change or ADR | By-design limitation (ADR-0011) |
@@ -89,6 +89,87 @@ architecture-change process (`specs/09-P0-Foundation-V1.5.md §86`).
 | GAP-067 | Listing | `GET /attempts` filters, sorts, and paginates in memory over the caller's attempts rather than a database-side page query | Acceptable for a single student's history; not suitable for a large staff-scoped listing | `14-P5 §84` requires indexed, projectional queries; the pilot's per-user set is small | Convert to a database-paged projection when staff listing is needed | Open |
 | GAP-068 | Delivery policy | Delivery policies are resolved at runtime, but there is no authoring API; only the seeded `DEFAULT` policy exists | New policies cannot be created through the API | No `delivery_policy` endpoint is frozen (`14-P5 §70`) | Manage policy rows operationally, or add an endpoint with contract review | By-design / informational |
 | GAP-069 | Time tracking | `timeSpentSeconds` is client-supplied and only range-bounded server-side; there is no server-measured per-question time | Persisted question time is an estimate, not authoritative | `14-P5 §46` describes it as a client measurement persisted on save; no timing table is permitted | Accept as an estimate; add analytics validation if needed | By-design / informational |
+| GAP-070 | Authorization | Evaluation permission codes (`ANSWER_KEY_*`, `EVALUATION_*`, `RESULT_*`, `SCORECARD_*`) are implementation candidates | Codes may need realignment with the Identity catalogue | The frozen Identity catalogue defines no Evaluation codes (`15-P6 §88-§91, §100`); P6 seeds the minimum operational set (migration `V15`) | Realign with the Identity catalogue (with GAP-021/036/048) | Open |
+| GAP-071 | Async evaluation handoff | The P5 submit handoff carries no `answerKeyId`, and `§26` forbids defaulting to a "current published key" | The asynchronous evaluation worker cannot score a submit-triggered job; the synchronous explicit `POST /attempts/{id}/evaluate` is the supported path; the worker is disabled by default and fails keyless jobs with `ANSWER_KEY_REQUIRED` | Two frozen sections interact: `14-P5 §67` hands off only the attempt, `15-P6 §26` requires an explicit key | Approve a rule that designates the key at submission, or extend the handoff | Open |
+| GAP-072 | Multi-correct answers | `answer_key_detail` stores a single `correct_option_id` and a single `correct_answer_text`; a `MULTIPLE_CHOICE` question with more than one correct option cannot be represented | Such a question is evaluated against one authoritative option; `§22` already forbids inventing a universal multi-select formula | The frozen `answer_key_detail` schema has one option reference (`15-P6 §5.2`) | Schema amendment (an `answer_key_detail_option` child) if multi-correct is required | By-design / open |
+| GAP-073 | Attempt completion state | P6 does not advance `student_attempt.attempt_status` to `EVALUATED` or populate `student_attempt.total_score`; the official score lives in `result` | The Delivery-owned `total_score` column remains null and the attempt stays `SUBMITTED` after evaluation | `15-P6 §9` makes the evaluation input read-only from P6; P6 must not mutate Delivery state | Expose a Delivery completion contract if the column is to be authoritative | Open |
+| GAP-074 | Rankings | The assessment-level (all versions) rankings aggregate sorts/pages in memory, and the `rankingsPublic` blueprint gate is not enforced | Acceptable for a bounded pilot cohort; the endpoint is authenticated and non-staff callers receive masked entries | `15-P6 §99` requires `rankingsPublic = true` for a public leaderboard; `§127` requires database-side ordering | Add a database-paged projection and read the blueprint `rankingsPublic` flag | Open |
+| GAP-075 | Scorecard delivery | The scorecard artifact is written to local storage (`scorecard.file_path`) and only a secure reference is returned; generation is synchronous (200) rather than the 202/job path the spec permits for large files; byte delivery is deferred to the files boundary | Callers receive metadata and a reference; the artifact bytes are served later; large-cohort bulk generation has no asynchronous path | `15-P6 §57, §58, §61`; the frozen files endpoint is delivered with the reporting/files boundary (extends GAP-034) | With the file-download/reporting boundary | Deferred |
+| GAP-076 | Performance | P6 evaluation throughput, rank recomputation, and scorecard generation are not measured on realistic data (extends GAP-038/053/059) | No latency/throughput/heap evidence for P6 | Requires staged data and a load harness (`15-P6 §146-§149`) | Staging performance phase | Open |
+| GAP-077 | Migrations | Evaluation is `V14`/`V15`, not the recommended `V100`/`V101` grouping | Numbering differs from the recommended list | Earlier phases used `V2`-`V13`; the schema document says numbering may differ (`04-Schema §57`) | None (informational) | Resolved / informational (ADR-0019) |
+| GAP-078 | Scoring validation | The `§18` check that the calculated maximum equals the published `assessment_version.total_marks` is computed (`maximumMarks`) but not enforced as a gate | A key whose bonus/override changes the maximum is not rejected; the percentage denominator stays the published total | `§18` makes equality "subject to explicitly approved bonus and grace rules"; enforced naively it would reject legitimate bonus/dropped keys | Enforce with an approved rule, or keep as informational | By-design / open |
+| GAP-079 | Result detail | Per-question outcomes are computed in memory but not persisted or exposed; the frozen `result` table has no per-question columns | A reviewer cannot retrieve a per-question correctness breakdown from P6 | `§70` keeps section score derived; `§117` exposes detailed per-question outcomes only through a dedicated approved contract | Add a dedicated approved contract in a later phase (reporting/analytics) | By-design / open |
+| GAP-080 | Response interpretation | Option-based responses accept the option key **or** the option id; numeric comparison is `BigDecimal`-exact and text comparison is trimmed/case-insensitive only | A client that persists a different response encoding would be an `INVALID_RESPONSE` and fail the evaluation | `§22/§23` forbid inventing normalization; the P5 runtime persists the option key (`14-P5 §42`) | Align if a client response encoding changes | Informational |
+| GAP-081 | Caching | No Redis cache for published assessment metadata, published AnswerKey metadata, or immutable scoring configuration | Those reads hit PostgreSQL each time | `§150` lists caching as an optional candidate; the cache must never be authoritative for evaluation, result, or publication state | Optional hardening when load justifies it | Deferred |
+| GAP-082 | Rank recomputation | Rank/percentile recomputation loads the whole published population of an assessment version and sorts it in memory on every publication | Bounded by the cohort size, but not a database-side ordered projection | `§125` prefers projections for large queries; `§35/§36` fix only the formula | Convert to a database-ordered projection when cohorts are large | Open |
+| GAP-083 | P7 environment | No production-like environment exists on the development host (no Docker/edge, no PgBouncer, no PostgreSQL server, no Redis, no Prometheus/Grafana/Loki, no storage tier) | The P7 scale suite (ramp, bursts, soak, spike, failure injection) and an immutable release candidate cannot be produced; P7 §145 exit criteria are not met | `16-P7 §12` requires a production-like environment; the host provides only an embedded disposable PostgreSQL (ADR-0009) | Provision the production-like environment (extends GAP-007) | Open |
+| GAP-084 | P7 load capacity | No load-generation capacity for 5,000 concurrent users (single dev host) | The ramp and the concurrent-user gate cannot be measured | `16-P7 §26, §33, §106` require a representative concurrent load | Provision a load-generation host/cluster against staging | Open |
+| GAP-085 | P7 cohort credentials | No frozen mechanism to provision credentials for a synthetic load cohort; `POST /users` assigns a non-usable credential and reset delivery is not built | A 5,000-user cohort cannot self-authenticate, so the harness cannot start the load without an out-of-band credential step | `10-P1 §56/§58` onboarding policy; reset delivery deferred (GAP-002) | Add a version-controlled load-cohort credential provisioning mechanism | Open |
+| GAP-086 | P7 database reconciliation | The HTTP load harness cannot query PostgreSQL (no driver and no `psql` on the dev host) | §49-§54 integrity gates require a separate operator step | `16-P7 §49` requires database verification after load | Run `scripts/p7/reconcile.sql` from a host with `psql` | Open |
+| GAP-087 | P7 observability | Prometheus/Grafana/Loki dashboards and alerts are not built | §58-§61 monitoring, dashboard, log and alert validation cannot be performed | `16-P7 §58-§61` require operator-visible telemetry | Observability stack (extends GAP-009/025) | Open |
+| GAP-088 | P7 ops validation | Backup/restore, blue-green/rollback, dry runs and the live pilot are not performed | §62-§69 and §144-§146 gates are unmet | Requires the production-like environment and a pilot cohort | Operations validation phase (extends GAP-007) | Open |
+| GAP-089 | Authorization | Analytics permission codes (`ANALYTICS_VIEW`, `ANALYTICS_REFRESH`, `ANALYTICS_REBUILD`) are implementation candidates | Codes may need realignment with the Identity catalogue | The frozen Identity catalogue defines no Analytics codes (`17-P8 §57, §58`); P8 seeds the minimum set (migration `V17`) | Realign with the Identity catalogue (with GAP-021/036/048/056/070) | Open |
+| GAP-090 | Question/topic correctness | P6 does not persist per-question outcomes, so analytics derives them by re-running the existing P6 evaluator per attempt on every refresh/rebuild | Recomputation cost grows with history; a scalable read path needs a persisted per-question outcome | `17-P8 §31` requires official evaluation outcomes; P6 exposes detailed outcomes only via an approved contract (GAP-079) | Add a persisted per-question outcome contract (schema amendment) | Open |
+| GAP-091 | Refresh scope | Incremental question/topic refresh is scoped to the affected assessment versions; a parent Question reused across versions is recomputed from a partial population | A full rebuild is the authoritative recomputation and the corrective | `17-P8 §66` scopes incremental work to affected grains; `§10` guarantees a full rebuild path | Recompute a reused question across every version containing it | Open |
+| GAP-092 | Frontend | The analytics dashboard frontend (P8-16..20) is a backend read-model slice only | Staff and students use the read APIs directly; no chart/dashboard UI | `17-P8 §142-§148` specify the frontend; this slice delivered the read models and APIs | Build the analytics UI in a follow-up | Partial / Open |
+| GAP-093 | Trends | No trend/daily/weekly buckets and no frozen timezone; trends are derived from transactional timestamps on demand | Chart ranges are bounded and no durable trend history exists | `§81/§82` forbid trend tables without review; `§136` leaves timezone to a documented deployment choice | Add an approved trend materialization if evidence justifies it | By-design / Open |
+| GAP-094 | Performance | Analytics rebuild/refresh and dashboard read performance are not measured on staged data (extends GAP-076) | No throughput/latency evidence; a full rebuild loads the completed-attempt population in memory | `§121/§122` require a representative load and rebuild test | Staging performance phase | Open |
+| GAP-095 | Caching | Only single-aggregate reads are cached; derived read-model lists are computed per request | Repeated dashboard list reads hit PostgreSQL | `§62` lists caching as a candidate; correctness-first | Extend caching when load justifies it | Deferred |
+| GAP-096 | Migrations | Analytics is `V16`/`V17`, not the recommended numbering | Numbering differs from the recommended list | Earlier phases used `V2`-`V15`; the schema document says numbering may differ (`04-Schema §57`) | None (informational) | Resolved / informational (ADR-0020) |
+| GAP-097 | Authorization | Commerce permission codes (`ACCESS_PACKAGE_*`, `SUBSCRIPTION_PLAN_*`, `COUPON_*`, `PURCHASE_*`, `ACCESS_GRANT_*`) are implementation candidates | Codes may need realignment with the Identity catalogue | The frozen Identity catalogue defines no Commerce codes (`18-P9 §30`); P9 seeds the minimum set (migration `V19`) | Realign with the Identity catalogue (with GAP-021/036/048/056/070/089) | Open |
+| GAP-098 | Idempotency | No idempotency store is frozen for purchase creation; dedupe is a service-level lookup of an existing open purchase for the same user/plan/coupon/amount | True request-key idempotency (and full double-click race safety) needs an approved idempotency store or a partial unique index amendment | `§94` says reuse the platform's common idempotency utility, but no such store exists; `§139` forbids new tables without amendment | Add an approved idempotency mechanism | Open |
+| GAP-099 | Payment provider | Only the reference in-memory `TEST` gateway ships; a real provider adapter is not implemented | The platform cannot take real payments until an adapter exists | The provider is not frozen (`§13`); a real adapter is a separate integration with its own signature/verification scheme | Implement the selected provider adapter | Open |
+| GAP-100 | Enforcement wiring | `EntitlementResolver` is implemented but Delivery/Assessment do not yet gate paid assessments on it | Paid-content enforcement is not active; delivery still authorizes by attempt ownership | The frozen package has no "free assessment" configuration field (`§16`), so the paid-vs-free decision needs an approved rule | Approve the free-assessment rule, then wire enforcement in Delivery | Open |
+| GAP-101 | Reconciliation | Reconciliation is an on-demand service; no scheduled job or provider-side retry is wired, and no reconciliation table exists | Discrepancies are found only when an operator requests the report | `§60, §62` permit a service or job driven by provider query APIs; no new table without approval | Schedule the reconciliation job and wire provider retries | Open |
+| GAP-102 | Provider assumption | `payment_record.payment_reference` is UNIQUE because the reference gateway guarantees globally unique references | A provider that does not guarantee uniqueness would violate the constraint | `§32.5` applies the uniqueness constraint only when the provider guarantees unique references | Revisit with the selected provider | Informational |
+| GAP-103 | Migrations | Commerce is `V18`/`V19`, not the recommended numbering | Numbering differs from the recommended list | Earlier phases used `V2`-`V17`; the schema document says numbering may differ | None (informational) | Resolved / informational (ADR-0021) |
+| GAP-104 | Frontend | The commerce frontend (student store, checkout UX, finance workspace, coupon/plan administration) is a backend slice only | Operators and students use the APIs directly; no store UI | `§75-§89` specify the frontend; this slice delivered the backend and APIs | Build the commerce UI in a follow-up | Partial / Open |
+| GAP-105 | Rate limiting | Coupon validation, purchase creation, payment initiation, polling and refunds are not rate limited | Abuse is bounded only by authentication and cost | `§74` requires careful rate limiting; shared infrastructure limits are not implemented (GAP-011) | Apply the approved rate limiting | Open |
+| GAP-106 | Authorization | Communication permission codes (`COMMUNICATION_TEMPLATE_*`, `ANNOUNCEMENT_*`) are implementation candidates | Codes may need realignment with the Identity catalogue | The frozen Identity catalogue defines no Communication codes (`19-P10 §66, §67`); P10 seeds the suggested set (migration `V21`) | Realign with the Identity catalogue | Open |
+| GAP-107 | Email delivery status | The frozen schema has no email delivery record, so delivery status is only `background_job` state, logs and metrics | No durable historical email-send truth; operational queries cannot reconstruct a send | `§31` forbids adding a `notification_delivery`/`email_delivery` table without an amendment | Add an approved delivery table if durable history is required | By-design / Open |
+| GAP-108 | Provider | Only the reference `FakeEmailGateway` ships; a real email provider adapter is not implemented | The platform cannot send real email until an adapter exists | `§29` does not freeze a provider; a real adapter is a separate integration | Implement the selected email provider adapter | Open |
+| GAP-109 | Frontend | The communication frontend (notification center, announcement UI, template admin) is a backend slice only | Users and operators use the APIs directly; no bell, list, or editor UI | `§104-§112` specify the frontend; this slice delivered the backend and APIs | Build the communication UI in a follow-up | Partial / Open |
+| GAP-110 | Event handoff | Business events are handled in-process after commit; there is no outbox | A crash between the business commit and the listener's job insert loses one notification/email; there is no replay | `§17, §121` accept in-process events for the initial implementation and state the loss risk | Add an outbox if durable exactly-once handoff is required | By-design / Open |
+| GAP-111 | Fan-out idempotency | Fan-out idempotency relies on the `background_job` id; a crash mid-fan-out can duplicate notifications | A recovered fan-out job can re-notify part of the audience | `§50, §51` explicitly refuse an invented dedupe constraint and accept documented duplication tolerance | Add a durable dedupe key if exactness is required | By-design / Open |
+| GAP-112 | Password reset delivery | Communication sends messages but Identity's password-reset delivery is still the P1 logging implementation | Reset links are not emailed yet; the reset contract itself is complete | `§56` keeps reset token creation/validation under Identity; wiring the delivery is a follow-up | Wire Identity's `PasswordResetDelivery` to Communication (closes GAP-002) | Open |
+| GAP-113 | Announcement audience | Announcements fan out to all active users because the frozen schema has no targeting table; the assessment-scheduled handler uses the same all-active-users model | Publishing an announcement notifies the whole organization; an assessment-scheduled event has no precise audience at schedule-creation time | `§40` freezes exactly this two-mode model ("all active users"; role resolved at fan-out) | Approve a targeting model if finer audiences are required | By-design / Open |
+| GAP-114 | Migrations | Communication is `V20`/`V21`, not the recommended numbering | Numbering differs from the recommended list | Earlier phases used `V2`-`V19`; the schema document says numbering may differ | None (informational) | Resolved / informational (ADR-0022) |
+| GAP-115 | Rate limiting | Notification read/read-all and announcement creation/publish are not rate limited | Abuse is bounded only by authentication | `§100` requires rate limiting on these operations; shared infrastructure limits are not implemented (GAP-011) | Apply the approved rate limiting | Open |
+| GAP-116 | Authorization | The Administration permission catalogue (`ORGANIZATION_SETTING_*`, `BUSINESS_RULE_*`, `LOOKUP_*`, `AUDIT_LOG_VIEW`, `SYSTEM_HEALTH_VIEW`, `GLOBAL_SEARCH*`, `IMPORT_EXECUTE`, `BULK_EXECUTE`, `SUPPORT_*`, `ADMIN_ROLE_ASSIGN`) is seeded as implementation candidates | Codes may need realignment with the Identity catalogue | The frozen Identity catalogue defines no Administration codes (`20-P11 §80`); `ADMIN_ROLE_ASSIGN` is deliberately not granted to ADMIN because P1 froze that invariant (`§18`) | Realign with the Identity catalogue | Open |
+| GAP-117 | Audit immutability | Immutability is enforced at the application level (`@Immutable` entity, no update/delete repository method, no update/delete endpoint) | A database-level writer could still update or delete audit rows | `§11.2` prohibits UPDATE/DELETE at the API level; no database trigger was added | Add a database-level guard if stronger enforcement is required | Open |
+| GAP-118 | Global search | Only the USER and AUDIT_LOG handlers are implemented; QUESTION, ASSESSMENT, ACCESS_PACKAGE, SUBSCRIPTION_PLAN, PURCHASE and ANNOUNCEMENT are not backed and are therefore not advertised | Search covers identity and audit only; the frozen allow-list is not fully delivered | `§39` freezes eight searchable resources; several need joins (question_version, payment_record) or a search contract in the owning module | Implement the remaining handlers and pg_trgm indexing | Partial / Open |
+| GAP-119 | Imports | The import API and the frozen four-target registry (`USER_IMPORT`, `ACADEMIC_IMPORT`, `QUESTION_IMPORT`, `ACCESS_GRANT_IMPORT`) are not implemented | Bulk master-data loading is unavailable; operators must use the domain APIs | `§48-§54` freeze the import contract; target modules have no import service contract yet (`§50`) | Implement the registry and per-target delegation | Not started |
+| GAP-120 | Bulk operations | The bulk endpoint and the frozen operation allow-list (`USER + ACTIVATE`, `USER + ARCHIVE`, `QUESTION + IMPORT`) are not implemented | Large administrative changes must be performed one record at a time | `§42-§47` freeze the bulk contract | Implement the allow-list, the async job, and partial-failure reporting | Not started |
+| GAP-121 | Support console | Only the masked user view and the ad-hoc notification action are implemented | Session revoke, attempt recovery, and the attempt/access/purchase views are unavailable to support | `§35` lists ten support capabilities | Implement the remaining support capabilities through owning contracts | Partial / Open |
+| GAP-122 | Admin dashboard | Five cards are sourced (active users, students, audit events in 24h, rules, lookups) | Active grants, pending evaluation, and communication backlog cards are not shown | `§21` lists those as possible areas; the owning modules expose no count contract yet | Add count contracts to Commerce, Evaluation and Communication | Partial / Open |
+| GAP-123 | Frontend | The administration frontend (permission-driven navigation, tables, forms, audit explorer, health screen, configuration UX) is a backend slice only | Operators use the APIs directly; no admin UI | `§63-§79` specify the frontend; this slice delivered the backend and APIs | Build the administration UI in a follow-up | Partial / Open |
+| GAP-124 | System health | Optional external components (email provider, payment provider, object storage, PgBouncer) report UNKNOWN, so an unconfigured deployment is DEGRADED rather than HEALTHY | The health screen cannot show green until providers are configured | `§60` forbids inferring HEALTHY from missing telemetry | Configure the providers and add their safe checkers | By-design / Open |
+| GAP-125 | Migrations | Administration is `V22`/`V23`, not the recommended numbering | Numbering differs from the recommended list | Earlier phases used `V2`-`V21`; the schema document says numbering may differ | None (informational) | Resolved / informational (ADR-0023) |
+| GAP-126 | Frontend build | The committed `frontend/package-lock.json` was out of sync with the dependency graph, so `npm ci` failed with EUSAGE (`Missing: @emnapi/core@1.11.3`, `@emnapi/runtime@1.11.3`) | `frontend/Dockerfile` runs `npm ci`, so **every frontend container image build failed on a clean clone**; CI and fresh local setup failed too | Not the documented `NODE_ENV=production` artifact — `NODE_ENV` was unset when it failed. Repaired by `npm install` (`+36/-20` lock lines, no version bumps) | Re-run the frontend image build/CI to confirm; add a lock-sync check | **Fixed by verification 2026-10-15** (re-verify in CI) |
+| GAP-127 | Verification | The frontend had never been installed, linted, tested, or built in the recorded verification history (`node_modules` absent, no prior result) | Frontend regressions were invisible; the P1–P5 UI was unverified | No frontend verification step existed in the process | Keep frontend lint/test/build in the standard verification run | **Resolved / verified 2026-10-15** (`docs/testing/full-verification.md`) |
+| GAP-128 | Frontend (P6) | No evaluation/results or scorecard UI exists; frontend features cover only `auth`, `academic`, `content`, `assessment`, `delivery`, `system` | Students and evaluators cannot view results or scorecards in the product; APIs only | P6 §"student result view" describes the UI; this slice delivered the backend and APIs (the P8/P9/P10/P11 equivalents are GAP-092/104/109/123) | Build the results/scorecard UI in a follow-up | Partial / Open |
+| GAP-129 | Frontend toolchain | npm 11 blocked the install scripts of `esbuild@0.21.5` and `unrs-resolver@1.12.2` under its `allowScripts` policy | Tests and build passed anyway, but on a fresh host the native esbuild binary may be missing, breaking the build | npm 11 install-script approval policy; the repository has no allow-list entry | Add an install-script allow-list (or document `npm install-scripts approve`) and verify on a clean host | Open |
+| GAP-130 | Performance gates | No performance gate was measured: 5,000 concurrent users, 99.9% availability, p95 < 100 ms, >99% submission success, <1% exam failure (P12 §9) | Nothing is known about behaviour under production load; §188 lists a materially missed core performance gate as no-go, and an unmeasured gate cannot be claimed as passed | No load tooling (`k6`/`jmeter`), no staging/load environment, no Docker-hosted PostgreSQL/Redis/PgBouncer (GAP-083/084) | Stand up the load environment and run the workload | **Blocking — NO-GO** |
+| GAP-131 | Backup and restore | Backup, restore, and point-in-time recovery were never exercised (P12 §71-§75) | Recovery capability is unproven; §188 makes a backup/restore failure for the required scope a no-go | No PostgreSQL server or backup tooling on the development host (GAP-007) | Execute and record a backup, restore, and PITR rehearsal | **Blocking — NO-GO** |
+| GAP-132 | Rollback | No rollback rehearsal was performed (P12 §129-§131) | §278 lists "Rollback is untested" explicitly as a no-go example | No deployment infrastructure, no image, nothing deployed to roll back | Rehearse rollback on the frozen candidate | **Blocking — NO-GO** |
+| GAP-133 | Migration rehearsal | Migrations apply cleanly from scratch on embedded PostgreSQL, but no rehearsal was run against production-like data volume | Large-table migration duration, lock behaviour, and expand/contract safety are unmeasured | Requires a real PostgreSQL with production-scale data (GAP-007/083) | Rehearse on production-like volume | Open |
+| GAP-134 | Monitoring and alerts | Prometheus/Grafana/Loki dashboards and alerts are not built, so P12 §106-§114 validation cannot be performed | Operators have no dashboards or alerting; release row "Operations — dashboards, alerts, runbooks" cannot pass | Observability stack files absent (GAP-009) | Deploy the stack, define baseline dashboards and alerts, validate them | Open |
+| GAP-135 | Release rehearsal | Dress rehearsal (§168-§170), production smoke test (§145) and post-release monitoring (§P12-18) were not performed | The end-to-end release path has never been executed against a deployed candidate | Requires staging/production environments | Run the dress rehearsal and smoke test on the frozen candidate | Open |
+| GAP-136 | Configuration / security | `/v3/api-docs/**`, `/swagger-ui/**` and `/swagger-ui.html` are publicly reachable and springdoc is enabled with no per-profile switch | Full API surface and schemas are disclosed to unauthenticated callers in production | `SecurityConfig` public allow-list; no `springdoc.*.enabled` profile control | Disable or authenticate API docs outside local/development | Open |
+| GAP-137 | Configuration / security | No explicit `Content-Security-Policy`, `Strict-Transport-Security`, or `Referrer-Policy` is configured; only Spring Security defaults apply | P12 §26 security-header requirements are unmet; the edge that would add them is not built | Header policy belongs at the application and/or edge; no Nginx configuration exists (GAP-007) | Define the header policy at app and edge level | Open |
+| GAP-138 | Configuration / security | `/actuator/prometheus` is in the public allow-list and unauthenticated | Metrics expose internal operational detail to unauthenticated callers | `SecurityConfig` public allow-list | Restrict actuator metrics to the monitoring network | Open |
+| GAP-139 | Indexes | `background_job (job_type, status, queued_on)` and `notification (user_id, notification_status, created_on)` composite indexes are absent; the worker claim and the notification centre are served by single-column indexes | Higher scan cost for the two highest-volume worker queries at scale | The frozen index list (specs/04 §33, §35) declares only single-column indexes; adding composites requires an amendment | Raise a schema amendment, then add the indexes | Open (amendment candidate) |
+| GAP-140 | Release artefact | The release candidate is not uniquely reproducible: no commit or tag exists and no container image was built, so there is no image digest | P12 §11 candidate identity is incomplete; evidence cannot be tied to an immutable artefact | Work is uncommitted in the working tree; Docker is unavailable (GAP-007) | Commit and tag the candidate; build and record the image digest | Open |
+| GAP-141 | Reports | The Student, Assessment, Content and Commerce report families are registered in the catalog but disabled (`enabled=false`): 18 of 22 report types have no projection provider | Only the Operations and Executive families produce a report; students, staff and finance cannot yet get their reports through P13 | The owning modules expose no read contract at the required grain (`22-P13 §10, §33`); requesting one fails with a controlled `REPORT_NOT_AVAILABLE` | Add the owning-module read contracts and the remaining providers | **Partial / Open** |
+| GAP-142 | Report authorization | Student self-service reporting has no authorization decision: students hold no report permission, because P1 froze an empty student permission set | Students cannot request a report at all | `22-P13 §76` requires automatic self-scoping; granting a permission would break the P1 invariant (an existing P1 test enforces it) | Decide role-based vs permission-based student reporting, then implement | Open |
+| GAP-143 | Report retention | The documented retention default (90 days completed, 30 days failed) is not enforced by any cleanup job | Report job rows and artifacts accumulate; storage grows unbounded | `22-P13 §31` sets a documented default configurable through `BusinessRule`; no retention worker exists | Add a retention job driven by the business rule | Open |
+| GAP-144 | Report cancellation | A queued or running report cannot be cancelled | A mis-requested large report must run to completion | `22-P13 §101` requires cancellation only where the job infrastructure already supports it, and `background_job` does not | Extend the job contract if cancellation is required | By-design / Open |
+| GAP-145 | Report idempotency | `Idempotency-Key` is neither accepted nor stored; repeating an identical request creates a second job | A retried request can generate a duplicate report and duplicate artifact | `22-P13 §26` requires dedupe only where the API contract requires idempotency; no idempotency store is frozen | Add request-level dedupe if duplicates become an operational problem | Open |
+| GAP-146 | Report caching | The catalog is rebuilt per request and no report metadata is cached | Negligible today; a scale concern | `22-P13 §96` permits caching small stable metadata; not implemented | Cache the catalog where it measures as a cost | Open |
+| GAP-147 | PDF presentation | The PDF is a text-and-table document: no charts, no embedded organization branding, no custom fonts | Executive PDFs are functional but plain | `22-P13 §19` allows branding "only where authorized"; charts are not required | Enrich the renderer if presentation is required | Partial / Open |
+| GAP-148 | Frontend | No reporting UI exists: no student dashboard, staff reporting workspace or admin reporting workspace | Users drive reports through the API only | `22-P13 §109-§112` specify the frontend; this slice delivered the backend and the catalog/status/history APIs | Build the reporting UI in a follow-up | Partial / Open |
+| GAP-149 | Authorization | The report permission codes (`REPORT_*`) are seeded as implementation candidates using the platform's UPPER_SNAKE convention rather than the `report.*.read` identifiers in the specification | Codes may need realignment with the Identity catalogue | `22-P13 §75` states the candidate identifiers must map to the project's exact convention before seeding | Realign with the Identity catalogue | Open |
+| GAP-150 | Database load isolation | Large report queries run against the primary database; no read replica is used, and no staged report-performance evidence exists | A very large export competes with live examination traffic for database capacity | `22-P13 §95, §41` treat a read replica as a separate infrastructure decision and require measured evidence | Evaluate a read replica and capture report performance evidence | Open |
 
 ## 2. Deliberate non-goals (not gaps)
 
@@ -98,13 +179,29 @@ These are out of scope by specification and are listed so they are not mistaken 
   permission-aware UI infrastructure exist; a full admin UI does not).
 - P0/P1: SSO, OAuth, 2FA, biometric authentication, device trust, multi-tenant authorization.
 - P1: Password-change endpoint (the contract defines only forgot/reset).
-- Business modules still unimplemented: Evaluation, Analytics, Commerce, Communication,
-  Administration.
+- Business modules still unimplemented: Analytics, Commerce, Communication, Administration.
 - P2: Academic master **bulk import** and other tooling are not in the P2 task list.
 - P2: Academic data is intentionally not organization-scoped (single-organization deployment;
   `04-Schema §62`).
 - P3: A bulk content-import platform and a Content-specific search engine (Elasticsearch/OpenSearch)
   are not implemented; search uses PostgreSQL.
+- P6: Manual subjective grading, advanced moderation, AI evaluation, multi-stage result publication,
+  and complex answer normalization are out of scope (`15-P6 §163`); a published result is not an
+  editable CRUD record and corrections flow only through re-evaluation (`§55, §103`).
+- P8: AI-driven recommendations, arbitrary CSV/report export, saved report definitions, a read
+  replica, a data warehouse, a search engine, materialized views, cohort/peer comparison, and a new
+  leaderboard are out of scope (`17-P8 §84, §110, §124-§130`).
+- P9: percentage discounts, coupon usage quotas/counters, partial-refund ledgers, chargeback case
+  management, recurring billing schedulers, tax/invoice domains, wallets/credits/gift cards,
+  multi-organization SaaS billing, and provider-specific persistent tables are out of scope
+  (`18-P9 §5`).
+- P10: SMS/WhatsApp/push channels, a distributed broker, marketing campaigns, communication
+  preferences and localization, bounce/complaint domains, and bulk-email product features are out of
+  scope (`19-P10 §5, §17, §132, §133, §141, §142`).
+- P11: a multi-tenant control plane, SSO and advanced 2FA administration, advanced proctoring,
+  biometric/device trust, CRM, marketing automation, a support-ticket or incident domain, an AI admin
+  assistant, a new search platform, a new event broker, and new persistent admin-history tables are
+  out of scope (`20-P11 §4`).
 
 ## 3. Remediation sequencing
 
@@ -130,6 +227,74 @@ Session expiry sweep                 -> closes GAP-065
 Staff attempt read path              -> closes GAP-064
 Contract review (navigation/policy)  -> closes GAP-063, GAP-068
 Database-paged attempt listing       -> closes GAP-067
+Identity catalog alignment           -> realigns GAP-070 (with GAP-021/036/048)
+Answer-key-at-submission rule        -> closes GAP-071
+Multi-correct answer-key amendment   -> closes GAP-072
+Delivery completion contract         -> closes GAP-073
+Rankings projection + leaderboard    -> closes GAP-074
+Files boundary                       -> closes GAP-075 (with GAP-034)
+Staging performance phase            -> closes GAP-076 (with GAP-038/053/059)
+Scoring-validation rule              -> closes GAP-078 (if approved)
+Result-detail contract               -> closes GAP-079
+Evaluation caching hardening         -> closes GAP-081 (optional)
+Database-ordered rank projection     -> closes GAP-082
+Production-like environment (P7)     -> closes GAP-083, GAP-084, GAP-087, GAP-088
+Load-cohort provisioning             -> closes GAP-085
+Reconcile host with psql             -> closes GAP-086
+Identity catalog alignment           -> realigns GAP-089 (with GAP-021/036/048/056/070)
+Per-question outcome contract        -> closes GAP-090 (schema amendment)
+Reused-question recompute            -> closes GAP-091
+Analytics dashboard UI               -> closes GAP-092
+Trend materialization decision       -> closes GAP-093 (if approved)
+Staging performance phase            -> closes GAP-094 (with GAP-076)
+Analytics caching hardening          -> closes GAP-095 (optional)
+Identity catalog alignment           -> realigns GAP-097 (with GAP-021/036/048/056/070/089)
+Idempotency store or unique index    -> closes GAP-098 (amendment)
+Provider adapter selection           -> closes GAP-099, GAP-102
+Free-assessment rule + enforcement   -> closes GAP-100
+Scheduled reconciliation             -> closes GAP-101
+Commerce UI                          -> closes GAP-104
+Rate limiting (hardening)            -> closes GAP-105 (with GAP-011)
+Identity catalog alignment           -> realigns GAP-106 (with GAP-021/036/048/056/070/089/097)
+Delivery status table (amendment)    -> closes GAP-107 (if approved)
+Email provider adapter               -> closes GAP-108
+Communication UI                     -> closes GAP-109
+Event outbox                         -> closes GAP-110 (if approved)
+Fan-out dedupe key                   -> closes GAP-111 (if approved)
+Password-reset delivery wiring       -> closes GAP-112, GAP-002
+Announcement targeting model         -> closes GAP-113 (if approved)
+Rate limiting (hardening)            -> closes GAP-115 (with GAP-011)
+Identity catalog alignment           -> realigns GAP-116 (with GAP-021/036/048/056/070/089/097/106)
+Database audit guard                 -> closes GAP-117 (if approved)
+Remaining search handlers + pg_trgm  -> closes GAP-118
+Import registry + targets            -> closes GAP-119
+Bulk allow-list + worker             -> closes GAP-120
+Remaining support capabilities       -> closes GAP-121
+Owner count contracts for dashboard  -> closes GAP-122
+Administration UI                    -> closes GAP-123
+Provider health checkers             -> closes GAP-124
+Lock-sync check in CI                -> confirms GAP-126 (with GAP-008)
+Frontend lint/test/build in CI       -> keeps GAP-127 closed (with GAP-008)
+Results/scorecard UI                 -> closes GAP-128
+Install-script allow-list            -> closes GAP-129
+Load environment + workload          -> closes GAP-130, GAP-133 (with GAP-083)
+Backup/restore/PITR rehearsal        -> closes GAP-131
+Rollback rehearsal                   -> closes GAP-132
+Observability stack + alerts         -> closes GAP-134 (with GAP-009)
+Dress rehearsal + production smoke   -> closes GAP-135
+API-docs exposure control            -> closes GAP-136
+Security header policy               -> closes GAP-137
+Actuator metrics restriction         -> closes GAP-138
+Index amendment                      -> closes GAP-139
+Commit, tag, image digest            -> closes GAP-140
+Remaining report providers           -> closes GAP-141
+Student self-service authorization   -> closes GAP-142
+Report retention job                 -> closes GAP-143
+Request-level report idempotency     -> closes GAP-145
+Report catalog caching               -> closes GAP-146
+PDF presentation enrichment          -> closes GAP-147
+Reporting UI                         -> closes GAP-148
+Read replica + report perf evidence  -> closes GAP-150 (with GAP-130)
 ```
 
 ## 4. Raising a new gap
@@ -145,6 +310,10 @@ If an implementation task discovers a missing or contradictory frozen contract:
 
 - **Status:** Living register.
 - **Owner:** Engineering.
-- **Reviewed with:** `docs/implementation-status.md`, `docs/decisions/ADR-0010`–`ADR-0018`,
-  `docs/testing/p1/README.md`, `docs/testing/security/p1/README.md`, `docs/testing/p2/README.md`,
-  `docs/testing/p3/README.md`, `docs/testing/p4/README.md`, `docs/testing/p5/README.md`.
+- **Reviewed with:** `docs/implementation-status.md`, `docs/testing/full-verification.md`,
+  `docs/testing/p12/README.md`, `docs/testing/p13/README.md`, `docs/decisions/ADR-0010`–`ADR-0024`,
+  `docs/testing/p1/README.md`,
+  `docs/testing/security/p1/README.md`, `docs/testing/p2/README.md`, `docs/testing/p3/README.md`,
+  `docs/testing/p4/README.md`, `docs/testing/p5/README.md`, `docs/testing/p6/README.md`,
+  `docs/testing/p7/README.md`, `docs/testing/p8/README.md`, `docs/testing/p9/README.md`,
+  `docs/testing/p10/README.md`, `docs/testing/p11/README.md`, `scripts/p7/`.

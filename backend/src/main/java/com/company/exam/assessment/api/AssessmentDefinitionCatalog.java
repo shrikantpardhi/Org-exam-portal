@@ -32,6 +32,14 @@ public interface AssessmentDefinitionCatalog {
     }
 
     /**
+     * The scoring context Evaluation needs from Assessment
+     * ({@code specs/15-P6-Evaluation-V1.5.md §18, §34, §109}).
+     */
+    record AssessmentScoringView(UUID assessmentVersionId, UUID assessmentId, boolean published,
+            Integer totalQuestions, BigDecimal totalMarks) {
+    }
+
+    /**
      * Returns the assessment version, or throws a controlled error if it does not exist or is not
      * published.
      */
@@ -42,4 +50,13 @@ public interface AssessmentDefinitionCatalog {
 
     /** Returns the ordered exact question bindings of a published assessment version. */
     List<AssessmentQuestionView> questions(UUID assessmentVersionId);
+
+    /**
+     * Returns the scoring context (including the published {@code total_marks}) for an assessment
+     * version, or throws a controlled error if it does not exist.
+     */
+    AssessmentScoringView requireScoringContext(UUID assessmentVersionId);
+
+    /** Returns the ids of every version of an assessment ({@code specs/15-P6 §90, §127}). */
+    List<UUID> assessmentVersionIds(UUID assessmentId);
 }

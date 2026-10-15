@@ -11,6 +11,9 @@ public interface CollectionAssessmentRepository extends JpaRepository<Collection
 
     List<CollectionAssessment> findByCollectionId(UUID collectionId);
 
+    /** Commerce entitlement: the collections that contain an assessment ({@code 18-P9 §9.1}). */
+    List<CollectionAssessment> findByAssessmentId(UUID assessmentId);
+
     Optional<CollectionAssessment> findByCollectionIdAndAssessmentId(UUID collectionId, UUID assessmentId);
 
     boolean existsByCollectionIdAndAssessmentId(UUID collectionId, UUID assessmentId);

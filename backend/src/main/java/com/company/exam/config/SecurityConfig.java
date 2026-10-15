@@ -48,7 +48,10 @@ public class SecurityConfig {
             "/error",
             "/api/v1/auth/login",
             "/api/v1/auth/forgot-password",
-            "/api/v1/auth/reset-password"
+            "/api/v1/auth/reset-password",
+            // Provider-facing payment callback: authenticated by the provider signature, never a JWT
+            // (specs/18-P9-Commerce-V1.5.md §69).
+            "/api/v1/payments/callback"
     };
 
     @Bean
