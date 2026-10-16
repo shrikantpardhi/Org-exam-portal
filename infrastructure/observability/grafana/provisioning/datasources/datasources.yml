@@ -1,0 +1,30 @@
+# ---------------------------------------------------------------------------
+# Grafana datasource provisioning (P0-11 / GAP-087).
+#
+# Prometheus is the metrics source; Loki is the log source. The application
+# emits structured JSON logs (logstash format) carrying the requestId MDC key, so
+# a log line can be joined to a trace through the correlation id.
+# ---------------------------------------------------------------------------
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    uid: exam-prometheus
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 15s
+
+  - name: Loki
+    type: loki
+    access: proxy
+    uid: exam-loki
+    url: http://loki:3100
+    jsonData:
+      # Correlate a log line with the request id emitted by the edge and the API.
+      derivedFields:
+        - name: requestId
+          matcherRegex: '"requestId":"([^"]+)"'
+          url: '$${__value.raw}'

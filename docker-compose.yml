@@ -1,0 +1,307 @@
+# ---------------------------------------------------------------------------
+# Smart Competitive Examination Platform - local stack
+#
+# Profiles (specs/09-P0-Foundation-V1.5.md section 51):
+#   core          postgres, redis
+#   app           backend, frontend
+#   edge          nginx, pgbouncer
+#   observability prometheus, grafana, loki, promtail
+#
+# Credentials are never defaulted here: every secret is interpolated from the
+# environment and Compose fails fast when one is missing. Copy `.env.example`
+# to `.env` first (specs/09-... section 67, section 99).
+#
+# Container-to-container traffic uses Compose service names; `localhost` is
+# never hardcoded in a container's configuration (specs/09-... section 53).
+#
+# Reference flow:  client -> nginx -> {frontend, backend} -> pgbouncer -> postgres
+# ---------------------------------------------------------------------------
+
+name: exam-platform
+
+services:
+
+  # ------------------------------------------------------------------ core
+
+  postgres:
+    profiles: ["core"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      # Deterministic timestamps regardless of the host locale.
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      # Published to the loopback interface only, so the host-run backend
+      # (`./mvnw spring-boot:run`, application-local.yml) can reach it.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # The application database is the source of truth, so readiness is proven
+      # with a real query rather than a port probe.
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\" -h 127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+    networks: [exam-net]
+
+  redis:
+    profiles: ["core"]
+    image: redis:7-alpine
+    # Redis is cache only; persistence is deliberately disabled (specs/06-... Redis policy).
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      - --appendonly
+      - "no"
+      - --save
+      - ""
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    restart: unless-stopped
+    networks: [exam-net]
+
+  # ------------------------------------------------------------------ edge (data path)
+
+  pgbouncer:
+    profiles: ["edge"]
+    build:
+      context: ./infrastructure/pgbouncer
+      dockerfile: ../docker/pgbouncer.Dockerfile
+    environment:
+      # Placeholders only: real values come from `.env` / the secret manager.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      PGBOUNCER_LISTEN_PORT: "6432"
+      PGBOUNCER_ADMIN_USER: ${PGBOUNCER_ADMIN_USER:?PGBOUNCER_ADMIN_USER is required}
+      PGBOUNCER_ADMIN_PASSWORD: ${PGBOUNCER_ADMIN_PASSWORD:?PGBOUNCER_ADMIN_PASSWORD is required}
+      PGBOUNCER_MAX_PREPARED_STATEMENTS: ${PGBOUNCER_MAX_PREPARED_STATEMENTS:-100}
+      PGBOUNCER_POOL_MODE: ${PGBOUNCER_POOL_MODE:-transaction}
+      TZ: UTC
+    ports:
+      # Loopback only: this is an internal connection-management tier, reached in
+      # production exclusively by the application on the private network.
+      - "127.0.0.1:${PGBOUNCER_PORT:-6432}:6432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # Liveness of the listener. The functional path through PgBouncer into
+      # PostgreSQL is proven end-to-end by scripts/verify-stack.sh, because the
+      # PgBouncer image deliberately ships no PostgreSQL client.
+      test: ["CMD-SHELL", "nc -z -w 2 127.0.0.1 6432"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+    networks: [exam-net]
+
+  nginx:
+    profiles: ["edge"]
+    image: nginx:1.27-alpine
+    ports:
+      - "${EDGE_HTTP_PORT:-8081}:80"
+      # TLS is a placeholder: the 443 listener in nginx.conf ships inert because
+      # Nginx will not start without a certificate and no private key is
+      # committed. Generate a certificate pair and uncomment both this mapping
+      # and the TLS server block to enable it (infrastructure/nginx/certs/README.md).
+      # - "${EDGE_HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/nginx-health | grep -q ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    networks: [exam-net]
+
+  # ------------------------------------------------------------------ app
+
+  backend:
+    profiles: ["app"]
+    build:
+      context: ./backend
+    environment:
+      # `staging` is the production-like profile: it routes the application
+      # through PgBouncer (application-staging.yml), which is what makes
+      # PgBouncer part of the backend's PostgreSQL path.
+      SPRING_PROFILES_ACTIVE: staging
+      APP_ENVIRONMENT: staging
+      SERVER_PORT: "8080"
+      # Service names, never localhost, inside the container network.
+      PGBOUNCER_HOST: pgbouncer
+      PGBOUNCER_PORT: "6432"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_ISSUER: ${JWT_ISSUER:-exam-platform}
+      # Nginx is the single trusted edge in front of the application.
+      TRUST_FORWARDED_HEADERS: "true"
+      # Flyway deliberately does NOT route through PgBouncer (specs/09-... section 27:
+      # "Flyway does not depend on PgBouncer"). It gets its own direct PostgreSQL
+      # datasource, so migrations hold a real session for their lock while every
+      # application query stays pooled. Migrations therefore also cannot be broken
+      # by transaction pooling.
+      SPRING_FLYWAY_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}
+      SPRING_FLYWAY_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      SPRING_FLYWAY_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081}
+      DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE:-10}
+      DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE:-2}
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_ROOT: /app/data/uploads
+      TZ: UTC
+    ports:
+      - "127.0.0.1:${BACKEND_HOST_PORT:-8080}:8080"
+    volumes:
+      # Uploaded content and generated report artifacts survive a container restart.
+      - backend-data:/app/data
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # A port probe with the JRE's own tooling: the runtime image carries no HTTP
+      # client, and the real readiness assertion is made through the edge by
+      # scripts/verify-stack.sh.
+      test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/127.0.0.1/8080'"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+    restart: unless-stopped
+    networks: [exam-net]
+
+  frontend:
+    profiles: ["app"]
+    build:
+      context: ./frontend
+      args:
+        # Inlined into the browser bundle at build time, so it must be the edge
+        # URL a browser can reach, not a container service name.
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8081}
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+    ports:
+      - "127.0.0.1:${FRONTEND_HOST_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+    networks: [exam-net]
+
+  # ------------------------------------------------------------------ observability
+
+  prometheus:
+    profiles: ["observability"]
+    image: prom/prometheus:v2.54.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./infrastructure/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_HOST_PORT:-9090}:9090"
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+    networks: [exam-net]
+
+  grafana:
+    profiles: ["observability"]
+    image: grafana/grafana:11.2.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?GRAFANA_ADMIN_USER is required}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Grafana is an operator tool, never a public surface.
+      GF_SERVER_ROOT_URL: http://localhost:${GRAFANA_HOST_PORT:-3001}
+    volumes:
+      - ./infrastructure/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${GRAFANA_HOST_PORT:-3001}:3000"
+    depends_on:
+      prometheus:
+        condition: service_started
+      loki:
+        condition: service_started
+    restart: unless-stopped
+    networks: [exam-net]
+
+  loki:
+    profiles: ["observability"]
+    image: grafana/loki:3.1.1
+    command: ["-config.file=/etc/loki/loki-config.yml"]
+    volumes:
+      - ./infrastructure/observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+    ports:
+      - "127.0.0.1:${LOKI_HOST_PORT:-3100}:3100"
+    restart: unless-stopped
+    networks: [exam-net]
+
+  promtail:
+    profiles: ["observability"]
+    image: grafana/promtail:3.1.1
+    command: ["-config.file=/etc/promtail/promtail-config.yml"]
+    volumes:
+      - ./infrastructure/observability/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      # Container stdout/stderr discovery. Verified on Linux hosts; on Docker
+      # Desktop for Windows/macOS the Docker socket path differs, which is why
+      # the application also writes structured JSON logs (the Loki boundary does
+      # not depend on promtail being available).
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail-positions:/tmp/positions
+    depends_on:
+      loki:
+        condition: service_started
+    restart: unless-stopped
+    networks: [exam-net]
+
+networks:
+  exam-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  backend-data:
+  prometheus-data:
+  grafana-data:
+  loki-data:
+  promtail-positions:

@@ -1,0 +1,26 @@
+# ---------------------------------------------------------------------------
+# Prometheus configuration (P0-11 / GAP-087).
+#
+# Scrapes the backend's Prometheus endpoint. The endpoint is reachable inside the
+# Compose network only; the edge returns 404 for /actuator/* so metrics are never
+# published to a public surface (GAP-138).
+# ---------------------------------------------------------------------------
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    platform: exam-platform
+    environment: local
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: exam-platform-backend
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["backend:8080"]
+        labels:
+          application: exam-platform-backend
+          component: api

@@ -1,0 +1,73 @@
+; ---------------------------------------------------------------------------
+; PgBouncer template (specs/09-P0-Foundation-V1.5.md section 27, section 28).
+;
+; This is a TEMPLATE. The container entrypoint renders it with envsubst into
+; /etc/pgbouncer/pgbouncer.ini at start-up, so every credential and host is an
+; environment variable and no secret is committed. See infrastructure/docker/.
+;
+; Pool mode is transaction pooling with tracked server-side prepared statements.
+; ---------------------------------------------------------------------------
+
+[databases]
+; The application database, proxied to PostgreSQL on the private network.
+${POSTGRES_DB} = host=${POSTGRES_HOST} port=${POSTGRES_PORT} dbname=${POSTGRES_DB} pool_mode=${PGBOUNCER_POOL_MODE}
+
+[pgbouncer]
+listen_addr = 0.0.0.0
+listen_port = ${PGBOUNCER_LISTEN_PORT}
+unix_socket_dir =
+
+; ---------------------------------------------------------------------------
+; Authentication
+; ---------------------------------------------------------------------------
+; SCRAM-SHA-256 is PostgreSQL 16's default, so the application's credentials work
+; unchanged through the proxy.
+auth_type = scram-sha-256
+auth_file = /etc/pgbouncer/userlist.txt
+
+; The admin/stats console is local to PgBouncer and uses its own credential.
+admin_users = ${PGBOUNCER_ADMIN_USER}
+stats_users = ${PGBOUNCER_ADMIN_USER}
+
+; ---------------------------------------------------------------------------
+; Pooling
+; ---------------------------------------------------------------------------
+; Transaction pooling: a server connection is returned to the pool when the
+; client's transaction completes, which is what allows a small PostgreSQL
+; max_connections to serve many application connections.
+pool_mode = ${PGBOUNCER_POOL_MODE}
+max_client_conn = ${PGBOUNCER_MAX_CLIENT_CONN:-200}
+default_pool_size = ${PGBOUNCER_DEFAULT_POOL_SIZE:-20}
+min_pool_size = ${PGBOUNCER_MIN_POOL_SIZE:-5}
+reserve_pool_size = ${PGBOUNCER_RESERVE_POOL_SIZE:-5}
+reserve_pool_timeout = 3
+server_idle_timeout = 600
+server_lifetime = 3600
+server_connect_timeout = 10
+query_wait_timeout = 30
+
+; Server-side prepared statements, tracked by PgBouncer across transaction
+; boundaries (PgBouncer >= 1.21). This is what lets the PostgreSQL JDBC driver
+; keep using prepared statements under transaction pooling.
+max_prepared_statements = ${PGBOUNCER_MAX_PREPARED_STATEMENTS}
+
+; ---------------------------------------------------------------------------
+; Reset and startup behaviour
+; ---------------------------------------------------------------------------
+; Deliberately empty: DISCARD ALL would invalidate the prepared statements that
+; PgBouncer is tracking for this pool, which is the whole point of
+; max_prepared_statements. Session-level state is instead bounded by
+; server_idle_timeout and server_lifetime.
+server_reset_query =
+
+; The PostgreSQL JDBC driver sends extra_float_digits on connect; PgBouncer must
+; tolerate it in transaction mode rather than reject the connection.
+ignore_startup_parameters = extra_float_digits,application_name
+
+; ---------------------------------------------------------------------------
+; Observability
+; ---------------------------------------------------------------------------
+log_connections = 1
+log_disconnections = 1
+stats_period = 60
+verbose = 0

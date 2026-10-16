@@ -481,6 +481,13 @@ P13 Broader Reporting and Operational Reporting:
 - **Frontend:** lint clean, 18 test files / 56 tests passing, `next build` succeeds.
 - **Schema:** 24 Flyway migrations `V1`–`V24` apply cleanly with no numbering gaps. P13 adds a
   permission seed only — **no reporting table**.
+- **Container stack (GAP-007):** artifacts delivered — `docker-compose.yml` (core/app/edge/
+  observability profiles), `infrastructure/{pgbouncer,nginx,docker,observability}`,
+  `scripts/verify-stack.sh`. `docker compose config` **passes** and the profile sets resolve exactly
+  (`core` → postgres, redis; `+app+edge` → those six services; `+observability` → ten). The runtime
+  verification (`docker compose up`, `nginx -t`, the PgBouncer path, `verify-stack.sh`) is **not
+  executed**: this host has the Docker CLI but no engine. See
+  [`docs/testing/p0/stack-verification.md`](testing/p0/stack-verification.md).
 - Full record of the whole-project re-verification, including the findings it raised:
   [`docs/testing/full-verification.md`](testing/full-verification.md).
 - Nothing is committed; all changes live in the working tree.

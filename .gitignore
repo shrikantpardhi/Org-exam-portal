@@ -60,6 +60,11 @@ imports/
 infrastructure/monitoring/grafana/data/
 infrastructure/monitoring/loki/data/
 
+# --- Local TLS material for the edge (never commit a private key) ---
+infrastructure/nginx/certs/*
+!infrastructure/nginx/certs/README.md
+docker-compose.override.yml
+
 # --- IDE / editor ---
 .idea/
 *.iml

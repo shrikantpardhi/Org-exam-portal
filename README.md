@@ -132,12 +132,84 @@ Health and docs once the backend is running:
 - OpenAPI UI: `http://localhost:8080/swagger-ui.html`
 - OpenAPI JSON: `http://localhost:8080/v3/api-docs`
 
-### Full integration stack
+### Full integration stack (Docker)
+
+Runs the whole platform — PostgreSQL, Redis, PgBouncer, the backend, the frontend
+and the Nginx edge — on a Docker-capable host. This is the environment P0-09 and
+P0-10 were never validated against.
 
 ```bash
-docker compose --profile core --profile edge --profile app up -d
-# Nginx edge: http://localhost:8081
+# 1. Provide credentials (required: Compose fails fast without them).
+cp .env.example .env
+
+# 2. Validate the Compose model without starting anything.
+docker compose --env-file .env.example config --quiet
+
+# 3. Start the full stack (all three profiles are required: the backend's only
+#    database path is PgBouncer, which belongs to the edge profile).
+docker compose --profile core --profile app --profile edge up -d --build
+
+# 4. Follow the application start-up (Flyway runs its migrations on boot).
+docker compose logs -f backend
 ```
+
+Reach the stack through the edge:
+
+| Route | Purpose |
+|---|---|
+| `http://localhost:8081` | Frontend through Nginx |
+| `http://localhost:8081/api/v1/...` | API through Nginx (path preserved) |
+| `http://localhost:8081/health` | Backend health through Nginx |
+| `http://localhost:8081/health/readiness` | Readiness, **including the database check** |
+| `http://localhost:8080/actuator/health` | Backend directly (loopback only, bypasses the edge) |
+| `http://localhost:8081/actuator/...` | Deliberately **404**: the edge never exposes the actuator tree |
+
+Verify the stack end to end (starts it, waits for readiness, asserts routing, the
+PgBouncer path, the auth boundary and request-id propagation):
+
+```bash
+bash scripts/verify-stack.sh              # build, start, verify
+bash scripts/verify-stack.sh --no-build   # reuse existing images
+bash scripts/verify-stack.sh --down       # tear the stack down
+```
+
+Stop it with:
+
+```bash
+docker compose --profile core --profile app --profile edge down
+# add -v to also remove the database and artifact volumes
+```
+
+Add the observability profile (Prometheus, Grafana, Loki, Promtail):
+
+```bash
+docker compose --profile core --profile app --profile edge --profile observability up -d
+# Grafana http://localhost:3001  ·  Prometheus http://localhost:9090
+```
+
+Profile reference:
+
+| Profile | Services | When |
+|---|---|---|
+| `core` | postgres, redis | Always; this is also all a host-run backend needs |
+| `app` | backend, frontend | To run the application in containers |
+| `edge` | nginx, pgbouncer | With `app`: the edge and the database connection path |
+| `observability` | prometheus, grafana, loki, promtail | Operator tooling |
+
+**PgBouncer is in the backend's database path.** The backend runs the `staging`
+profile, which resolves its datasource to `pgbouncer:6432` rather than to
+PostgreSQL directly, so every application query is pooled. The pool uses
+transaction pooling with tracked server-side prepared statements.
+
+**Flyway is the one deliberate exception.** Migrations get their own direct
+PostgreSQL datasource (`SPRING_FLYWAY_URL`) so they hold a real session for their
+lock, matching the frozen rule that Flyway does not depend on PgBouncer
+(`specs/09-P0-Foundation-V1.5.md` §27). The `/health/readiness` route reports the
+application database indicator, so it still proves the pooled path.
+
+Certificates are not committed: the TLS listener ships inert and the 443 port
+mapping is commented out. See
+[`infrastructure/nginx/certs/README.md`](infrastructure/nginx/certs/README.md).
 
 See [`docs/runbooks/local-setup.md`](docs/runbooks/local-setup.md) for profile details.
 
@@ -172,9 +244,13 @@ npm run build
 ### Infrastructure
 
 ```bash
-docker compose config                 # validate the Compose model
-docker compose up -d postgres redis   # core services
+docker compose --env-file .env.example config --quiet   # validate the Compose model
+docker compose --profile core up -d postgres redis       # core services only
+bash scripts/verify-stack.sh                             # full-stack verification
 ```
+
+`--env-file .env.example` validates the model without creating a `.env`; the real
+stack reads `.env`.
 
 ---
 
