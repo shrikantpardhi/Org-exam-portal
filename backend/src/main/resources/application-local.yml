@@ -10,7 +10,9 @@ spring:
       # Application-side pool. PgBouncer, when used, sits behind this pool.
       maximum-pool-size: 10
       minimum-idle: 2
-      connection-timeout: 5s
+      # HikariCP's connection-timeout is a LONG in milliseconds, not a duration
+      # string ("5s" fails to bind and aborts the context at start-up).
+      connection-timeout: 5000
       pool-name: exam-app-pool
 
 app:

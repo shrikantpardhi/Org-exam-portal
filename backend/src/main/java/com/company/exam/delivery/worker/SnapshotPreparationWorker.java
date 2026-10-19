@@ -1,6 +1,8 @@
 package com.company.exam.delivery.worker;
 
 import com.company.exam.delivery.application.SnapshotPreparationService;
+import com.company.exam.delivery.entity.SnapshotStatus;
+import com.company.exam.delivery.observability.DeliveryMetrics;
 import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +25,7 @@ public class SnapshotPreparationWorker {
     private static final Logger log = LoggerFactory.getLogger(SnapshotPreparationWorker.class);
 
     private final SnapshotPreparationService preparationService;
+    private final DeliveryMetrics metrics;
 
     @Value("${app.delivery.worker.batch-size:50}")
     private int batchSize;
@@ -30,8 +33,9 @@ public class SnapshotPreparationWorker {
     @Value("${app.delivery.worker.stale-timeout:PT5M}")
     private Duration staleTimeout;
 
-    public SnapshotPreparationWorker(SnapshotPreparationService preparationService) {
+    public SnapshotPreparationWorker(SnapshotPreparationService preparationService, DeliveryMetrics metrics) {
         this.preparationService = preparationService;
+        this.metrics = metrics;
     }
 
     @Scheduled(fixedDelayString = "${app.delivery.worker.interval:PT30S}",
@@ -39,6 +43,8 @@ public class SnapshotPreparationWorker {
     public void preparePendingAttempts() {
         int reclaimed = preparationService.reclaimStale(staleTimeout);
         int prepared = preparationService.preparePendingBatch(batchSize);
+        // The pending backlog drives the SnapshotBacklogHigh alert (P12 §113).
+        metrics.snapshotBacklog((int) preparationService.pendingSnapshotCount());
         if (prepared > 0 || reclaimed > 0) {
             log.info("Snapshot worker prepared={} reclaimedStale={}", prepared, reclaimed);
         }

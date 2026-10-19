@@ -12,9 +12,10 @@
 
 ## Current phase
 
-- **Phase:** P13 — Broader Reporting & Operational Reporting
-- **State:** Framework complete (catalog, validation, sync/async execution, CSV + PDF renderers, protected download, history); 4 of 22 report types backed, 18 registered-disabled
+- **Phase:** P13 — Broader Reporting & Operational Reporting (complete) / **P12 release rehearsal (executed 2026-10-19)**
+- **State:** Reporting framework complete (catalog, validation, sync/async execution, CSV + PDF renderers, protected download, history); 4 of 22 report types backed, 18 registered-disabled. The P12 rehearsal closed **GAP-131** (backup/restore) and **GAP-132** (rollback) and verified **GAP-007/009/087/134** against the running stack. The release decision remains **NO-GO** on **GAP-130** (no performance gate measured).
 - **Testing notes:** [`docs/testing/p13/README.md`](testing/p13/README.md)
+- **Rehearsal record:** [`docs/testing/p12/rehearsal-2026-10-19.md`](testing/p12/rehearsal-2026-10-19.md)
 
 ## Completed tasks
 
@@ -376,11 +377,11 @@ P12 Production Hardening and Production Readiness:
 | P12-05 | Concurrent-user scale validation | **BLOCKED** — no load environment or tooling (GAP-130) |
 | P12-06 | Concurrency regression | Executed — start burst, response preconditions, recovery, callback idempotency all green |
 | P12-07 | Failure injection | Partial — in-test injection (cache, email, payment, job claim); real DB/pool/network/restart injection blocked |
-| P12-08 | Backup validation | **BLOCKED** — no PostgreSQL host or backup tooling (GAP-131) |
-| P12-09 | Restore rehearsal | **BLOCKED** — same (GAP-131) |
-| P12-10 | Migration rehearsal | Partial — all 23 migrations apply cleanly from scratch; not rehearsed at production data volume (GAP-133) |
-| P12-11 | Rollback rehearsal | **BLOCKED** — no deployment infrastructure (GAP-132) |
-| P12-12 | Monitoring and alert validation | **BLOCKED** — no Prometheus/Grafana/Loki stack or alerts to validate (GAP-134) |
+| P12-08 | Backup validation | **Executed** — consistent logical backup stored with checksums and evidence (GAP-131 closed) |
+| P12-09 | Restore rehearsal | **Executed** — restore into an isolated database, 6/6 integrity checks passed (GAP-131 closed) |
+| P12-10 | Migration rehearsal | Partial — applies cleanly on the real stack and is forward-compatible; not timed at production volume (GAP-133) |
+| P12-11 | Rollback rehearsal | **Executed** — 12/12 checks, 2 s redeploy, data unchanged (GAP-132 closed) |
+| P12-12 | Monitoring and alert validation | **Executed** — target UP, 9 rules load, 2 datasources and 3 dashboards provisioned, Loki ingesting (GAP-009/087/134 verified) |
 | P12-13 | UX regression | Partial — frontend lint/test/build green; no manual/visual pass possible |
 | P12-14 | Production configuration review | Executed — review complete with findings GAP-136/137/138 |
 | P12-15 | Dress rehearsal | **BLOCKED** — requires staging (GAP-135) |
@@ -417,11 +418,20 @@ P13 Broader Reporting and Operational Reporting:
 
 ## Release decision
 
-- **NO-GO.** Four §188 no-go conditions are unresolved: rollback untested (GAP-132), backup/restore
-  never exercised (GAP-131), no performance gate measured (GAP-130), and consequently the exam
-  failure rate is unknown. §189 conditional acceptance does not apply because these are unmeasured
-  gates rather than documented non-critical limitations. Full reasoning:
-  [`docs/testing/p12/README.md`](testing/p12/README.md) §9.
+- **NO-GO**, on one remaining §188 trigger: **GAP-130** — no performance gate was measured
+  (5,000 concurrent users, 99.9% availability, p95 < 100 ms, >99% submission success, <1% exam
+  failure). An unmeasured gate cannot be claimed as passed.
+- The three previously blocking gates are now closed or materially advanced:
+  - **GAP-131 (backup/restore) — closed** for logical backup and restore (PITR still not
+    configured, and therefore not claimed).
+  - **GAP-132 (rollback) — closed**: the procedure is rehearsed end to end; the residual is that no
+    version delta was exercised, because only one candidate image has ever existed.
+  - **GAP-133 (migration rehearsal) — partially addressed**: the chain applies cleanly on the real
+    stack and is proven forward-compatible, but not timed at production volume.
+- **GAP-135** (dress rehearsal, production smoke test, post-release monitoring) and **GAP-008**
+  (CI first run) also remain open, as does the live pilot (GAP-088).
+- Full reasoning: [`docs/testing/p12/README.md`](testing/p12/README.md) §9 and
+  [`docs/testing/p12/rehearsal-2026-10-19.md`](testing/p12/rehearsal-2026-10-19.md).
 
 ## In progress
 
@@ -481,15 +491,19 @@ P13 Broader Reporting and Operational Reporting:
 - **Frontend:** lint clean, 18 test files / 56 tests passing, `next build` succeeds.
 - **Schema:** 24 Flyway migrations `V1`–`V24` apply cleanly with no numbering gaps. P13 adds a
   permission seed only — **no reporting table**.
-- **Container stack (GAP-007):** artifacts delivered — `docker-compose.yml` (core/app/edge/
-  observability profiles), `infrastructure/{pgbouncer,nginx,docker,observability}`,
-  `scripts/verify-stack.sh`. `docker compose config` **passes** and the profile sets resolve exactly
-  (`core` → postgres, redis; `+app+edge` → those six services; `+observability` → ten). The runtime
-  verification (`docker compose up`, `nginx -t`, the PgBouncer path, `verify-stack.sh`) is **not
-  executed**: this host has the Docker CLI but no engine. See
-  [`docs/testing/p0/stack-verification.md`](testing/p0/stack-verification.md).
-- Full record of the whole-project re-verification, including the findings it raised:
-  [`docs/testing/full-verification.md`](testing/full-verification.md).
+- **Container stack (GAP-007 — closed 2026-10-19):** the full stack runs and
+  `scripts/verify-stack.sh` passes 15/15 assertions (every service healthy, the backend reachable
+  through the Nginx edge with its database check UP, PgBouncer confirmed in the backend's path, the
+  API auth boundary holding, the actuator tree hidden, the request id forwarded). Running it found
+  and fixed **five real defects** (see the rehearsal record §5).
+- **Rehearsal (GAP-131/132 — closed 2026-10-19):** a logical backup (195,392 bytes, 1 s) restored
+  into an isolated database in 1 s with **6/6 integrity checks passing**, and a rollback rehearsal
+  with **12/12 checks passing** (2 s redeploy, data unchanged).
+- **Observability (GAP-009/087/134 — verified 2026-10-19):** Prometheus reports the backend target
+  UP, all 9 alert rules load, Grafana provisions 2 datasources and 3 dashboards, and Loki ingests
+  labeled logs (20/20 checks).
+- Full record: [`docs/testing/full-verification.md`](testing/full-verification.md) and
+  [`docs/testing/p12/rehearsal-2026-10-19.md`](testing/p12/rehearsal-2026-10-19.md).
 - Nothing is committed; all changes live in the working tree.
 
 ## Latest CI result
@@ -521,10 +535,15 @@ P13 Broader Reporting and Operational Reporting:
 ## Known gaps
 
 - The consolidated register of open gaps, deferred items, and by-design limitations for P0 to P13
-  is [`docs/known-gaps.md`](known-gaps.md) (150 tracked items). GAP-001 is closed by P11;
+  is [`docs/known-gaps.md`](known-gaps.md) (152 tracked items). GAP-001 is closed by P11;
   GAP-126/127 were raised and closed by the re-verification; **GAP-130** (no performance evidence),
   **GAP-131** (backup/restore never exercised) and **GAP-132** (rollback untested) remain the blocking
-  P12 release gates; **GAP-141** (18 of 22 report types unbacked) is the principal P13 limitation.
+  P12 release gates; **GAP-141** (18 of 22 report types unbacked) is the principal P13 limitation;
+  **GAP-007/009** are now artifact-complete but **awaiting runtime verification** on a Docker host;
+  GAP-151/152 record what the observability stack still needs (exporters and two §112 instruments);
+  **GAP-008/010 are implemented as four GitHub Actions workflows** that have not run yet (branch
+  protection is documented, not configured); **GAP-126/127/129 are now enforced by CI** rather than
+  fixed once.
 
 ## Architecture deviations
 

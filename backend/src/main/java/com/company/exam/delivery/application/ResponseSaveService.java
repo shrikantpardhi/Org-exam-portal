@@ -71,6 +71,11 @@ public class ResponseSaveService {
     @Transactional
     public DeliveryDtos.ResponseView save(UUID attemptId, UUID questionVersionId,
             DeliveryDtos.ResponseSaveRequest request, String ifMatch, UUID userId) {
+        return metrics.responseSave(() -> saveResponse(attemptId, questionVersionId, request, ifMatch, userId));
+    }
+
+    private DeliveryDtos.ResponseView saveResponse(UUID attemptId, UUID questionVersionId,
+            DeliveryDtos.ResponseSaveRequest request, String ifMatch, UUID userId) {
         StudentAttempt attempt = eligibilityService.requireOwned(attemptId, userId);
         if (attempt.getAttemptStatus() != AttemptStatus.IN_PROGRESS) {
             throw new InvalidStateException("Attempt is not in progress");

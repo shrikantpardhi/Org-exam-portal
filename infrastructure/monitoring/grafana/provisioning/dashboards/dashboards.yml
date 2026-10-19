@@ -1,0 +1,20 @@
+# ---------------------------------------------------------------------------
+# Grafana dashboard provisioning (P0-11, P12 §106).
+#
+# Dashboards live at infrastructure/monitoring/grafana/dashboards and are loaded
+# read-only from disk. They are code: a dashboard change is reviewed together with
+# the alert it complements.
+# ---------------------------------------------------------------------------
+apiVersion: 1
+
+providers:
+  - name: exam-platform
+    orgId: 1
+    folder: "Exam Platform"
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

@@ -31,15 +31,18 @@ public class AssessmentSessionService {
     private final AttemptQuestionRepository questionRepository;
     private final AssessmentDefinitionCatalog assessmentCatalog;
     private final RuntimeConfigurationService runtimeConfigurationService;
+    private final com.company.exam.delivery.observability.DeliveryMetrics metrics;
 
     public AssessmentSessionService(AssessmentSessionRepository sessionRepository,
             StudentAttemptRepository attemptRepository, AttemptQuestionRepository questionRepository,
-            AssessmentDefinitionCatalog assessmentCatalog, RuntimeConfigurationService runtimeConfigurationService) {
+            AssessmentDefinitionCatalog assessmentCatalog, RuntimeConfigurationService runtimeConfigurationService,
+            com.company.exam.delivery.observability.DeliveryMetrics metrics) {
         this.sessionRepository = sessionRepository;
         this.attemptRepository = attemptRepository;
         this.questionRepository = questionRepository;
         this.assessmentCatalog = assessmentCatalog;
         this.runtimeConfigurationService = runtimeConfigurationService;
+        this.metrics = metrics;
     }
 
     /** Creates a session or activates the existing ACTIVE session for an attempt. */
@@ -83,6 +86,10 @@ public class AssessmentSessionService {
      */
     @Transactional
     public DeliveryDtos.SessionResponse recover(UUID sessionId, UUID userId) {
+        return metrics.sessionRecovery(() -> recoverSession(sessionId, userId));
+    }
+
+    private DeliveryDtos.SessionResponse recoverSession(UUID sessionId, UUID userId) {
         AssessmentSession session = requireOwned(sessionId, userId);
         if (session.getSessionStatus() != AssessmentSessionStatus.ACTIVE) {
             throw new InvalidStateException("Session is not recoverable");

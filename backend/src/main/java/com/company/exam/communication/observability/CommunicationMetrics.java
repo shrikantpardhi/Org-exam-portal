@@ -14,13 +14,16 @@ import org.springframework.stereotype.Component;
 public class CommunicationMetrics {
 
     public static final String NOTIFICATION_CREATED = "communication.notification.created";
-    public static final String EMAIL_SEND = "communication.email.send.count";
-    public static final String EMAIL_SENT = "communication.email.sent.count";
-    public static final String EMAIL_FAILURE = "communication.email.failure.count";
-    public static final String EMAIL_RETRY = "communication.email.retry.count";
-    public static final String EMAIL_EXHAUSTED = "communication.email.retry.exhausted.count";
-    public static final String TEMPLATE_MISSING = "communication.template.missing.count";
-    public static final String FANOUT = "communication.announcement.fanout.count";
+    // Counter names deliberately carry no trailing ".count": Micrometer appends "_total" to counters,
+    // so a ".count" suffix would double up in the exported Prometheus metric (and so on for the
+    // email family, which the worker-backlog dashboard queries).
+    public static final String EMAIL_SEND = "communication.email.send";
+    public static final String EMAIL_SENT = "communication.email.sent";
+    public static final String EMAIL_FAILURE = "communication.email.failure";
+    public static final String EMAIL_RETRY = "communication.email.retry";
+    public static final String EMAIL_EXHAUSTED = "communication.email.retry.exhausted";
+    public static final String TEMPLATE_MISSING = "communication.template.missing";
+    public static final String FANOUT = "communication.announcement.fanout";
     public static final String FANOUT_BACKLOG = "communication.notification.backlog";
     public static final String EMAIL_SEND_LATENCY = "communication.email.send.latency";
 

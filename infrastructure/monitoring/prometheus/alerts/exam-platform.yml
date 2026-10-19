@@ -1,0 +1,139 @@
+# ---------------------------------------------------------------------------
+# Alert rules (P12 §113, §114).
+#
+# Each alert carries a condition, a severity, the affected subsystem, and a
+# diagnostic reference. Durations use a `for` window so a transient blip does not
+# fire a page (§114).
+#
+# Metric sources:
+#   - http_server_requests_seconds_*  Spring/Micrometer HTTP metrics
+#   - hikaricp_connections_*          Micrometer connection-pool metrics
+#   - up                              Prometheus target health
+#   - delivery_*                      Delivery module metrics (P12 §112)
+#   - redis_up / pgbouncer_*          exporter metrics; the exporters are a
+#                                     documented follow-up, so those two alerts
+#                                     are defined but will not evaluate until
+#                                     their exporters join the stack.
+# ---------------------------------------------------------------------------
+groups:
+  # ------------------------------------------------------------------ API
+  - name: exam-platform.api
+    interval: 30s
+    rules:
+      - alert: ApiErrorRateHigh
+        expr: |
+          sum(rate(http_server_requests_seconds_count{application="exam-platform-backend",status=~"5.."}[5m]))
+            / clamp_min(sum(rate(http_server_requests_seconds_count{application="exam-platform-backend"}[5m])), 1)
+            > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          subsystem: api
+        annotations:
+          summary: "API 5xx error rate is above 5% for 5 minutes"
+          description: "The fraction of HTTP responses with a 5xx status has exceeded 5% over a 5-minute window. Check the application error logs and the recent deploys."
+
+      - alert: ApiP95LatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_server_requests_seconds_bucket{application="exam-platform-backend"}[5m])) by (le))
+            > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          subsystem: api
+        annotations:
+          summary: "API p95 latency is above 100 ms for 10 minutes"
+          description: "The 95th percentile request latency has exceeded the 100 ms target. Check the worker backlog, the database connection pool, and the delivery path."
+
+  # ------------------------------------------------------------------ Delivery
+  - name: exam-platform.delivery
+    interval: 30s
+    rules:
+      - alert: SubmissionFailureSpike
+        expr: |
+          sum(rate(delivery_submission_total{result="failure"}[5m]))
+            / clamp_min(sum(rate(delivery_submission_total[5m])), 1)
+            > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          subsystem: delivery
+        annotations:
+          summary: "Submission failure rate is above 1% for 5 minutes"
+          description: "Submissions are failing at a rate above the frozen 1% exam-failure ceiling. Check the readiness of the evaluation handoff and the delivery database."
+
+      - alert: SnapshotBacklogHigh
+        expr: delivery_snapshot_backlog > 100
+        for: 10m
+        labels:
+          severity: warning
+          subsystem: delivery
+        annotations:
+          summary: "Snapshot preparation backlog is above 100 for 10 minutes"
+          description: "Student attempts are waiting for a prepared snapshot. Check the snapshot-preparation worker and whether it is keeping up with the schedule."
+
+      - alert: ResponseSaveFailureSpike
+        expr: |
+          sum(rate(delivery_response_save_total{result="failure"}[5m]))
+            / clamp_min(sum(rate(delivery_response_save_total[5m])), 1)
+            > 0.02
+        for: 5m
+        labels:
+          severity: warning
+          subsystem: delivery
+        annotations:
+          summary: "Response-save failure rate is above 2% for 5 minutes"
+          description: "Autosave is rejecting or failing responses. Check the stale-write (ETag) boundary and the delivery database."
+
+  # ------------------------------------------------------------------ Platform
+  - name: exam-platform.platform
+    interval: 30s
+    rules:
+      - alert: BackendDown
+        expr: up{job="exam-platform-backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          subsystem: api
+        annotations:
+          summary: "The backend target is down for 2 minutes"
+          description: "Prometheus cannot reach the application's actuator endpoint, which also means workers are not running. Check the container and the process."
+
+      - alert: DatabaseConnectionSaturation
+        expr: |
+          hikaricp_connections_pending{application="exam-platform-backend"} > 0
+            or (hikaricp_connections_active{application="exam-platform-backend"}
+                / clamp_min(hikaricp_connections_max{application="exam-platform-backend"}, 1)) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          subsystem: database
+        annotations:
+          summary: "Database connection pool is saturated for 5 minutes"
+          description: "HikariCP has threads waiting for a connection or is above 90% utilization. This points at PgBouncer or PostgreSQL contention; check the pool size and the PgBouncer pool."
+
+      # Redis outage: needs the redis exporter (redis_up). The platform degrades
+      # rather than fails on a Redis outage because Redis is cache-only, so this
+      # is a warning, not a page.
+      - alert: RedisUnavailable
+        expr: redis_up == 0
+        for: 2m
+        labels:
+          severity: warning
+          subsystem: cache
+        annotations:
+          summary: "Redis is unreachable for 2 minutes"
+          description: "Requires the redis exporter to join the observability stack. Redis is cache-only, so the application degrades to PostgreSQL rather than failing; this still warrants an operator look."
+
+      # PgBouncer saturation: needs the pgbouncer exporter (pgbouncer_pools_*).
+      - alert: PgBouncerSaturation
+        expr: |
+          sum(pgbouncer_pools_cl_waiting) > 0
+        for: 5m
+        labels:
+          severity: warning
+          subsystem: database
+        annotations:
+          summary: "PgBouncer has clients waiting for a server connection"
+          description: "Requires the pgbouncer exporter to join the observability stack. Waiting clients mean the server pool is exhausted; raise the pool size or inspect long-running transactions."

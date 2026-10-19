@@ -39,6 +39,10 @@ public class SubmissionService {
 
     @Transactional
     public DeliveryDtos.SubmitResponse submit(UUID attemptId, UUID userId) {
+        return metrics.submission(() -> submitAttempt(attemptId, userId));
+    }
+
+    private DeliveryDtos.SubmitResponse submitAttempt(UUID attemptId, UUID userId) {
         StudentAttempt attempt = eligibilityService.requireOwned(attemptId, userId);
         if (attempt.getAttemptStatus() == AttemptStatus.SUBMITTED
                 || attempt.getAttemptStatus() == AttemptStatus.EVALUATED) {

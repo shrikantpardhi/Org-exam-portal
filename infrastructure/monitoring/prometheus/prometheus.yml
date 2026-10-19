@@ -1,9 +1,15 @@
 # ---------------------------------------------------------------------------
-# Prometheus configuration (P0-11 / GAP-087).
+# Prometheus configuration (P0-11, P12 §106, §113).
 #
-# Scrapes the backend's Prometheus endpoint. The endpoint is reachable inside the
-# Compose network only; the edge returns 404 for /actuator/* so metrics are never
+# Scrapes the backend's Prometheus endpoint and evaluates the alert rules under
+# /etc/prometheus/alerts. The backend endpoint is reachable only inside the
+# Compose network; the edge returns 404 for /actuator/* so metrics are never
 # published to a public surface (GAP-138).
+#
+# Database/PgBouncer/Redis-level metrics need the corresponding exporters, which
+# are a documented follow-up (docs/known-gaps.md). The application-level alerts
+# (errors, latency, delivery outcomes, backlog, availability) work against the
+# backend's actuator endpoint directly.
 # ---------------------------------------------------------------------------
 global:
   scrape_interval: 15s
@@ -12,6 +18,9 @@ global:
     platform: exam-platform
     environment: local
 
+rule_files:
+  - /etc/prometheus/alerts/*.yml
+
 scrape_configs:
   - job_name: prometheus
     static_configs:
@@ -19,6 +28,7 @@ scrape_configs:
 
   - job_name: exam-platform-backend
     metrics_path: /actuator/prometheus
+    scheme: http
     static_configs:
       - targets: ["backend:8080"]
         labels:

@@ -1,0 +1,174 @@
+{
+  "uid": "exam-worker-backlog",
+  "title": "Worker Backlog",
+  "description": "Background-job telemetry across the frozen job types: queue depth, active work, failures and the snapshot backlog (P12 section 111, section 113).",
+  "tags": ["exam-platform", "workers", "operations"],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "timezone": "utc",
+  "refresh": "30s",
+  "time": { "from": "now-3h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Queued jobs",
+      "description": "Total queued work across all job types. A rising value means workers cannot keep up.",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(background_job_count{status=\"queued\"})",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 20 }, { "color": "red", "value": 100 } ] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Running jobs",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(background_job_count{status=\"running\"})",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Failed jobs",
+      "description": "Permanently failed work: email delivery that exhausted its retry policy and reports that could not render land here.",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(background_job_count{status=\"failed\"})",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 } ] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Snapshot backlog",
+      "description": "Attempts still waiting for a prepared snapshot (the only backlog metric measured per attempt rather than per job).",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(delivery_snapshot_backlog)",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Queue depth by job type",
+      "description": "Queued work per job type. Spikes on one type point at the owning worker.",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 9 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "background_job_count{status=\"queued\"} > 0",
+          "legendFormat": "{{jobType}}",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Failures by job type",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 9 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "background_job_count{status=\"failed\"} > 0",
+          "legendFormat": "{{jobType}}",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Email delivery outcomes",
+      "description": "Sends, retries and permanently exhausted budget from the bounded retry policy.",
+      "gridPos": { "x": 0, "y": 13, "w": 12, "h": 9 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(communication_email_sent_total[5m]))",
+          "legendFormat": "sent",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(communication_email_retry_total[5m]))",
+          "legendFormat": "retrying",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "C",
+          "expr": "sum(rate(communication_email_retry_exhausted_total[5m]))",
+          "legendFormat": "exhausted",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Evaluation and report worker failures",
+      "description": "Evaluation, re-evaluation, result publication and report generation failures per second.",
+      "gridPos": { "x": 12, "y": 13, "w": 12, "h": 9 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(evaluation_failure_total[5m]))",
+          "legendFormat": "evaluation",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(result_publication_failure_total[5m]))",
+          "legendFormat": "result publication",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "C",
+          "expr": "sum(rate(scorecard_generation_failure_total[5m]))",
+          "legendFormat": "scorecard",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "D",
+          "expr": "sum(rate(reporting_report_failed_total[5m]))",
+          "legendFormat": "report",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ]
+    }
+  ]
+}

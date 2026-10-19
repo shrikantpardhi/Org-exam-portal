@@ -24,7 +24,10 @@ datasources:
     url: http://loki:3100
     jsonData:
       # Correlate a log line with the request id emitted by the edge and the API.
+      # The derived field links back into the same Loki datasource so an operator
+      # can pivot from a metric to the matching log lines (and vice versa).
       derivedFields:
         - name: requestId
           matcherRegex: '"requestId":"([^"]+)"'
-          url: '$${__value.raw}'
+          dataSourceUid: exam-loki
+          url: '$__value_raw'

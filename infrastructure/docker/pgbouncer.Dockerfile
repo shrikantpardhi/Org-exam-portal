@@ -19,12 +19,19 @@ FROM alpine:${ALPINE_TAG}
 # busybox nc    -> the container healthcheck's liveness probe
 RUN apk add --no-cache pgbouncer gettext su-exec
 
+# Alpine's pgbouncer package ships /usr/bin/pgbouncer and /etc/pgbouncer/pgbouncer.ini
+# but creates NO pgbouncer user or group, so the image defines the unprivileged
+# account it drops to.
+RUN addgroup --system --gid 1001 pgbouncer \
+    && adduser --system --uid 1001 --ingroup pgbouncer --home /etc/pgbouncer \
+        --no-create-home --shell /sbin/nologin pgbouncer
+
 # The package creates the unprivileged pgbouncer account and /etc/pgbouncer.
 COPY pgbouncer.ini.template /etc/pgbouncer/pgbouncer.ini.template
 COPY entrypoint.sh /usr/local/bin/pgbouncer-entrypoint.sh
 RUN chmod 0755 /usr/local/bin/pgbouncer-entrypoint.sh \
     && mkdir -p /var/log/pgbouncer \
-    && chown pgbouncer:pgbouncer /var/log/pgbouncer
+    && chown pgbouncer:pgbouncer /var/log/pgbouncer /etc/pgbouncer
 
 # Rendered at start-up from the environment; never present in the image.
 ENV PGBOUNCER_LISTEN_PORT=6432 \

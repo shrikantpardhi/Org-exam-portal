@@ -20,8 +20,39 @@ All work follows the frozen specification package in [`specs/`](specs/).
 | Documentation | `docs/<short-name>` |
 | Infrastructure | `infra/<short-name>` |
 
-`main` is protected: pull request, green CI, and review before merge. Never push directly to
-`main`.
+`main` is protected: pull request required, required checks must pass, and at least one review
+approval before merge (P0-Foundation §8; P12 §134). Never push directly to `main`. Working
+branches may be committed to directly; repository protection is never bypassed.
+
+### Required status checks
+
+Configure these five workflows as **required checks** on `main` (branch protection
+`required_status_checks`):
+
+1. `backend-ci` — Backend (compile, unit, integration, migration)
+2. `frontend-ci` — Frontend (lock sync, lint, types, tests, build)
+3. `secret-scan` — Secret scan (gitleaks)
+4. `dependency-check` → job `backend-dependency-check` (OWASP Dependency Check)
+5. `dependency-check` → job `frontend-dependency-check` (npm audit, high or critical)
+
+```bash
+gh api -X PUT repos/{owner}/{repo}/branches/main/protection \
+  -f "required_status_checks[strict]=true" \
+  -f "required_status_checks[checks][][context]=backend-ci" \
+  -f "required_status_checks[checks][][context]=frontend-ci" \
+  -f "required_status_checks[checks][][context]=secret-scan" \
+  -f "required_status_checks[checks][][context]=dependency-check / backend-dependency-check" \
+  -f "required_status_checks[checks][][context]=dependency-check / frontend-dependency-check" \
+  -F "enforce_admins=true" \
+  -F "required_pull_request_reviews[required_approving_review_count]=1" \
+  -F "required_pull_request_reviews[dismiss_stale_reviews]=true" \
+  -F "restrictions=null"
+```
+
+Note the two `dependency-check` contexts: a status-check name is
+`<workflow> / <job name>`, so a workflow with two jobs yields two distinct checks, and a renamed
+workflow must have its required-check context renamed with it or a pull request hangs on a check
+that never starts.
 
 ## Workflow
 

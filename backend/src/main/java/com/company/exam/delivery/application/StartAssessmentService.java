@@ -52,6 +52,10 @@ public class StartAssessmentService {
 
     @Transactional
     public DeliveryDtos.StartResponse start(UUID scheduleId, UUID userId) {
+        return metrics.attemptStart(() -> startAttempt(scheduleId, userId));
+    }
+
+    private DeliveryDtos.StartResponse startAttempt(UUID scheduleId, UUID userId) {
         AssessmentDefinitionCatalog.ScheduleView schedule = eligibilityService.requireOpenSchedule(scheduleId);
         AssessmentDefinitionCatalog.PublishedAssessmentVersion version = assessmentCatalog
                 .requirePublishedVersion(schedule.assessmentVersionId());

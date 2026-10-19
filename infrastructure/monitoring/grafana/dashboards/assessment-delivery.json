@@ -1,0 +1,223 @@
+{
+  "uid": "exam-assessment-delivery",
+  "title": "Assessment Delivery",
+  "description": "The exam-taking path: attempt start, response save, submission, recovery and snapshot preparation. Metrics are exactly the P12 section 112 minimum.",
+  "tags": ["exam-platform", "delivery", "assessment"],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "timezone": "utc",
+  "refresh": "15s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "application",
+        "label": "Application",
+        "type": "constant",
+        "current": { "text": "exam-platform-backend", "value": "exam-platform-backend" },
+        "hide": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Start latency (p95 / p50)",
+      "description": "Start Exam is the performance-critical launch path; it must never materialize a snapshot inline.",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(delivery_attempt_start_duration_seconds_bucket{application=\"exam-platform-backend\"}[5m])) by (le))",
+          "legendFormat": "p95",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.5, sum(rate(delivery_attempt_start_duration_seconds_bucket{application=\"exam-platform-backend\"}[5m])) by (le))",
+          "legendFormat": "p50",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line" } }, "overrides": [] }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Response-save latency (p95 / p50)",
+      "description": "Autosave latency. The stale-write (ETag) path is inside this measurement.",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(delivery_response_save_duration_seconds_bucket{application=\"exam-platform-backend\"}[5m])) by (le))",
+          "legendFormat": "p95",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.5, sum(rate(delivery_response_save_duration_seconds_bucket{application=\"exam-platform-backend\"}[5m])) by (le))",
+          "legendFormat": "p50",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Submission latency (p95 / p50)",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(delivery_submission_duration_seconds_bucket{application=\"exam-platform-backend\"}[5m])) by (le))",
+          "legendFormat": "p95",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.5, sum(rate(delivery_submission_duration_seconds_bucket{application=\"exam-platform-backend\"}[5m])) by (le))",
+          "legendFormat": "p50",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Snapshot preparation duration (p95 / p50)",
+      "description": "Preparation is asynchronous and must never run inside Start Exam.",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(delivery_snapshot_preparation_duration_seconds_bucket{application=\"exam-platform-backend\"}[5m])) by (le))",
+          "legendFormat": "p95",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.5, sum(rate(delivery_snapshot_preparation_duration_seconds_bucket{application=\"exam-platform-backend\"}[5m])) by (le))",
+          "legendFormat": "p50",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Operation success rate",
+      "description": "Attempt start, response save, submission and session recovery per second.",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(delivery_attempt_start_total{result=\"success\"}[5m]))",
+          "legendFormat": "start",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(delivery_response_save_total{result=\"success\"}[5m]))",
+          "legendFormat": "response save",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "C",
+          "expr": "sum(rate(delivery_submission_total{result=\"success\"}[5m]))",
+          "legendFormat": "submit",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "D",
+          "expr": "sum(rate(delivery_session_recovery_total{result=\"success\"}[5m]))",
+          "legendFormat": "recovery",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Operation failure rate",
+      "description": "Failures by operation. The SubmissionFailureSpike alert fires when the submission failure rate exceeds 1%.",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(delivery_attempt_start_total{result=\"failure\"}[5m]))",
+          "legendFormat": "start",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(delivery_response_save_total{result=\"failure\"}[5m]))",
+          "legendFormat": "response save",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "C",
+          "expr": "sum(rate(delivery_submission_total{result=\"failure\"}[5m]))",
+          "legendFormat": "submit",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "D",
+          "expr": "sum(rate(delivery_session_recovery_total{result=\"failure\"}[5m]))",
+          "legendFormat": "recovery",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Snapshot backlog",
+      "description": "Attempts waiting for preparation. Sustained backlog means the worker cannot keep up with the schedule.",
+      "gridPos": { "x": 0, "y": 24, "w": 8, "h": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(delivery_snapshot_backlog)",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Prepared snapshots (total)",
+      "description": "Attempts moved from PENDING to READY in the last hour.",
+      "gridPos": { "x": 8, "y": 24, "w": 8, "h": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(delivery_snapshot_prepared_total[1h]))",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "Stale-write rejections (total, 1h)",
+      "description": "A delayed request rejected by the ETag boundary. Expected to be low; a spike may indicate client races.",
+      "gridPos": { "x": 16, "y": 24, "w": 8, "h": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(delivery_response_stale_total[1h]))",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ]
+    }
+  ]
+}

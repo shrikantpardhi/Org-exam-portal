@@ -9,6 +9,12 @@ package com.company.exam.common.job;
  */
 public final class JobTypes {
 
+    /** P5 snapshot preparation for an assessment schedule; reference type {@code ASSESSMENT_SCHEDULE}. */
+    public static final String ATTEMPT_PREPARATION = "ATTEMPT_PREPARATION";
+
+    /** P5 evaluation handoff after submission; reference type {@code STUDENT_ATTEMPT}. */
+    public static final String EVALUATION = "EVALUATION";
+
     /** P8 incremental analytics refresh; reference type {@code STUDENT_ATTEMPT}. */
     public static final String ANALYTICS_REFRESH = "ANALYTICS_REFRESH";
 
@@ -31,5 +37,11 @@ public final class JobTypes {
     public static final String REPORT_GENERATION = "REPORT_GENERATION";
 
     private JobTypes() {
+    }
+
+    /** Every registered job type, for metrics and reporting over the fixed catalog. */
+    public static java.util.List<String> all() {
+        return java.util.List.of(ATTEMPT_PREPARATION, EVALUATION, ANALYTICS_REFRESH, ANALYTICS_REBUILD,
+                NOTIFICATION_REQUEST, EMAIL_DELIVERY, ANNOUNCEMENT_FANOUT, REPORT_GENERATION);
     }
 }

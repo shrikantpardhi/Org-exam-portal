@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class EvaluationHandoffService {
 
-    public static final String JOB_TYPE = "EVALUATION";
+    public static final String JOB_TYPE = com.company.exam.common.job.JobTypes.EVALUATION;
     public static final String REFERENCE_TYPE = "STUDENT_ATTEMPT";
 
     private final BackgroundJobRepository jobRepository;

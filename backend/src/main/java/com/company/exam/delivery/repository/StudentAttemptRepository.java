@@ -46,6 +46,9 @@ public interface StudentAttemptRepository extends JpaRepository<StudentAttempt, 
 
     long countByAssessmentScheduleIdAndSnapshotStatus(UUID assessmentScheduleId, SnapshotStatus snapshotStatus);
 
+    /** The pending-snapshot backlog across the whole schedule, used by the delivery metrics gauge. */
+    long countBySnapshotStatus(SnapshotStatus snapshotStatus);
+
     boolean existsByUserIdAndAssessmentScheduleIdAndAttemptStatusNot(UUID userId, UUID assessmentScheduleId,
             com.company.exam.delivery.entity.AttemptStatus attemptStatus);
 

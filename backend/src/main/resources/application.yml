@@ -39,6 +39,9 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      # The stack's Redis requires a password. Empty by default so a password-less local
+      # Redis still works; the container supplies REDIS_PASSWORD.
+      password: ${REDIS_PASSWORD:}
       timeout: 2s
       connect-timeout: 2s
   servlet:

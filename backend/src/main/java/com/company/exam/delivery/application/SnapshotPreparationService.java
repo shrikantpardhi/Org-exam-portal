@@ -74,7 +74,7 @@ public class SnapshotPreparationService {
     @Transactional
     public BackgroundJob enqueuePreparationJob(UUID scheduleId, UUID actorId) {
         BackgroundJob job = new BackgroundJob();
-        job.setJobType("ATTEMPT_PREPARATION");
+        job.setJobType(com.company.exam.common.job.JobTypes.ATTEMPT_PREPARATION);
         job.setReferenceType("ASSESSMENT_SCHEDULE");
         job.setReferenceId(scheduleId);
         job.setInitiatedBy(actorId);
@@ -119,6 +119,7 @@ public class SnapshotPreparationService {
      * @return {@code true} when this caller owned and completed preparation.
      */
     public boolean prepare(UUID attemptId) {
+        long startedNanos = System.nanoTime();
         Boolean claimed = transactionTemplate.execute(status -> attemptRepository.claimForPreparation(attemptId,
                 SnapshotStatus.PENDING, SnapshotStatus.PREPARING, Instant.now()) == 1);
         if (!Boolean.TRUE.equals(claimed)) {
@@ -132,6 +133,7 @@ public class SnapshotPreparationService {
                         Instant.now());
             });
             metrics.snapshotPrepared();
+            metrics.snapshotPreparationDuration(Duration.ofNanos(System.nanoTime() - startedNanos));
             return true;
         } catch (RuntimeException failure) {
             log.error("Snapshot preparation failed for attemptId={}", attemptId, failure);
@@ -151,6 +153,11 @@ public class SnapshotPreparationService {
             }
         }
         return prepared;
+    }
+
+    /** The pending-snapshot backlog, published as the delivery backlog gauge (P12 §113). */
+    public long pendingSnapshotCount() {
+        return attemptRepository.countBySnapshotStatus(SnapshotStatus.PENDING);
     }
 
     /** Reclaims attempts whose PREPARING worker died ({@code §23, §115}). */

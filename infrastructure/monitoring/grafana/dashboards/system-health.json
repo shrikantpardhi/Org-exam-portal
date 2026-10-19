@@ -1,0 +1,221 @@
+{
+  "uid": "exam-system-health",
+  "title": "System Health",
+  "description": "Platform-level health: availability, API latency and error rate, JVM memory, connection-pool saturation, and the snapshot backlog. P12 section 106-111 and section 108-110.",
+  "tags": ["exam-platform", "system", "health"],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "timezone": "utc",
+  "refresh": "15s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "application",
+        "label": "Application",
+        "type": "constant",
+        "current": { "text": "exam-platform-backend", "value": "exam-platform-backend" },
+        "hide": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Backend availability",
+      "description": "1 when Prometheus can reach the backend actuator endpoint; 0 means the target is down.",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=\"exam-platform-backend\",application=\"$application\"}",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "UP", "color": "green" }, "0": { "text": "DOWN", "color": "red" } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Snapshot backlog (pending attempts)",
+      "description": "Attempts waiting for a prepared snapshot. The SnapshotBacklogHigh alert fires above 100.",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(delivery_snapshot_backlog)",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 50 }, { "color": "red", "value": 100 } ] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "5xx error rate (5m)",
+      "description": "Fraction of API responses with a 5xx status. The ApiErrorRateHigh alert fires above 5%.",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_server_requests_seconds_count{application=\"$application\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{application=\"$application\"}[5m])), 1)",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.01 }, { "color": "red", "value": 0.05 } ] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "API p95 latency (5m)",
+      "description": "The 100 ms p95 target is frozen in P12 section 9.",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{application=\"$application\"}[5m])) by (le))",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.1 } ] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "API request rate by route",
+      "description": "Requests per second grouped by route. Routes never take identifiers as labels.",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_server_requests_seconds_count{application=\"$application\"}[5m])) by (uri)",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "API latency percentile",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{application=\"$application\"}[5m])) by (le))",
+          "legendFormat": "p95",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{application=\"$application\"}[5m])) by (le))",
+          "legendFormat": "p99",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "JVM heap and non-heap memory",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(jvm_memory_used_bytes{application=\"$application\",area=\"heap\"})",
+          "legendFormat": "heap used",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "B",
+          "expr": "sum(jvm_memory_max_bytes{application=\"$application\",area=\"heap\"})",
+          "legendFormat": "heap max",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "C",
+          "expr": "sum(jvm_memory_used_bytes{application=\"$application\",area=\"nonheap\"})",
+          "legendFormat": "non-heap used",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Database connection pool (HikariCP)",
+      "description": "Saturation here usually means PgBouncer or PostgreSQL contention.",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "hikaricp_connections_active{application=\"$application\"}",
+          "legendFormat": "active",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "B",
+          "expr": "hikaricp_connections_idle{application=\"$application\"}",
+          "legendFormat": "idle",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "C",
+          "expr": "hikaricp_connections_pending{application=\"$application\"}",
+          "legendFormat": "pending",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        },
+        {
+          "refId": "D",
+          "expr": "hikaricp_connections_max{application=\"$application\"}",
+          "legendFormat": "max",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Background jobs by status",
+      "description": "Queue depth, active work and failures across the frozen job types (P12 section 111).",
+      "gridPos": { "x": 0, "y": 20, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(background_job_count) by (status)",
+          "datasource": { "type": "prometheus", "uid": "exam-prometheus" }
+        }
+      ]
+    }
+  ]
+}
