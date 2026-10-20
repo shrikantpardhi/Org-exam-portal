@@ -109,6 +109,12 @@ app:
       interval: ${DELIVERY_WORKER_INTERVAL:PT30S}
       initial-delay: ${DELIVERY_WORKER_INITIAL_DELAY:PT15S}
       stale-timeout: ${DELIVERY_WORKER_STALE_TIMEOUT:PT5M}
+    # Expiry auto-submit worker: finalizes attempts whose deadline has passed
+    # (specs/14-P5-Delivery-V1.5.md §56).
+    expiry-worker:
+      batch-size: ${DELIVERY_EXPIRY_WORKER_BATCH_SIZE:50}
+      interval: ${DELIVERY_EXPIRY_WORKER_INTERVAL:PT30S}
+      initial-delay: ${DELIVERY_EXPIRY_WORKER_INITIAL_DELAY:PT20S}
 
   evaluation:
     # Scorecard artifacts are written outside the scoring transaction (§84, §61).

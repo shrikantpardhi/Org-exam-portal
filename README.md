@@ -19,8 +19,16 @@ commerce, analytics, and administration platform around it.
 The platform is **not** "a website that conducts tests". It is a configurable examination
 engine. Configuration drives examination behaviour; code provides the platform capabilities.
 
-> **Current state: P0 — Foundation.** Only engineering rails exist. No business features are
-> implemented. See [`docs/implementation-status.md`](docs/implementation-status.md).
+> **Current state: P0–P13 implemented.** The full platform is built: identity, academic
+> structure, content and question bank, blueprints and assessments, the runtime exam engine,
+> evaluation and scorecards, analytics, commerce and access management, communication and
+> notification, administration, and reporting. The container stack runs and is verified.
+>
+> The release decision is **NO-GO** pending the outstanding performance gate. Start here:
+> [`docs/PROJECT-SUMMARY.md`](docs/PROJECT-SUMMARY.md) — the standing summary of what exists, what is
+> verified, and what is still open — then
+> [`docs/implementation-status.md`](docs/implementation-status.md) for the per-phase detail and
+> [`docs/known-gaps.md`](docs/known-gaps.md) for the open gaps.
 
 ---
 

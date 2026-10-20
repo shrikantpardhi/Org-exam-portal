@@ -10,6 +10,11 @@
 - **Architecture:** Modular monolith
 - **Organization scope:** single organization per deployment
 
+# Implementation Status
+
+> The standing summary of the project — what exists, what is verified, and what is still open — is
+> [`docs/PROJECT-SUMMARY.md`](PROJECT-SUMMARY.md). This document holds the per-phase, per-task detail.
+
 ## Current phase
 
 - **Phase:** P13 — Broader Reporting & Operational Reporting (complete) / **P12 release rehearsal (executed 2026-10-19)**
@@ -170,7 +175,7 @@ P5 Assessment Delivery and Runtime Examination Engine:
 | P5-18 | Stale-write precondition handling (412) | Completed |
 | P5-19 | Recovery (returns the same snapshot) | Completed |
 | P5-20 | Navigation enforcement (server-side capability checks) | Completed |
-| P5-21 | Timer enforcement (server-authoritative global timer) | Completed (GAP-060) |
+| P5-21 | Timer enforcement (server-authoritative global timer) | Completed — central `DeadlineEnforcementService`, post-deadline rejection with 409 `ATTEMPT_EXPIRED`, and expiry auto-submit (GAP-062 closed; section-wise timing remains GAP-060) |
 | P5-22 | Idempotent submission | Completed |
 | P5-23 | Evaluation handoff via `background_job` | Completed |
 | P5-24 | Runtime frontend (engine-agnostic, Zod-validated, ETag autosave) | Partial — lean slice (GAP-058) |
@@ -486,11 +491,12 @@ P13 Broader Reporting and Operational Reporting:
 
 ## Latest verified result
 
-- **Backend:** 329 tests, 0 failures, 0 errors, 0 skipped — `BUILD SUCCESS`
+- **Backend:** 337 tests, 0 failures, 0 errors, 0 skipped — `BUILD SUCCESS`
   (`mvnw.cmd test`, `JAVA_HOME=C:\java\jdk-25.0.4.1`, compiled with `--release 21`).
 - **Frontend:** lint clean, 18 test files / 56 tests passing, `next build` succeeds.
-- **Schema:** 24 Flyway migrations `V1`–`V24` apply cleanly with no numbering gaps. P13 adds a
-  permission seed only — **no reporting table**.
+- **Schema:** 25 Flyway migrations `V1`–`V25` apply cleanly with no numbering gaps. P13 adds a
+  permission seed only, and P5 hardening adds one configuration seed only — **no reporting table and
+  no new column**.
 - **Container stack (GAP-007 — closed 2026-10-19):** the full stack runs and
   `scripts/verify-stack.sh` passes 15/15 assertions (every service healthy, the backend reachable
   through the Nginx edge with its database check UP, PgBouncer confirmed in the backend's path, the
@@ -535,15 +541,16 @@ P13 Broader Reporting and Operational Reporting:
 ## Known gaps
 
 - The consolidated register of open gaps, deferred items, and by-design limitations for P0 to P13
-  is [`docs/known-gaps.md`](known-gaps.md) (152 tracked items). GAP-001 is closed by P11;
-  GAP-126/127 were raised and closed by the re-verification; **GAP-130** (no performance evidence),
-  **GAP-131** (backup/restore never exercised) and **GAP-132** (rollback untested) remain the blocking
-  P12 release gates; **GAP-141** (18 of 22 report types unbacked) is the principal P13 limitation;
-  **GAP-007/009** are now artifact-complete but **awaiting runtime verification** on a Docker host;
-  GAP-151/152 record what the observability stack still needs (exporters and two §112 instruments);
-  **GAP-008/010 are implemented as four GitHub Actions workflows** that have not run yet (branch
-  protection is documented, not configured); **GAP-126/127/129 are now enforced by CI** rather than
-  fixed once.
+  is [`docs/known-gaps.md`](known-gaps.md) (152 tracked items). GAP-001 is closed by P11; **GAP-062
+  (attempt deadline enforcement and expiry auto-submit) is closed** by the P5 hardening change;
+  GAP-126/127 were raised and closed by the re-verification; **GAP-131** (backup/restore) and
+  **GAP-132** (rollback) are closed by the 2026-10-19 rehearsal; **GAP-007/009/087/134** were
+  verified against the running stack on 2026-10-19; **GAP-130** (no performance evidence) remains
+  the outstanding P12 release blocker; **GAP-141** (18 of 22 report types unbacked) is the principal
+  P13 limitation; GAP-151/152 record what the observability stack still needs (exporters and two
+  §112 instruments); **GAP-008/010 are implemented as four GitHub Actions workflows** that have not
+  run yet (branch protection is documented, not configured); **GAP-126/127/129 are now enforced by
+  CI** rather than fixed once.
 
 ## Architecture deviations
 

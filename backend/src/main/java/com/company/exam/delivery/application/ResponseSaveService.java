@@ -38,16 +38,19 @@ public class ResponseSaveService {
     private final AttemptEligibilityService eligibilityService;
     private final AssessmentSessionService sessionService;
     private final com.company.exam.delivery.observability.DeliveryMetrics metrics;
+    private final DeadlineEnforcementService deadlineEnforcement;
 
     public ResponseSaveService(StudentResponseRepository responseRepository,
             AttemptQuestionRepository questionRepository, AttemptEligibilityService eligibilityService,
             AssessmentSessionService sessionService,
-            com.company.exam.delivery.observability.DeliveryMetrics metrics) {
+            com.company.exam.delivery.observability.DeliveryMetrics metrics,
+            DeadlineEnforcementService deadlineEnforcement) {
         this.responseRepository = responseRepository;
         this.questionRepository = questionRepository;
         this.eligibilityService = eligibilityService;
         this.sessionService = sessionService;
         this.metrics = metrics;
+        this.deadlineEnforcement = deadlineEnforcement;
     }
 
     @Transactional(readOnly = true)
@@ -80,6 +83,8 @@ public class ResponseSaveService {
         if (attempt.getAttemptStatus() != AttemptStatus.IN_PROGRESS) {
             throw new InvalidStateException("Attempt is not in progress");
         }
+        // The server is authoritative for the deadline: a post-deadline save is refused (§54, §56).
+        deadlineEnforcement.assertNotExpired(attempt);
         requireAssigned(attemptId, questionVersionId);
         validate(request);
 

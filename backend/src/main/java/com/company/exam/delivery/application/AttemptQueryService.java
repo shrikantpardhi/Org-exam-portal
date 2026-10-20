@@ -40,13 +40,15 @@ public class AttemptQueryService {
     private final AssessmentDefinitionCatalog assessmentCatalog;
     private final ContentCatalog contentCatalog;
     private final RuntimeConfigurationService runtimeConfigurationService;
+    private final DeadlineEnforcementService deadlineEnforcement;
 
     public AttemptQueryService(AttemptEligibilityService eligibilityService,
             AttemptQuestionRepository questionRepository, AttemptQuestionOptionRepository optionRepository,
             StudentResponseRepository responseRepository,
             com.company.exam.delivery.repository.StudentAttemptRepository attemptRepository,
             AssessmentDefinitionCatalog assessmentCatalog, ContentCatalog contentCatalog,
-            RuntimeConfigurationService runtimeConfigurationService) {
+            RuntimeConfigurationService runtimeConfigurationService,
+            DeadlineEnforcementService deadlineEnforcement) {
         this.eligibilityService = eligibilityService;
         this.questionRepository = questionRepository;
         this.optionRepository = optionRepository;
@@ -55,11 +57,16 @@ public class AttemptQueryService {
         this.assessmentCatalog = assessmentCatalog;
         this.contentCatalog = contentCatalog;
         this.runtimeConfigurationService = runtimeConfigurationService;
+        this.deadlineEnforcement = deadlineEnforcement;
     }
 
     @Transactional(readOnly = true)
     public DeliveryDtos.AttemptResponse getAttempt(UUID attemptId, UUID userId) {
-        return describe(eligibilityService.requireOwned(attemptId, userId));
+        StudentAttempt attempt = eligibilityService.requireOwned(attemptId, userId);
+        // The attempt summary is the entry point of the navigation-driven runtime, so an expired
+        // active attempt is refused here too (§54).
+        deadlineEnforcement.assertActiveAttemptNotExpired(attempt);
+        return describe(attempt);
     }
 
     /**
@@ -104,6 +111,7 @@ public class AttemptQueryService {
     public List<DeliveryDtos.AttemptQuestionView> questions(UUID attemptId, UUID userId) {
         StudentAttempt attempt = eligibilityService.requireOwned(attemptId, userId);
         requireActiveAttempt(attempt);
+        deadlineEnforcement.assertNotExpired(attempt);
         List<AttemptQuestion> snapshot = questionRepository.findByAttemptIdOrderByDisplayOrderAsc(attemptId);
         Map<UUID, List<AttemptQuestionOption>> optionsByQuestion = new HashMap<>();
         if (!snapshot.isEmpty()) {
@@ -123,6 +131,7 @@ public class AttemptQueryService {
     public DeliveryDtos.AttemptQuestionView question(UUID attemptId, UUID questionVersionId, UUID userId) {
         StudentAttempt attempt = eligibilityService.requireOwned(attemptId, userId);
         requireActiveAttempt(attempt);
+        deadlineEnforcement.assertNotExpired(attempt);
         AttemptQuestion row = questionRepository.findByAttemptIdAndQuestionVersionId(attemptId, questionVersionId)
                 .orElseThrow(() -> NotFoundException.of("Attempt question", questionVersionId));
         List<AttemptQuestionOption> options = optionRepository

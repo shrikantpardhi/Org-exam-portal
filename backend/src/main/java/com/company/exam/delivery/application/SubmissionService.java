@@ -1,5 +1,6 @@
 package com.company.exam.delivery.application;
 
+import com.company.exam.common.audit.CurrentAuditorProvider;
 import com.company.exam.common.exception.InvalidStateException;
 import com.company.exam.delivery.entity.AttemptStatus;
 import com.company.exam.delivery.entity.StudentAttempt;
@@ -52,10 +53,37 @@ public class SubmissionService {
         if (attempt.getAttemptStatus() != AttemptStatus.IN_PROGRESS) {
             throw new InvalidStateException("Attempt is not in progress");
         }
+        return finalize(attemptId, userId);
+    }
 
+    /**
+     * The expiry finalization ({@code §56}): the same server submission path a manual submit uses,
+     * executed under the system actor because nobody is present to press Submit.
+     *
+     * @return {@code true} when this caller performed the finalization
+     */
+    @Transactional
+    public boolean finalizeExpired(UUID attemptId) {
+        try {
+            finalize(attemptId, CurrentAuditorProvider.SYSTEM_ACTOR_ID);
+            return true;
+        } catch (InvalidStateException lostRace) {
+            // Another finalization won; there is nothing to do and nothing to report as a failure.
+            return false;
+        }
+    }
+
+    /**
+     * The one finalization path, shared by manual submit and expiry auto-submit.
+     *
+     * <p>The conditional transition is the ownership signal: exactly one caller moves the attempt from
+     * IN_PROGRESS to SUBMITTED, and only that caller ends the session and hands off to evaluation, so
+     * a manual submit racing an expiry produces one logical submission and one evaluation job.
+     */
+    private DeliveryDtos.SubmitResponse finalize(UUID attemptId, UUID actorId) {
         Instant now = Instant.now();
         int updated = attemptRepository.markSubmitted(attemptId, AttemptStatus.IN_PROGRESS, AttemptStatus.SUBMITTED,
-                userId, now);
+                actorId, now);
         if (updated == 0) {
             StudentAttempt current = attemptRepository.findById(attemptId).orElseThrow();
             if (current.getAttemptStatus() == AttemptStatus.SUBMITTED

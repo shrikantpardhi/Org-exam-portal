@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -164,4 +165,22 @@ public interface StudentAttemptRepository extends JpaRepository<StudentAttempt, 
     @Query("select a.id from StudentAttempt a where a.snapshotStatus = :pending order by a.createdOn asc")
     List<UUID> findPendingIds(@Param("pending") SnapshotStatus pending,
             org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * A bounded page of IN_PROGRESS attempt ids, oldest first.
+     *
+     * <p>The expiry sweep works on this page rather than in SQL, because the deadline depends on the
+     * effective duration resolved from the published version and the delivery policy, and the frozen
+     * schema stores no deadline column ({@code §57}). Ordering by {@code started_on} puts the
+     * attempts most likely to be expired first.
+     */
+    @Query("""
+            select a.id from StudentAttempt a
+             where a.attemptStatus = :inProgress
+               and a.startedOn is not null
+             order by a.startedOn asc
+            """)
+    List<UUID> findInProgressIdsOrderByStartedOnAsc(
+            @Param("inProgress") com.company.exam.delivery.entity.AttemptStatus inProgress,
+            Pageable pageable);
 }

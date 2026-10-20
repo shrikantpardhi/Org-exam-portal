@@ -32,17 +32,20 @@ public class AssessmentSessionService {
     private final AssessmentDefinitionCatalog assessmentCatalog;
     private final RuntimeConfigurationService runtimeConfigurationService;
     private final com.company.exam.delivery.observability.DeliveryMetrics metrics;
+    private final DeadlineEnforcementService deadlineEnforcement;
 
     public AssessmentSessionService(AssessmentSessionRepository sessionRepository,
             StudentAttemptRepository attemptRepository, AttemptQuestionRepository questionRepository,
             AssessmentDefinitionCatalog assessmentCatalog, RuntimeConfigurationService runtimeConfigurationService,
-            com.company.exam.delivery.observability.DeliveryMetrics metrics) {
+            com.company.exam.delivery.observability.DeliveryMetrics metrics,
+            DeadlineEnforcementService deadlineEnforcement) {
         this.sessionRepository = sessionRepository;
         this.attemptRepository = attemptRepository;
         this.questionRepository = questionRepository;
         this.assessmentCatalog = assessmentCatalog;
         this.runtimeConfigurationService = runtimeConfigurationService;
         this.metrics = metrics;
+        this.deadlineEnforcement = deadlineEnforcement;
     }
 
     /** Creates a session or activates the existing ACTIVE session for an attempt. */
@@ -96,6 +99,8 @@ public class AssessmentSessionService {
         }
         StudentAttempt attempt = attemptRepository.findById(session.getAttemptId())
                 .orElseThrow(() -> NotFoundException.of("Attempt", session.getAttemptId()));
+        // Recovery is a protected runtime action: an expired attempt is not recoverable (§54).
+        deadlineEnforcement.assertNotExpired(attempt);
         if (attempt.getAttemptStatus() == com.company.exam.delivery.entity.AttemptStatus.SUBMITTED
                 || attempt.getAttemptStatus() == com.company.exam.delivery.entity.AttemptStatus.EVALUATED) {
             throw new InvalidStateException("Attempt is already submitted");

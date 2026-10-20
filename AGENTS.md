@@ -60,6 +60,19 @@ After every task, report:
 - Unresolved issues
 - Any architecture deviation
 
+## Documenting the summary
+
+After every task, update [`docs/PROJECT-SUMMARY.md`](docs/PROJECT-SUMMARY.md) so the repository
+carries a standing summary of what exists, what is verified, and what is still open. At minimum:
+
+1. Update the phase map row for the phase you worked in.
+2. Update the current-state numbers (tests, migrations, endpoints) if they moved.
+3. Add or refresh the "most recent change" section with what changed, why, and how it was verified.
+4. Update the release decision if the change closed or opened a gate.
+
+Also update `docs/known-gaps.md` and `docs/implementation-status.md` when a gap or a task row
+changes. The chat report is not a substitute for the documented summary.
+
 ## Never
 
 - Never push to main.
