@@ -46,20 +46,27 @@ public class AnswerKeyValidator {
      */
     public void validateMapping(EvaluationDtos.AnswerKeyDetailRequest request, QuestionOutcome outcome) {
         UUID correctOptionId = request.correctOptionId();
+        List<UUID> correctOptionIds = request.correctOptionIds();
         String correctAnswerText = request.correctAnswerText();
         boolean hasText = correctAnswerText != null && !correctAnswerText.isBlank();
+        boolean hasOptions = correctOptionIds != null && !correctOptionIds.isEmpty();
 
         if (outcome == QuestionOutcome.NORMAL) {
-            if (correctOptionId == null && !hasText) {
+            if (correctOptionId == null && !hasText && !hasOptions) {
                 throw new AnswerKeyDetailInvalidException("correctOptionId",
-                        "A NORMAL detail requires either correctOptionId or correctAnswerText");
+                        "A NORMAL detail requires correctOptionId, correctOptionIds, or correctAnswerText");
             }
             if (correctOptionId != null) {
                 requireOptionInQuestion(correctOptionId, request.questionVersionId());
             }
-        } else if (correctOptionId != null || correctAnswerText != null) {
+            if (hasOptions) {
+                for (UUID optionId : correctOptionIds) {
+                    requireOptionInQuestion(optionId, request.questionVersionId());
+                }
+            }
+        } else if (correctOptionId != null || hasText || hasOptions) {
             throw new AnswerKeyDetailInvalidException("correctOptionId",
-                    "A BONUS or DROPPED detail must have a null correctOptionId and correctAnswerText");
+                    "A BONUS or DROPPED detail must have null correctOptionId, correctOptionIds, and correctAnswerText");
         }
     }
 

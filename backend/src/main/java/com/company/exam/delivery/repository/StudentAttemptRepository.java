@@ -138,6 +138,51 @@ public interface StudentAttemptRepository extends JpaRepository<StudentAttempt, 
             @Param("actorId") UUID actorId,
             @Param("now") Instant now);
 
+    /**
+     * The completion transition: {@code SUBMITTED -> EVALUATED} with the official total score.
+     *
+     * <p>Conditional on the current status, so a retry after a partially applied change affects no
+     * rows instead of creating a second transition ({@code §8, §13}).
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update StudentAttempt a
+               set a.attemptStatus = :evaluated,
+                   a.totalScore = :totalScore,
+                   a.updatedBy = :actorId,
+                   a.updatedOn = :now
+             where a.id = :attemptId
+               and a.attemptStatus = :submitted
+            """)
+    int markEvaluated(@Param("attemptId") UUID attemptId,
+            @Param("submitted") com.company.exam.delivery.entity.AttemptStatus submitted,
+            @Param("evaluated") com.company.exam.delivery.entity.AttemptStatus evaluated,
+            @Param("totalScore") java.math.BigDecimal totalScore,
+            @Param("actorId") UUID actorId,
+            @Param("now") Instant now);
+
+    /**
+     * The re-evaluation score refresh: an already {@code EVALUATED} attempt takes the current
+     * official score.
+     *
+     * <p>Conditional on the current status, so it never moves an attempt that is not completed
+     * ({@code §8, §13}).
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update StudentAttempt a
+               set a.totalScore = :totalScore,
+                   a.updatedBy = :actorId,
+                   a.updatedOn = :now
+             where a.id = :attemptId
+               and a.attemptStatus = :evaluated
+            """)
+    int refreshEvaluatedScore(@Param("attemptId") UUID attemptId,
+            @Param("evaluated") com.company.exam.delivery.entity.AttemptStatus evaluated,
+            @Param("totalScore") java.math.BigDecimal totalScore,
+            @Param("actorId") UUID actorId,
+            @Param("now") Instant now);
+
     /** Reclaims attempts whose PREPARING worker died; uses the approved existing timestamps. */
     @Query("""
             select a.id from StudentAttempt a

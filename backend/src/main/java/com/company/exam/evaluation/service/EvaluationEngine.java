@@ -15,6 +15,7 @@ import com.company.exam.evaluation.exception.AnswerKeyNotForAssessmentException;
 import com.company.exam.evaluation.exception.AnswerKeyNotPublishedException;
 import com.company.exam.evaluation.exception.AttemptNotSubmittedException;
 import com.company.exam.evaluation.exception.EvaluationNotAllowedException;
+import com.company.exam.evaluation.repository.AnswerKeyDetailOptionRepository;
 import com.company.exam.evaluation.repository.AnswerKeyDetailRepository;
 import com.company.exam.evaluation.repository.AnswerKeyRepository;
 import com.company.exam.evaluation.repository.EvaluationRepository;
@@ -47,6 +48,7 @@ public class EvaluationEngine {
 
     private static final Set<String> OPTION_TEMPLATES = Set.of("SINGLE_CHOICE", "MULTIPLE_CHOICE", "TRUE_FALSE");
     private static final String SUBMITTED = "SUBMITTED";
+    private static final String EVALUATED = "EVALUATED";
     private static final String SNAPSHOT_READY = "READY";
 
     private final AttemptEvaluationCatalog delivery;
@@ -54,19 +56,22 @@ public class EvaluationEngine {
     private final ContentCatalog content;
     private final AnswerKeyRepository answerKeyRepository;
     private final AnswerKeyDetailRepository detailRepository;
+    private final AnswerKeyDetailOptionRepository detailOptionRepository;
     private final EvaluationRepository evaluationRepository;
     private final ResultRepository resultRepository;
     private final EvaluationCalculator calculator;
 
     public EvaluationEngine(AttemptEvaluationCatalog delivery, AssessmentDefinitionCatalog assessment,
             ContentCatalog content, AnswerKeyRepository answerKeyRepository,
-            AnswerKeyDetailRepository detailRepository, EvaluationRepository evaluationRepository,
-            ResultRepository resultRepository, EvaluationCalculator calculator) {
+            AnswerKeyDetailRepository detailRepository, AnswerKeyDetailOptionRepository detailOptionRepository,
+            EvaluationRepository evaluationRepository, ResultRepository resultRepository,
+            EvaluationCalculator calculator) {
         this.delivery = delivery;
         this.assessment = assessment;
         this.content = content;
         this.answerKeyRepository = answerKeyRepository;
         this.detailRepository = detailRepository;
+        this.detailOptionRepository = detailOptionRepository;
         this.evaluationRepository = evaluationRepository;
         this.resultRepository = resultRepository;
         this.calculator = calculator;
@@ -77,6 +82,24 @@ public class EvaluationEngine {
         AttemptEvaluationCatalog.AttemptView attempt = delivery.requireAttempt(attemptId);
         if (!SUBMITTED.equals(attempt.attemptStatus())) {
             throw new AttemptNotSubmittedException("Only a SUBMITTED attempt can be evaluated");
+        }
+        if (!SNAPSHOT_READY.equals(attempt.snapshotStatus())) {
+            throw new EvaluationNotAllowedException("The attempt snapshot is not READY");
+        }
+        return attempt;
+    }
+
+    /**
+     * The re-evaluation precondition ({@code §46, §52}).
+     *
+     * <p>A corrected answer key re-evaluates attempts that were already evaluated, so the attempt
+     * may be {@code SUBMITTED} or {@code EVALUATED}. It still may not be {@code NOT_STARTED} or
+     * {@code IN_PROGRESS} ({@code §43}).
+     */
+    public AttemptEvaluationCatalog.AttemptView requireReEvaluableAttempt(UUID attemptId) {
+        AttemptEvaluationCatalog.AttemptView attempt = delivery.requireAttempt(attemptId);
+        if (!SUBMITTED.equals(attempt.attemptStatus()) && !EVALUATED.equals(attempt.attemptStatus())) {
+            throw new AttemptNotSubmittedException("Only a submitted attempt can be re-evaluated");
         }
         if (!SNAPSHOT_READY.equals(attempt.snapshotStatus())) {
             throw new EvaluationNotAllowedException("The attempt snapshot is not READY");
@@ -111,6 +134,11 @@ public class EvaluationEngine {
         }
         Map<UUID, AnswerKeyDetail> details = detailRepository.findByAnswerKeyId(answerKeyId).stream()
                 .collect(Collectors.toMap(AnswerKeyDetail::getQuestionVersionId, Function.identity(), (a, b) -> a));
+        Map<UUID, List<UUID>> detailOptions = detailRepository.findByAnswerKeyId(answerKeyId).stream()
+                .collect(Collectors.toMap(AnswerKeyDetail::getId,
+                        d -> detailOptionRepository.findByAnswerKeyDetailId(d.getId()).stream()
+                                .map(com.company.exam.evaluation.entity.AnswerKeyDetailOption::getQuestionOptionId)
+                                .toList(), (a, b) -> a));
         Map<UUID, String> responses = delivery.responses(attempt.attemptId()).stream()
                 .collect(Collectors.toMap(AttemptEvaluationCatalog.ResponseView::questionVersionId,
                         response -> response.response() == null ? "" : response.response(), (a, b) -> b));
@@ -124,9 +152,10 @@ public class EvaluationEngine {
             }
             ContentCatalog.PublishedQuestionVersion published =
                     content.requirePublishedQuestionVersion(question.questionVersionId());
+            List<UUID> correctIds = detailOptions.getOrDefault(detail.getId(), List.of());
             questions.add(new QuestionEvaluationContext(question.questionVersionId(), published.templateCode(),
                     question.marks(), question.negativeMarks(), responses.get(question.questionVersionId()),
-                    detail.getQuestionOutcome(), detail.getCorrectOptionId(), detail.getCorrectAnswerText(),
+                    detail.getQuestionOutcome(), detail.getCorrectOptionId(), correctIds, detail.getCorrectAnswerText(),
                     detail.getAwardedMarks(), detail.getAwardedNegativeMarks(),
                     optionKeys(question.questionVersionId(), published.templateCode())));
         }

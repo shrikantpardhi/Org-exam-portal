@@ -60,12 +60,32 @@ public class AttemptQueryService {
         this.deadlineEnforcement = deadlineEnforcement;
     }
 
+    /**
+     * The attempt summary.
+     *
+     * <p>Self-scoping is the default: a student reads only their own attempts
+     * ({@code specs/14-P5-Delivery-V1.5.md §83}). A caller holding
+     * {@code DELIVERY_ATTEMPT_VIEW_ANY} may read another student's runtime attempt; the staff scope
+     * is a widening of the same read, never a replacement for it. The permission itself is resolved
+     * by the caller (the controller) from the authenticated principal, never from the request body.
+     *
+     * <p>Both paths render the same {@link DeliveryDtos.AttemptResponse}, so a staff read cannot
+     * expose anything a student read cannot: the payload never carries answer keys, correct-answer
+     * flags, review metadata, author identity or audit columns.
+     */
     @Transactional(readOnly = true)
-    public DeliveryDtos.AttemptResponse getAttempt(UUID attemptId, UUID userId) {
-        StudentAttempt attempt = eligibilityService.requireOwned(attemptId, userId);
-        // The attempt summary is the entry point of the navigation-driven runtime, so an expired
-        // active attempt is refused here too (§54).
-        deadlineEnforcement.assertActiveAttemptNotExpired(attempt);
+    public DeliveryDtos.AttemptResponse getAttempt(UUID attemptId, UUID userId, boolean canViewAny) {
+        StudentAttempt attempt = canViewAny
+                ? attemptRepository.findById(attemptId)
+                        .orElseThrow(() -> NotFoundException.of("Attempt", attemptId))
+                : eligibilityService.requireOwned(attemptId, userId);
+        if (!canViewAny) {
+            // The attempt summary is the entry point of the navigation-driven runtime, so an expired
+            // active attempt is refused here too (§54). A staff read is an operational inspection
+            // rather than the runtime, so it is not refused: staff must be able to see the state of
+            // an attempt whose deadline has passed.
+            deadlineEnforcement.assertActiveAttemptNotExpired(attempt);
+        }
         return describe(attempt);
     }
 

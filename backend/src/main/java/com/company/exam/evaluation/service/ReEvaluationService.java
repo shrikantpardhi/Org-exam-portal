@@ -1,6 +1,7 @@
 package com.company.exam.evaluation.service;
 
 import com.company.exam.common.audit.SecurityEventLogger;
+import com.company.exam.delivery.api.AttemptCompletionContract;
 import com.company.exam.delivery.api.AttemptEvaluationCatalog;
 import com.company.exam.evaluation.dto.EvaluationDtos;
 import com.company.exam.evaluation.entity.AnswerKey;
@@ -40,23 +41,25 @@ public class ReEvaluationService {
     private final RankingService rankingService;
     private final SecurityEventLogger audit;
     private final EvaluationMetrics metrics;
+    private final AttemptCompletionContract completion;
 
     public ReEvaluationService(EvaluationEngine engine, EvaluationRepository evaluationRepository,
             ResultRepository resultRepository, RankingService rankingService, SecurityEventLogger audit,
-            EvaluationMetrics metrics) {
+            EvaluationMetrics metrics, AttemptCompletionContract completion) {
         this.engine = engine;
         this.evaluationRepository = evaluationRepository;
         this.resultRepository = resultRepository;
         this.rankingService = rankingService;
         this.audit = audit;
         this.metrics = metrics;
+        this.completion = completion;
     }
 
     @Transactional
     public EvaluationDtos.ReEvaluationResponse reEvaluate(UUID attemptId, UUID answerKeyId, String reason,
             UUID actorId) {
         metrics.reevaluationRequested();
-        AttemptEvaluationCatalog.AttemptView attempt = engine.requireSubmittableAttempt(attemptId);
+        AttemptEvaluationCatalog.AttemptView attempt = engine.requireReEvaluableAttempt(attemptId);
 
         Evaluation previous = evaluationRepository.findByAttemptIdAndSupersededByIdIsNull(attemptId)
                 .orElseThrow(() -> new ReEvaluationNotAllowedException(
@@ -92,6 +95,10 @@ public class ReEvaluationService {
             resultRepository.saveAndFlush(previousResult);
         }
         Result newResult = engine.persistResult(saved, outcome);
+
+        // The attempt is already EVALUATED, but its Delivery-owned total score must follow the new
+        // official score, so it is refreshed through the same Delivery contract (§9, §10, §53).
+        completion.refreshScore(attemptId, newResult.getObtainedMarks(), saved.getEvaluatedOn());
 
         rankingService.recompute(attempt.assessmentVersionId());
 

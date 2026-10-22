@@ -50,6 +50,9 @@ class RecoveryAndSubmissionIntegrationTest extends AbstractDeliveryIntegrationTe
     @Test
     void submissionIsIdempotentAndTriggersExactlyOneEvaluationJob() throws Exception {
         Started started = start();
+        // A published answer key lets the submit handoff designate the key (GAP-071); without one,
+        // no evaluation job would be enqueued.
+        UUID answerKeyId = insertPublishedAnswerKey(started.versionId());
         String submitUrl = "/api/v1/attempts/" + started.attemptId() + "/submit";
 
         String first = mockMvc.perform(post(submitUrl).header(AUTHORIZATION, bearer(started.token()))
@@ -78,6 +81,15 @@ class RecoveryAndSubmissionIntegrationTest extends AbstractDeliveryIntegrationTe
                 Long.class, started.attemptId());
         assertThat(jobs).isEqualTo(1);
 
+        // The single handoff job carries the explicit answer key resolved at submission time (GAP-071).
+        String parameters = jdbcTemplate.queryForObject(
+                "select parameters from background_job where job_type = 'EVALUATION' and reference_id = ?",
+                String.class, started.attemptId());
+        assertThat(parameters)
+                .as("the single handoff job carries the explicit answer key resolved at submission time")
+                .contains(started.attemptId().toString())
+                .contains(answerKeyId.toString());
+
         // No double session end.
         Long activeSessions = jdbcTemplate.queryForObject(
                 "select count(*) from assessment_session where attempt_id = ? and session_status = 'ACTIVE'",
@@ -85,7 +97,7 @@ class RecoveryAndSubmissionIntegrationTest extends AbstractDeliveryIntegrationTe
         assertThat(activeSessions).isZero();
     }
 
-    private record Started(UUID attemptId, UUID sessionId, String token) {
+    private record Started(UUID attemptId, UUID sessionId, String versionId, String token) {
     }
 
     private Started start() throws Exception {
@@ -99,7 +111,16 @@ class RecoveryAndSubmissionIntegrationTest extends AbstractDeliveryIntegrationTe
                         .header(AUTHORIZATION, bearer(token)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         UUID sessionId = UUID.fromString(JsonPath.read(body, "$.data.sessionId"));
-        return new Started(attemptId, sessionId, token);
+        return new Started(attemptId, sessionId, versionId, token);
+    }
+
+    /** Inserts one published answer key for the version so the submit handoff can designate it. */
+    private UUID insertPublishedAnswerKey(String assessmentVersionId) {
+        UUID keyId = UUID.randomUUID();
+        jdbcTemplate.update("insert into answer_key (id, assessment_version_id, version, status, is_published, "
+                        + "created_on, updated_on) values (?, ?, 1, 'ACTIVE', true, now(), now())",
+                keyId, UUID.fromString(assessmentVersionId));
+        return keyId;
     }
 
     private List<String> questionVersionIds(Started started) throws Exception {

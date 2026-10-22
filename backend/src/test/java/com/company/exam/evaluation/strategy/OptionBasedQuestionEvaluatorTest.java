@@ -8,6 +8,7 @@ import com.company.exam.evaluation.scoring.QuestionEvaluationOutcome;
 import com.company.exam.evaluation.scoring.QuestionOutcomeState;
 import com.company.exam.evaluation.scoring.QuestionScoringPolicy;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -23,11 +24,19 @@ class OptionBasedQuestionEvaluatorTest {
     private final UUID questionVersionId = UUID.randomUUID();
     private final UUID optionA = UUID.randomUUID();
     private final UUID optionB = UUID.randomUUID();
+    private final UUID optionC = UUID.randomUUID();
 
     private QuestionEvaluationContext context(String response, BigDecimal marks, BigDecimal negative,
             QuestionOutcome outcome, BigDecimal overrideMarks, BigDecimal overrideNegative) {
         return new QuestionEvaluationContext(questionVersionId, "SINGLE_CHOICE", marks, negative, response, outcome,
-                optionA, null, overrideMarks, overrideNegative, Map.of(optionA, "A", optionB, "B"));
+                optionA, List.<UUID>of(), null, overrideMarks, overrideNegative, Map.of(optionA, "A", optionB, "B"));
+    }
+
+    private QuestionEvaluationContext multiContext(String response, BigDecimal marks, BigDecimal negative,
+            List<UUID> correctIds, BigDecimal overrideMarks, BigDecimal overrideNegative) {
+        return new QuestionEvaluationContext(questionVersionId, "MULTIPLE_CHOICE", marks, negative, response,
+                QuestionOutcome.NORMAL, null, correctIds, null, overrideMarks, overrideNegative,
+                Map.of(optionA, "A", optionB, "B", optionC, "C"));
     }
 
     @Test
@@ -102,5 +111,60 @@ class OptionBasedQuestionEvaluatorTest {
         QuestionEvaluationOutcome outcome = evaluator.evaluate(
                 context("B", new BigDecimal("2.00"), BigDecimal.ZERO, QuestionOutcome.NORMAL, null, null));
         assertThat(outcome.awardedMarks()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void multiCorrectExactSelectionAwardsFullMarks() {
+        QuestionEvaluationOutcome outcome = evaluator.evaluate(multiContext("A,B", new BigDecimal("3.00"),
+                new BigDecimal("1.00"), List.of(optionA, optionB), null, null));
+        assertThat(outcome.state()).isEqualTo(QuestionOutcomeState.CORRECT);
+        assertThat(outcome.awardedMarks()).isEqualByComparingTo("3.00");
+    }
+
+    @Test
+    void multiCorrectExactSelectionByIdsAwardsFullMarks() {
+        QuestionEvaluationOutcome outcome = evaluator.evaluate(multiContext(optionA + "," + optionB,
+                new BigDecimal("3.00"), new BigDecimal("1.00"), List.of(optionA, optionB), null, null));
+        assertThat(outcome.state()).isEqualTo(QuestionOutcomeState.CORRECT);
+    }
+
+    @Test
+    void multiCorrectPartialSelectionIsIncorrectAllOrNothing() {
+        QuestionEvaluationOutcome outcome = evaluator.evaluate(multiContext("A", new BigDecimal("3.00"),
+                new BigDecimal("1.00"), List.of(optionA, optionB), null, null));
+        assertThat(outcome.state()).isEqualTo(QuestionOutcomeState.INCORRECT);
+        assertThat(outcome.awardedMarks()).isEqualByComparingTo("-1.00");
+    }
+
+    @Test
+    void multiCorrectOverSelectionIsIncorrect() {
+        QuestionEvaluationOutcome outcome = evaluator.evaluate(multiContext("A,B,C", new BigDecimal("3.00"),
+                new BigDecimal("1.00"), List.of(optionA, optionB), null, null));
+        assertThat(outcome.state()).isEqualTo(QuestionOutcomeState.INCORRECT);
+    }
+
+    @Test
+    void multiCorrectEmptySelectionIsUnanswered() {
+        QuestionEvaluationOutcome outcome = evaluator.evaluate(multiContext(null, new BigDecimal("3.00"),
+                new BigDecimal("1.00"), List.of(optionA, optionB), null, null));
+        assertThat(outcome.state()).isEqualTo(QuestionOutcomeState.UNANSWERED);
+        assertThat(outcome.awardedMarks()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void multiCorrectUnknownOptionIsInvalidResponse() {
+        QuestionEvaluationOutcome outcome = evaluator.evaluate(multiContext("A,Z", new BigDecimal("3.00"),
+                BigDecimal.ZERO, List.of(optionA, optionB), null, null));
+        assertThat(outcome.state()).isEqualTo(QuestionOutcomeState.INVALID_RESPONSE);
+    }
+
+    @Test
+    void multiCorrectIsDeterministic() {
+        QuestionEvaluationContext ctx = multiContext("B,A", new BigDecimal("3.00"), new BigDecimal("1.00"),
+                List.of(optionA, optionB), null, null);
+        QuestionEvaluationOutcome first = evaluator.evaluate(ctx);
+        QuestionEvaluationOutcome second = evaluator.evaluate(ctx);
+        assertThat(second.state()).isEqualTo(first.state());
+        assertThat(second.awardedMarks()).isEqualByComparingTo(first.awardedMarks());
     }
 }

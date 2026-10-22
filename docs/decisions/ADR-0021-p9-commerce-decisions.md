@@ -73,8 +73,8 @@ specification left open. No table or column is added.
   `CommerceIntegrationTest`; the fixed-amount pricing rules by `DefaultPricingCalculatorTest`.
 - Purchase-creation idempotency is a service-level dedupe of the existing open purchase, because no
   idempotency store is frozen (GAP-098).
-- The entitlement contract is implemented but not yet enforced by Delivery/Assessment, because the
-  frozen package has no "free assessment" configuration field (GAP-100).
+- The entitlement contract is implemented and **is enforced by Delivery**: the free-assessment rule is
+  recorded in ADR-0026 and the Start Exam path gates paid content (GAP-100 closed).
 - Only the reference gateway ships; a real provider adapter is a separate integration (GAP-099).
 - The commerce frontend (student store, finance workspace) is deferred (GAP-104).
 

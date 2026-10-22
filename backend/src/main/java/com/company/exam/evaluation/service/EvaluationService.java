@@ -2,6 +2,7 @@ package com.company.exam.evaluation.service;
 
 import com.company.exam.common.audit.SecurityEventLogger;
 import com.company.exam.common.exception.NotFoundException;
+import com.company.exam.delivery.api.AttemptCompletionContract;
 import com.company.exam.delivery.api.AttemptEvaluationCatalog;
 import com.company.exam.evaluation.dto.EvaluationDtos;
 import com.company.exam.evaluation.entity.AnswerKey;
@@ -38,41 +39,51 @@ public class EvaluationService {
     private final EvaluationMapper mapper;
     private final SecurityEventLogger audit;
     private final EvaluationMetrics metrics;
+    private final AttemptCompletionContract completion;
 
     public EvaluationService(EvaluationEngine engine, EvaluationRepository evaluationRepository,
             ResultRepository resultRepository, EvaluationMapper mapper, SecurityEventLogger audit,
-            EvaluationMetrics metrics) {
+            EvaluationMetrics metrics, AttemptCompletionContract completion) {
         this.engine = engine;
         this.evaluationRepository = evaluationRepository;
         this.resultRepository = resultRepository;
         this.mapper = mapper;
         this.audit = audit;
         this.metrics = metrics;
+        this.completion = completion;
     }
 
     @Transactional
     public EvaluationDtos.EvaluationResponse evaluate(UUID attemptId, UUID answerKeyId, UUID actorId) {
         metrics.evaluationRequested();
-        AttemptEvaluationCatalog.AttemptView attempt = engine.requireSubmittableAttempt(attemptId);
 
+        // Evaluate-once: a repeated request is routed to the existing evaluation rather than
+        // creating a second one (§44, §45). This check precedes the SUBMITTED precondition because
+        // a completed attempt has already advanced to EVALUATED.
         Optional<Evaluation> existing = evaluationRepository.findByAttemptIdAndSupersededByIdIsNull(attemptId);
         if (existing.isPresent()) {
             return response(existing.get());
         }
 
+        AttemptEvaluationCatalog.AttemptView attempt = engine.requireSubmittableAttempt(attemptId);
         AnswerKey key = engine.requireEvaluableKey(answerKeyId, attempt.assessmentVersionId());
         EvaluationOutcome outcome = engine.calculate(attempt, key.getId());
+        Evaluation evaluation;
+        Result result;
         try {
-            Evaluation evaluation = engine.persistEvaluation(attempt, key.getId(), outcome, 1);
-            Result result = engine.persistResult(evaluation, outcome);
-            metrics.evaluationSucceeded();
-            audit.audit(actorId, "EVALUATE", "Evaluation", evaluation.getId(),
-                    "Evaluated attempt against answer key version " + key.getVersion());
-            return mapper.toResponse(evaluation, result);
+            evaluation = engine.persistEvaluation(attempt, key.getId(), outcome, 1);
+            result = engine.persistResult(evaluation, outcome);
         } catch (DataIntegrityViolationException race) {
             metrics.evaluationFailed();
             throw new EvaluationAlreadyExistsException("This attempt already has a current evaluation");
         }
+        metrics.evaluationSucceeded();
+        audit.audit(actorId, "EVALUATE", "Evaluation", evaluation.getId(),
+                "Evaluated attempt against answer key version " + key.getVersion());
+        // The attempt and its official total score are Delivery-owned state, so the completion is
+        // reported through the Delivery contract in this same transaction (§9, §10, §53).
+        completion.markEvaluated(attemptId, result.getObtainedMarks(), evaluation.getEvaluatedOn());
+        return mapper.toResponse(evaluation, result);
     }
 
     @Transactional(readOnly = true)

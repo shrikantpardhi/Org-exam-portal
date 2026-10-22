@@ -31,7 +31,7 @@ class EvaluationCalculatorTest {
 
     private QuestionEvaluationContext option(String response, BigDecimal marks, BigDecimal negative) {
         return new QuestionEvaluationContext(UUID.randomUUID(), "SINGLE_CHOICE", marks, negative, response,
-                QuestionOutcome.NORMAL, optionA, null, null, null, Map.of(optionA, "A", optionB, "B"));
+                QuestionOutcome.NORMAL, optionA, List.<UUID>of(), null, null, null, Map.of(optionA, "A", optionB, "B"));
     }
 
     private EvaluationOutcome calculate(BigDecimal totalMarks, List<QuestionEvaluationContext> questions) {

@@ -50,10 +50,14 @@ contract.
 
 ## 6. Candidate population and access boundary
 
-- `AccessGrant` is the frozen source of truth for paid content, but Commerce is not yet implemented.
-  Delivery resolves the operational candidate set through a new Identity application contract,
+- `AccessGrant` is the frozen source of truth for paid content. Commerce is implemented (P9), and
+  Delivery now consults it through the `EntitlementResolver` contract at Start Exam: an assessment no
+  AccessPackage grants is free content, and a paid assessment requires a currently valid grant
+  (**ADR-0026**, GAP-100 closed).
+- Delivery resolves the operational candidate set through a new Identity application contract,
   `CandidateDirectory`, whose default implementation returns ACTIVE users holding the `STUDENT` role.
-  Recorded as **GAP-057**.
+  Recorded as **GAP-057** (the grant-driven candidate population is still deferred; the entitlement
+  gate is the *access* control and does not narrow preparation).
 
 ## 7. Delivery permission codes
 
@@ -62,6 +66,10 @@ contract.
   (`DELIVERY_PREPARE_ATTEMPTS`, `DELIVERY_ATTEMPT_VIEW_ANY`, `DELIVERY_OPERATE`) are seeded and must
   be realigned with the Identity catalogue. Recorded as **GAP-056**. Student runtime endpoints are
   authorized by **resource ownership**, not a permission code.
+- `DELIVERY_ATTEMPT_VIEW_ANY` is now used to **widen** the attempt read: `GET /attempts/{id}` keeps
+  self-scoping as the default and additionally allows a caller holding the permission to read another
+  student's runtime attempt. The permission is resolved from the authenticated principal, never from
+  the request, and both paths render the same payload. Recorded as **GAP-064** (closed).
 
 ## 8. Module contracts (no cross-module repository access)
 

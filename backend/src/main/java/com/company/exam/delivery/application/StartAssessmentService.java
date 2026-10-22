@@ -24,6 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code NOT_STARTED -> IN_PROGRESS} transition, and session activation. It NEVER inserts
  * AttemptQuestion or AttemptQuestionOption rows, randomizes questions, constructs a snapshot, calls
  * evaluation, or rebuilds the assessment definition.
+ *
+ * <p>Authorization includes the paid-content entitlement gate
+ * ({@code specs/14-P5-Delivery-V1.5.md §19}; ADR-0026): the assessment must be free content or covered
+ * by a currently valid AccessGrant, decided server-side before the attempt transition.
  */
 @Service
 public class StartAssessmentService {
@@ -32,19 +36,21 @@ public class StartAssessmentService {
     private final AttemptQuestionRepository questionRepository;
     private final AssessmentDefinitionCatalog assessmentCatalog;
     private final AttemptEligibilityService eligibilityService;
+    private final EntitlementAccessGate entitlementAccessGate;
     private final RuntimeConfigurationService runtimeConfigurationService;
     private final AssessmentSessionService sessionService;
     private final com.company.exam.delivery.observability.DeliveryMetrics metrics;
 
     public StartAssessmentService(StudentAttemptRepository attemptRepository,
             AttemptQuestionRepository questionRepository, AssessmentDefinitionCatalog assessmentCatalog,
-            AttemptEligibilityService eligibilityService, RuntimeConfigurationService runtimeConfigurationService,
-            AssessmentSessionService sessionService,
+            AttemptEligibilityService eligibilityService, EntitlementAccessGate entitlementAccessGate,
+            RuntimeConfigurationService runtimeConfigurationService, AssessmentSessionService sessionService,
             com.company.exam.delivery.observability.DeliveryMetrics metrics) {
         this.attemptRepository = attemptRepository;
         this.questionRepository = questionRepository;
         this.assessmentCatalog = assessmentCatalog;
         this.eligibilityService = eligibilityService;
+        this.entitlementAccessGate = entitlementAccessGate;
         this.runtimeConfigurationService = runtimeConfigurationService;
         this.sessionService = sessionService;
         this.metrics = metrics;
@@ -59,6 +65,10 @@ public class StartAssessmentService {
         AssessmentDefinitionCatalog.ScheduleView schedule = eligibilityService.requireOpenSchedule(scheduleId);
         AssessmentDefinitionCatalog.PublishedAssessmentVersion version = assessmentCatalog
                 .requirePublishedVersion(schedule.assessmentVersionId());
+
+        // The paid-content gate (P5 §19 "User has required access"; ADR-0026). It runs after schedule
+        // validation and before the attempt transition, so a denied start mutates no attempt state.
+        entitlementAccessGate.assertAccess(userId, version.assessmentId(), schedule.mode(), Instant.now());
 
         List<StudentAttempt> candidates = eligibilityService.attemptsFor(scheduleId, userId);
         if (candidates.isEmpty()) {

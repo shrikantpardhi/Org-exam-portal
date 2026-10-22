@@ -115,6 +115,15 @@ app:
       batch-size: ${DELIVERY_EXPIRY_WORKER_BATCH_SIZE:50}
       interval: ${DELIVERY_EXPIRY_WORKER_INTERVAL:PT30S}
       initial-delay: ${DELIVERY_EXPIRY_WORKER_INITIAL_DELAY:PT20S}
+    # Session expiry worker: expires stale assessment sessions (specs/14-P5-Delivery-V1.5.md §90).
+    session-expiry-worker:
+      batch-size: ${DELIVERY_SESSION_EXPIRY_WORKER_BATCH_SIZE:50}
+      interval: ${DELIVERY_SESSION_EXPIRY_WORKER_INTERVAL:PT60S}
+      initial-delay: ${DELIVERY_SESSION_EXPIRY_WORKER_INITIAL_DELAY:PT30S}
+    session:
+      # A session with no recorded runtime activity for this long is stale. Runtime activity is
+      # recorded on every autosave, so only an abandoned connection goes quiet for this long.
+      idle-timeout: ${DELIVERY_SESSION_IDLE_TIMEOUT:PT2H}
 
   evaluation:
     # Scorecard artifacts are written outside the scoring transaction (§84, §61).

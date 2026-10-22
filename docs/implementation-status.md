@@ -134,7 +134,7 @@ P4 Blueprint and Assessment Management:
 | P4-05 | Typed Blueprint configuration model + parser | Completed |
 | P4-06 | Blueprint validation | Completed |
 | P4-07 | Blueprint publication (immutable after) | Completed |
-| P4-08 | Assessment logical CRUD + filters | Completed (examId filter unsupported — GAP-041) |
+| P4-08 | Assessment logical CRUD + filters | Completed — the `examId` filter resolves through the selection-rule provenance (ADR-0027, GAP-041 closed) |
 | P4-09 | AssessmentVersion (blueprint ref, engine type, delivery policy) | Completed |
 | P4-10 | AssessmentQuestion CRUD (published QV only, section/scoring validation) | Completed |
 | P4-11 | AssessmentQuestion ordering | Completed |
@@ -168,8 +168,8 @@ P5 Assessment Delivery and Runtime Examination Engine:
 | P5-11 | Snapshot retry and stale reclaim | Completed |
 | P5-12 | Snapshot integrity checks before READY | Completed |
 | P5-13 | Start Exam (zero snapshot inserts, race-safe) | Completed |
-| P5-14 | Session create/activate | Completed |
-| P5-15 | Attempt read APIs | Completed |
+| P5-14 | Session create/activate | Completed — plus a scheduled derived-expiry sweep that moves stale ACTIVE sessions to EXPIRED (GAP-065 closed; `§90/§91`) |
+| P5-15 | Attempt read APIs | Completed — `GET /attempts/{id}` also honours the `DELIVERY_ATTEMPT_VIEW_ANY` permission as a widening of the self-scoped read (GAP-064 closed; `§83`) |
 | P5-16 | Question read APIs from the immutable snapshot | Completed |
 | P5-17 | Response validation and save with ETag | Completed |
 | P5-18 | Stale-write precondition handling (412) | Completed |
@@ -219,6 +219,8 @@ P6 Evaluation, Results, and Scorecards:
 | P6-27 | Scorecard load tests | Outstanding — no staging data (GAP-076) |
 | P6-28 | Pilot end-to-end | Partial — golden path covered by integration tests; pilot rehearsal outstanding |
 | P6-29 | P6 release evidence | Completed — `docs/testing/p6/README.md`, `docs/decisions/ADR-0019` |
+| P6-30 | Attempt completion contract (`delivery.api.AttemptCompletionContract`) | Completed — the attempt advances `SUBMITTED -> EVALUATED` with `total_score` after a successful evaluation, and the score follows a re-evaluation (GAP-073 closed) |
+| P6-31 | Results and scorecard UI (frontend) | Completed — `app/results`, `app/results/[id]`, `app/results/[id]/scorecard` and `app/attempts/[id]/result`; only the caller's own published, non-superseded result renders (GAP-128 closed) |
 
 P7 Pilot Operations, Scale Validation, and Live Pilot (evidence phase):
 
@@ -268,11 +270,11 @@ P8 Full Analytics and Insights:
 | P8-13 | Incremental refresh worker | Completed |
 | P8-14 | Full rebuild worker | Completed |
 | P8-15 | Data-quality checks and drift detection | Completed |
-| P8-16 | Student dashboard (frontend) | Partial — backend read model delivered; UI deferred (GAP-092) |
-| P8-17 | Assessment dashboard (frontend) | Partial — read model delivered; UI deferred (GAP-092) |
-| P8-18 | Question analytics UI | Partial — API delivered; UI deferred (GAP-092) |
-| P8-19 | Topic analytics UI | Partial — API delivered; UI deferred (GAP-092) |
-| P8-20 | Organization analytics UI | Partial — API delivered; UI deferred (GAP-092) |
+| P8-16 | Student dashboard (frontend) | Completed — `app/analytics/student` with metrics, score trend, topic performance and progress; empty state for no evaluated attempts (GAP-092 closed) |
+| P8-17 | Assessment dashboard (frontend) | Completed — `app/analytics/assessments/[id]` with summary, section analysis and question difficulty |
+| P8-18 | Question analytics UI | Completed — `app/analytics/questions/[id]` with outcome shares, difficulty index and response chart |
+| P8-19 | Topic analytics UI | Completed — `app/analytics/topics/[id]` with the sample-size guard |
+| P8-20 | Organization analytics UI | Completed — permission-gated `app/analytics/organization` |
 | P8-21 | Security tests | Completed |
 | P8-22 | Repository and integration tests | Completed |
 | P8-23 | API tests | Completed |
@@ -300,17 +302,18 @@ P9 Commerce and Access Management:
 | P9-11 | Payment initiation | Completed |
 | P9-12 | Payment callback with idempotency and amount verification | Completed |
 | P9-13 | AccessGrant (policy, merge, revocation) | Completed |
-| P9-14 | Assessment authorization integration | Partial — `EntitlementResolver` implemented; Delivery enforcement deferred (GAP-100) |
+| P9-14 | Assessment authorization integration | Completed — `EntitlementResolver.checkAssessmentAccess` implements the free-assessment rule (ADR-0026) and Delivery's Start Exam gates paid content (HTTP 403 `ACCESS_DENIED_PAID_CONTENT`); GAP-100 closed |
 | P9-15 | Refund with access revocation | Completed |
-| P9-16 | Finance workspace | Partial — API only; UI deferred (GAP-104) |
-| P9-17 | Student store | Partial — API only; UI deferred (GAP-104) |
+| P9-16 | Finance workspace | Completed — `app/finance/{purchases,payments,refunds,coupons,plans}`; the purchase/payment workspace looks up one purchase by id because no staff list endpoint is frozen (GAP-104 closed) |
+| P9-17 | Student store | Completed — `app/student/{store,packages,checkout,purchases,access}` with server-priced checkout and payment status polling (GAP-104 closed) |
 | P9-18 | Reconciliation | Partial — on-demand service; scheduled job deferred (GAP-101) |
 | P9-19 | Redis cache for catalog only | Deferred — catalog reads are served from PostgreSQL; caching is optional (§55) |
 | P9-20 | Observability (metrics) | Completed |
 | P9-21 | Security tests | Completed |
 | P9-22 | Concurrency tests | Partial — validation and locking implemented; callback/refund burst tests outstanding |
 | P9-23 | End-to-end test | Completed |
-| P9-24 | Production readiness | Partial — provider adapter, rate limiting and UI outstanding (GAP-099/104/105) |
+| P9-24 | Production readiness | Partial — provider adapter and rate limiting outstanding (GAP-099/105); the UI is delivered (GAP-104 closed) |
+| P9-25 | Commerce UI (frontend) | Completed — reusable commerce components, staff access-grant workspace and admin package/reconciliation screen |
 
 P10 Communication and Notification:
 
@@ -321,10 +324,10 @@ P10 Communication and Notification:
 | P10-03 | Notification list API (paged, status filter, self-scoped) | Completed |
 | P10-04 | Mark notification read (idempotent) | Completed |
 | P10-05 | Mark all read (scoped to the caller) | Completed |
-| P10-06 | Notification center frontend | Partial — API only (GAP-109) |
+| P10-06 | Notification center frontend | Completed — bell, unread badge, popover, filters, list and optimistic mark-read/mark-all-read (GAP-109 closed) |
 | P10-07 | EmailTemplate entity, repository, service | Completed |
 | P10-08 | EmailTemplate CRUD APIs | Completed |
-| P10-09 | EmailTemplate admin UI | Partial — API only (GAP-109) |
+| P10-09 | EmailTemplate admin UI | Completed — list, create, edit, preview and archive (GAP-109 closed) |
 | P10-10 | Template rendering contract (pure `{{variable}}` replacement) | Completed |
 | P10-11 | EmailGateway abstraction | Completed |
 | P10-12 | Fake email provider (with failure injection) | Completed |
@@ -333,7 +336,7 @@ P10 Communication and Notification:
 | P10-15 | Announcement entity, repository, service | Completed |
 | P10-16 | Announcement CRUD APIs | Completed |
 | P10-17 | Announcement publish action (asynchronous fan-out job) | Completed |
-| P10-18 | Announcement UI | Partial — API only (GAP-109) |
+| P10-18 | Announcement UI | Completed — student visibility view plus admin list/create/edit/publish/archive (GAP-109 closed) |
 | P10-19 | Event-to-Communication handlers | Completed |
 | P10-20 | Commerce integrations (payment success/failure/refund, access granted) | Completed |
 | P10-21 | Result and Assessment integrations | Completed |
@@ -369,7 +372,8 @@ P11 Full Administration:
 | P11-19 | System health | Completed — eight components, parallel bounded checks (GAP-124) |
 | P11-20 | Security hardening | Completed — explicit permissions, no god mode, gating tests |
 | P11-21 | Mixed workload | Not started — no staging environment (GAP-083) |
-| P11-22 | End-to-end and release | Not started — imports/bulk/frontend outstanding |
+| P11-22 | End-to-end and release | Partial — imports and bulk outstanding; the administration frontend is delivered (GAP-123 closed) |
+| P11-23 | Administration UI (frontend) | Completed — permission-driven navigation, ten admin screens, reusable table/dialog/audit components, allow-listed server sorting (`20-P11 §65`), audit explorer, settings/rules/lookups and system health |
 
 P12 Production Hardening and Production Readiness:
 
@@ -456,10 +460,8 @@ P13 Broader Reporting and Operational Reporting:
 - P5: the pilot candidate population is the STUDENT-role operational set pending Commerce/AccessGrant
   (GAP-057); section-wise timers await a schema amendment (GAP-060); `background_job` is created
   ahead of Infrastructure (GAP-055).
-- P6: the asynchronous evaluation handoff requires an explicit answer key that the P5 submit handoff
-  does not carry (GAP-071); multi-correct `MULTIPLE_CHOICE` answers are not representable in the
-  frozen `answer_key_detail` (GAP-072); the attempt is not advanced to `EVALUATED` and
-  `student_attempt.total_score` stays null (GAP-073); the maximum-score check is not enforced as a
+- P6: multi-correct `MULTIPLE_CHOICE` answers are now representable and evaluable
+  via `answer_key_detail_option` (ADR-0025, V26, GAP-072 closed); the maximum-score check is not enforced as a
   gate (GAP-078); per-question outcomes are not persisted or exposed (GAP-079); evaluation caching
   and a database-ordered rank projection are deferred (GAP-081, GAP-082).
 - P7: the staged scale runs (ramp, bursts, soak, spike, failure injection, monitoring, backup and
@@ -485,18 +487,22 @@ P13 Broader Reporting and Operational Reporting:
   endpoints); imports and bulk operations are not implemented (GAP-119, GAP-120); only the USER and
   AUDIT_LOG search handlers are backed (GAP-118); support exposes the masked user view and ad-hoc
   notification only (GAP-121); the dashboard sources five cards (GAP-122); the administration
-  frontend is deferred (GAP-123); audit immutability is application-level (GAP-117); optional health
+  frontend is delivered (GAP-123 closed); audit immutability is application-level (GAP-117); optional health
   components report UNKNOWN so an unconfigured deployment is DEGRADED by design (GAP-124). GAP-001
   (durable audit) is closed.
 
 ## Latest verified result
 
-- **Backend:** 337 tests, 0 failures, 0 errors, 0 skipped — `BUILD SUCCESS`
+- **Backend:** 388 tests, 0 failures, 0 errors, 0 skipped — `BUILD SUCCESS`
   (`mvnw.cmd test`, `JAVA_HOME=C:\java\jdk-25.0.4.1`, compiled with `--release 21`).
-- **Frontend:** lint clean, 18 test files / 56 tests passing, `next build` succeeds.
-- **Schema:** 25 Flyway migrations `V1`–`V25` apply cleanly with no numbering gaps. P13 adds a
-  permission seed only, and P5 hardening adds one configuration seed only — **no reporting table and
-  no new column**.
+- **Frontend:** lint clean, 42 test files / 157 tests passing, `next build` succeeds and emits the analytics routes (`/analytics`, `/analytics/student`, `/analytics/organization`, `/analytics/assessments/[id]`, `/analytics/questions/[id]`, `/analytics/topics/[id]`) and the results routes (`/results`, `/results/[id]`, `/results/[id]/scorecard`, `/attempts/[id]/result`) and the commerce routes (`/student/store`, `/student/packages/[id]`, `/student/checkout`, `/student/purchases`, `/student/purchases/[id]`, `/student/access`, `/finance/{purchases,payments,refunds,coupons,plans}`, `/staff/access-grants`, `/admin/commerce`) and the communication routes (`/student/notifications`, `/student/announcements`, `/admin/communication`, `/admin/communication/templates`, `/admin/communication/templates/[id]`, `/admin/communication/templates/[id]/preview`, `/admin/communication/announcements`, `/admin/communication/announcements/[id]`) and the administration routes (`/admin`, `/admin/{dashboard,users,students,roles,permissions,settings,business-rules,lookups,audit,system-health}`).
+- **Schema:** 26 Flyway migrations `V1`–`V26` apply cleanly with no numbering gaps. P13 adds a
+  permission seed only, P5 hardening adds one configuration seed only, and P6 adds the
+  `answer_key_detail_option` child table (ADR-0025, GAP-072) — **no reporting table and no new
+  column**. The attempt completion contract (GAP-073) added no table, no column, and no endpoint.
+  The paid-content entitlement gate (GAP-100, ADR-0026) added no table, no column, no migration and
+  no endpoint either: the free-assessment rule is derived from the existing package→collection→
+  assessment mapping.
 - **Container stack (GAP-007 — closed 2026-10-19):** the full stack runs and
   `scripts/verify-stack.sh` passes 15/15 assertions (every service healthy, the backend reachable
   through the Nginx edge with its database check UP, PgBouncer confirmed in the backend's path, the
@@ -543,6 +549,9 @@ P13 Broader Reporting and Operational Reporting:
 - The consolidated register of open gaps, deferred items, and by-design limitations for P0 to P13
   is [`docs/known-gaps.md`](known-gaps.md) (152 tracked items). GAP-001 is closed by P11; **GAP-062
   (attempt deadline enforcement and expiry auto-submit) is closed** by the P5 hardening change;
+  **GAP-073 (attempt completion state) is closed** by the Delivery-owned attempt completion
+  contract, which advances the attempt to `EVALUATED` with `total_score` after a successful
+  evaluation;
   GAP-126/127 were raised and closed by the re-verification; **GAP-131** (backup/restore) and
   **GAP-132** (rollback) are closed by the 2026-10-19 rehearsal; **GAP-007/009/087/134** were
   verified against the running stack on 2026-10-19; **GAP-130** (no performance evidence) remains

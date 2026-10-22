@@ -6,9 +6,11 @@ import com.company.exam.common.exception.NotFoundException;
 import com.company.exam.evaluation.dto.EvaluationDtos;
 import com.company.exam.evaluation.entity.AnswerKey;
 import com.company.exam.evaluation.entity.AnswerKeyDetail;
+import com.company.exam.evaluation.entity.AnswerKeyDetailOption;
 import com.company.exam.evaluation.entity.QuestionOutcome;
 import com.company.exam.evaluation.exception.AnswerKeyImmutableException;
 import com.company.exam.evaluation.mapper.EvaluationMapper;
+import com.company.exam.evaluation.repository.AnswerKeyDetailOptionRepository;
 import com.company.exam.evaluation.repository.AnswerKeyDetailRepository;
 import com.company.exam.evaluation.validation.AnswerKeyValidator;
 import java.util.List;
@@ -27,14 +29,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class AnswerKeyDetailService {
 
     private final AnswerKeyDetailRepository detailRepository;
+    private final AnswerKeyDetailOptionRepository optionRepository;
     private final AnswerKeyService answerKeyService;
     private final AnswerKeyValidator validator;
     private final EvaluationMapper mapper;
     private final SecurityEventLogger audit;
 
-    public AnswerKeyDetailService(AnswerKeyDetailRepository detailRepository, AnswerKeyService answerKeyService,
+    public AnswerKeyDetailService(AnswerKeyDetailRepository detailRepository,
+            AnswerKeyDetailOptionRepository optionRepository, AnswerKeyService answerKeyService,
             AnswerKeyValidator validator, EvaluationMapper mapper, SecurityEventLogger audit) {
         this.detailRepository = detailRepository;
+        this.optionRepository = optionRepository;
         this.answerKeyService = answerKeyService;
         this.validator = validator;
         this.mapper = mapper;
@@ -44,7 +49,14 @@ public class AnswerKeyDetailService {
     @Transactional(readOnly = true)
     public List<EvaluationDtos.AnswerKeyDetailResponse> list(UUID answerKeyId) {
         answerKeyService.require(answerKeyId);
-        return detailRepository.findByAnswerKeyId(answerKeyId).stream().map(mapper::toResponse).toList();
+        return detailRepository.findByAnswerKeyId(answerKeyId).stream()
+                .map(detail -> mapper.toResponse(detail, optionIds(detail.getId())))
+                .toList();
+    }
+
+    private List<UUID> optionIds(UUID detailId) {
+        return optionRepository.findByAnswerKeyDetailId(detailId).stream()
+                .map(AnswerKeyDetailOption::getQuestionOptionId).toList();
     }
 
     @Transactional
@@ -60,8 +72,9 @@ public class AnswerKeyDetailService {
         applyRequest(detail, request, outcome);
         try {
             AnswerKeyDetail saved = detailRepository.saveAndFlush(detail);
+            replaceOptions(saved.getId(), request.correctOptionIds());
             audit.audit(actorId, "CREATE", "AnswerKeyDetail", saved.getId(), "Created answer key detail");
-            return mapper.toResponse(saved);
+            return mapper.toResponse(saved, optionIds(saved.getId()));
         } catch (DataIntegrityViolationException duplicate) {
             throw new ConflictException("An answer key detail already exists for that question version");
         }
@@ -77,8 +90,9 @@ public class AnswerKeyDetailService {
         validator.validateMapping(request, outcome);
         applyRequest(detail, request, outcome);
         AnswerKeyDetail saved = detailRepository.saveAndFlush(detail);
+        replaceOptions(saved.getId(), request.correctOptionIds());
         audit.audit(actorId, "UPDATE", "AnswerKeyDetail", saved.getId(), "Updated answer key detail");
-        return mapper.toResponse(saved);
+        return mapper.toResponse(saved, optionIds(saved.getId()));
     }
 
     @Transactional
@@ -86,6 +100,7 @@ public class AnswerKeyDetailService {
         requireMutable(answerKeyId);
         AnswerKeyDetail detail = detailRepository.findByIdAndAnswerKeyId(detailId, answerKeyId)
                 .orElseThrow(() -> NotFoundException.of("Answer key detail", detailId));
+        optionRepository.deleteByAnswerKeyDetailId(detailId);
         detailRepository.delete(detail);
         audit.audit(actorId, "DELETE", "AnswerKeyDetail", detailId, "Deleted answer key detail");
     }
@@ -107,5 +122,18 @@ public class AnswerKeyDetailService {
         detail.setAwardedMarks(request.awardedMarks());
         detail.setAwardedNegativeMarks(request.awardedNegativeMarks());
         detail.setRemarks(request.remarks());
+    }
+
+    private void replaceOptions(UUID detailId, List<UUID> optionIds) {
+        optionRepository.deleteByAnswerKeyDetailId(detailId);
+        if (optionIds == null) {
+            return;
+        }
+        for (UUID optionId : optionIds) {
+            AnswerKeyDetailOption row = new AnswerKeyDetailOption();
+            row.setAnswerKeyDetailId(detailId);
+            row.setQuestionOptionId(optionId);
+            optionRepository.save(row);
+        }
     }
 }

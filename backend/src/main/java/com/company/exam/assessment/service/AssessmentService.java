@@ -7,13 +7,11 @@ import com.company.exam.assessment.mapper.AssessmentMapper;
 import com.company.exam.assessment.repository.AssessmentRepository;
 import com.company.exam.assessment.repository.AssessmentVersionRepository;
 import com.company.exam.assessment.validation.AssessmentTextNormalizer;
-import com.company.exam.common.api.ApiError;
 import com.company.exam.common.audit.SecurityEventLogger;
 import com.company.exam.common.enums.Status;
 import com.company.exam.common.exception.ConflictException;
 import com.company.exam.common.exception.InvalidStateException;
 import com.company.exam.common.exception.NotFoundException;
-import com.company.exam.common.exception.ValidationException;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
@@ -47,20 +45,22 @@ public class AssessmentService {
     }
 
     /**
-     * Lists logical assessments. Filters {@code status}, {@code search}, and {@code blueprintId} are
-     * supported. The contract also names {@code examId}, but the frozen schema has no path from an
-     * assessment to an exam (see {@code docs/known-gaps.md} GAP-041); a supplied {@code examId} is
-     * rejected with a clear error rather than silently ignored.
+     * Lists logical assessments. Filters {@code status}, {@code search}, {@code blueprintId} and
+     * {@code examId} are supported ({@code specs/13-P4-Assessment-V1.5.md §64, §95}).
+     *
+     * <p>{@code examId} is resolved through the selection-rule provenance: an assessment matches when
+     * one of its versions carries a selection rule scoped to that exam. The frozen {@code assessment}
+     * table has no exam column, so there is no other link to filter on; the rule is the scope the
+     * platform itself acts on when it materializes the question pool. The rule is recorded in
+     * ADR-0027.
      */
     @Transactional(readOnly = true)
     public Page<AssessmentDtos.AssessmentListItem> list(Status status, UUID blueprintId, UUID examId, String search,
             Pageable pageable) {
-        if (examId != null) {
-            throw new ValidationException("Validation failed",
-                    List.of(ApiError.of("examId", "UNSUPPORTED_FILTER",
-                            "The examId filter is not supported: the frozen schema has no assessment-to-exam path")));
-        }
-        return assessmentRepository.findAll(specification(status, blueprintId, search), pageable).map(mapper::toListItem);
+        List<UUID> examScopedIds = examId == null ? null
+                : assessmentRepository.findAssessmentIdsBySelectionRuleExamId(examId.toString());
+        return assessmentRepository.findAll(specification(status, blueprintId, examScopedIds, search), pageable)
+                .map(mapper::toListItem);
     }
 
     @Transactional(readOnly = true)
@@ -111,7 +111,8 @@ public class AssessmentService {
         return assessmentRepository.findById(id).orElseThrow(() -> NotFoundException.of("Assessment", id));
     }
 
-    private Specification<Assessment> specification(Status status, UUID blueprintId, String search) {
+    private Specification<Assessment> specification(Status status, UUID blueprintId, List<UUID> examScopedIds,
+            String search) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (status != null) {
@@ -132,6 +133,13 @@ public class AssessmentService {
                         cb.equal(blueprintVersion.get("blueprintId"), blueprintId),
                         cb.equal(version.get("assessmentId"), root.get("id")));
                 predicates.add(cb.exists(sub));
+            }
+            if (examScopedIds != null) {
+                // An exam that no assessment is authored against matches nothing: an empty id set is
+                // an empty result, never an error and never an unfiltered list.
+                predicates.add(examScopedIds.isEmpty()
+                        ? cb.disjunction()
+                        : root.get("id").in(examScopedIds));
             }
             return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(new Predicate[0]));
         };

@@ -6,6 +6,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -33,6 +34,7 @@ public final class EvaluationDtos {
     public record AnswerKeyDetailRequest(
             @NotNull UUID questionVersionId,
             UUID correctOptionId,
+            List<UUID> correctOptionIds,
             @Size(max = 10000) String correctAnswerText,
             @NotBlank String questionOutcome,
             @PositiveOrZero BigDecimal awardedMarks,
@@ -41,7 +43,7 @@ public final class EvaluationDtos {
     }
 
     public record AnswerKeyDetailResponse(UUID id, UUID answerKeyId, UUID questionVersionId, UUID correctOptionId,
-            String correctAnswerText, String questionOutcome, BigDecimal awardedMarks,
+            List<UUID> correctOptionIds, String correctAnswerText, String questionOutcome, BigDecimal awardedMarks,
             BigDecimal awardedNegativeMarks, String remarks) {
     }
 

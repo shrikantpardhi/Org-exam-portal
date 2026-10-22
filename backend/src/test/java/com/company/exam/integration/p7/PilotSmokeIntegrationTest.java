@@ -155,6 +155,13 @@ class PilotSmokeIntegrationTest extends AbstractEvaluationIntegrationTest {
             assertThat(responses).as("recovery returns the saved answers").hasSize(3);
         });
 
+        // ---- Publish the answer key before submission so the submit handoff can designate it (GAP-071) ----
+        String answerKeyId = createAnswerKey(versionId);
+        for (UUID questionVersionId : snapshotQuestionVersionIds(attemptByStudent.values().iterator().next())) {
+            addDetail(answerKeyId, questionVersionId, "NORMAL", correctOptionIdFor(questionVersionId), null, null);
+        }
+        publishAnswerKey(answerKeyId);
+
         // ---- PROFILE-04 Submission burst with duplicate submits (§30) ----
         Map<UUID, String> firstSubmittedOn = new ConcurrentHashMap<>();
         runConcurrently(USERS, index -> {
@@ -190,12 +197,6 @@ class PilotSmokeIntegrationTest extends AbstractEvaluationIntegrationTest {
         }
 
         // ---- Evaluation + publication, then reconcile counts (§52, §53, §96, §97) ----
-        String answerKeyId = createAnswerKey(versionId);
-        for (UUID questionVersionId : snapshotQuestionVersionIds(attemptByStudent.values().iterator().next())) {
-            addDetail(answerKeyId, questionVersionId, "NORMAL", correctOptionIdFor(questionVersionId), null, null);
-        }
-        publishAnswerKey(answerKeyId);
-
         int evaluated = 0;
         int published = 0;
         for (User student : students) {
@@ -215,8 +216,9 @@ class PilotSmokeIntegrationTest extends AbstractEvaluationIntegrationTest {
         }
 
         // Count reconciliation (§94): every started attempt was submitted, evaluated, and published.
+        // A completed attempt has advanced past SUBMITTED to EVALUATED (GAP-073).
         assertThat(count("select count(*) from student_attempt where assessment_schedule_id = ? "
-                + "and attempt_status = 'SUBMITTED'", schedule)).isEqualTo(submitted);
+                + "and attempt_status in ('SUBMITTED', 'EVALUATED')", schedule)).isEqualTo(submitted);
         assertThat(evaluated).isEqualTo(USERS);
         assertThat(published).isEqualTo(USERS);
 

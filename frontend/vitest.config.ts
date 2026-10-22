@@ -26,6 +26,10 @@ export default defineConfig({
       NODE_ENV: "test",
     },
     setupFiles: ["./vitest.setup.ts"],
+    // jsdom + userEvent suites are CPU-heavy; running files in parallel on a busy host starves
+    // individual tests and turns unrelated suites flaky at the 5s default timeout. Sequential
+    // file execution keeps the suite deterministic and still runs every test.
+    fileParallelism: false,
     include: ["**/*.test.{ts,tsx}"],
     exclude: ["node_modules/**", ".next/**", "coverage/**"],
   },

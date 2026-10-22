@@ -1,0 +1,980 @@
+# Design-Theme.md — Colored Theme Specification
+
+**Project:** Smart Competitive Examination Platform
+**Version:** 1.5
+**Purpose:** The single theme reference for the AI implementation agent. Read this alongside `Design-Frontend.md`. Every color, every surface, every status has a documented token. Do not invent colors. Do not hard-code hex values in components. Every color decision on the platform flows from this file.
+
+---
+
+## 1. What this file governs
+
+This file defines:
+
+- The base color palette and design tokens
+- Light and dark mode
+- Semantic color mappings for status, state, and priority
+- Examination-specific state colors
+- Question palette colors
+- Accessibility and contrast requirements
+- The Tailwind configuration that produces these tokens
+- CSS variable structure
+- Component-to-color mapping
+- Anti-patterns
+
+It does not define typography, spacing, or radius. Those live in the base design system. This file is strictly about **color**.
+
+---
+
+## 2. The theme principles
+
+1. **Color carries meaning.** Every color that appears in the UI maps to a documented semantic role. A green badge does not mean "green" — it means "success" or "published" or "answered." A red badge does not mean "red" — it means "error" or "rejected" or "expired."
+2. **Contrast is non-negotiable.** Every foreground/background pairing meets WCAG 2.1 AA at minimum. Text on any surface is legible in both light and dark mode.
+3. **Dark mode is a first-class citizen.** It is designed, not tinted. Every token has both a light and a dark value.
+4. **No arbitrary colors in components.** Components use tokens. Tokens are the only path to color.
+5. **The examination runtime receives extra care.** The palette must be readable on cheap screens, at distance, under stress, in bad lighting. Contrast targets are higher than the platform minimum.
+6. **Semantic state is not decoration.** A status color that says "published" cannot be reused to say "in review" or "rejected." Each state has exactly one meaning.
+
+---
+
+## 3. The token architecture
+
+Three layers, always applied in order.
+
+```text
+Layer 1 — Base palette
+        Neutral and brand scales
+        (gray-50 through gray-950, brand-50 through brand-950)
+        |
+        v
+Layer 2 — Semantic tokens
+        Named by role
+        (surface, foreground, muted, primary, success, warning, error, info)
+        |
+        v
+Layer 3 — Component tokens
+        Named by component
+        (button-primary-bg, badge-success-fg, palette-answered-bg, ...)
+```
+
+Components reference only Layer 2 and Layer 3. They never reference Layer 1 directly.
+
+---
+
+## 4. Base palette — neutral scale
+
+One neutral scale, shared across light and dark. The scale values are the same; the semantic tokens map them differently.
+
+| Token | Hex (light) | Hex (dark) | Usage |
+|---|---|---|---|
+| `neutral-50` | `#f8fafc` | `#0a0f1a` | Deepest background |
+| `neutral-100` | `#f1f5f9` | `#0f172a` | Elevated background |
+| `neutral-200` | `#e2e8f0` | `#1e293b` | Dividers, borders |
+| `neutral-300` | `#cbd5e1` | `#334155` | Subtle borders |
+| `neutral-400` | `#94a3b8` | `#475569` | Disabled text |
+| `neutral-500` | `#64748b` | `#64748b` | Muted text |
+| `neutral-600` | `#475569` | `#94a3b8` | Secondary text |
+| `neutral-700` | `#334155` | `#cbd5e1` | Body text |
+| `neutral-800` | `#1e293b` | `#e2e8f0` | Strong body text |
+| `neutral-900` | `#0f172a` | `#f1f5f9` | Headings |
+| `neutral-950` | `#020617` | `#f8fafc` | Highest contrast text |
+
+The values are chosen so that contrast ratios remain above 4.5:1 for text pairings across both modes.
+
+---
+
+## 5. Base palette — brand scale
+
+The platform brand color is **Indigo**. It is calm, professional, and works for long study sessions.
+
+| Token | Hex |
+|---|---|
+| `brand-50` | `#eef2ff` |
+| `brand-100` | `#e0e7ff` |
+| `brand-200` | `#c7d2fe` |
+| `brand-300` | `#a5b4fc` |
+| `brand-400` | `#818cf8` |
+| `brand-500` | `#6366f1` |
+| `brand-600` | `#4f46e5` |
+| `brand-700` | `#4338ca` |
+| `brand-800` | `#3730a3` |
+| `brand-900` | `#312e81` |
+| `brand-950` | `#1e1b4b` |
+
+Brand colors are used for:
+
+- Primary actions (buttons, links, focus rings)
+- Active navigation
+- Selected states in lists and forms
+- Progress indicators
+- Brand identity (logo, header accent)
+
+---
+
+## 6. Base palette — status scales
+
+Each status has a full scale from 50 to 950. The scales are chosen to be accessible on both light and dark modes.
+
+### 6.1 Success (green)
+
+| Token | Hex |
+|---|---|
+| `success-50` | `#ecfdf5` |
+| `success-100` | `#d1fae5` |
+| `success-200` | `#a7f3d0` |
+| `success-300` | `#6ee7b7` |
+| `success-400` | `#34d399` |
+| `success-500` | `#10b981` |
+| `success-600` | `#059669` |
+| `success-700` | `#047857` |
+| `success-800` | `#065f46` |
+| `success-900` | `#064e3b` |
+| `success-950` | `#022c22` |
+
+### 6.2 Warning (amber)
+
+| Token | Hex |
+|---|---|
+| `warning-50` | `#fffbeb` |
+| `warning-100` | `#fef3c7` |
+| `warning-200` | `#fde68a` |
+| `warning-300` | `#fcd34d` |
+| `warning-400` | `#fbbf24` |
+| `warning-500` | `#f59e0b` |
+| `warning-600` | `#d97706` |
+| `warning-700` | `#b45309` |
+| `warning-800` | `#92400e` |
+| `warning-900` | `#78350f` |
+| `warning-950` | `#451a03` |
+
+### 6.3 Error (red)
+
+| Token | Hex |
+|---|---|
+| `error-50` | `#fef2f2` |
+| `error-100` | `#fee2e2` |
+| `error-200` | `#fecaca` |
+| `error-300` | `#fca5a5` |
+| `error-400` | `#f87171` |
+| `error-500` | `#ef4444` |
+| `error-600` | `#dc2626` |
+| `error-700` | `#b91c1c` |
+| `error-800` | `#991b1b` |
+| `error-900` | `#7f1d1d` |
+| `error-950` | `#450a0a` |
+
+### 6.4 Info (sky)
+
+| Token | Hex |
+|---|---|
+| `info-50` | `#f0f9ff` |
+| `info-100` | `#e0f2fe` |
+| `info-200` | `#bae6fd` |
+| `info-300` | `#7dd3fc` |
+| `info-400` | `#38bdf8` |
+| `info-500` | `#0ea5e9` |
+| `info-600` | `#0284c7` |
+| `info-700` | `#0369a1` |
+| `info-800` | `#075985` |
+| `info-900` | `#0c4a6e` |
+| `info-950` | `#082f49` |
+
+---
+
+## 7. Semantic tokens — light and dark mapping
+
+Semantic tokens are what components reference. Every token has a light and dark value. Dark mode is not a tint — it is a distinct set of surface, foreground, and border choices tuned for dark environments.
+
+### 7.1 Surface tokens
+
+| Token | Light | Dark | Usage |
+|---|---|---|---|
+| `bg-canvas` | `neutral-50` | `neutral-950` | Page background |
+| `bg-surface` | `#ffffff` | `neutral-900` | Cards, panels, modals |
+| `bg-surface-raised` | `neutral-50` | `neutral-800` | Elevated elements, dropdowns |
+| `bg-surface-sunken` | `neutral-100` | `neutral-950` | Inset areas, code blocks |
+| `bg-overlay` | `rgba(15, 23, 42, 0.5)` | `rgba(0, 0, 0, 0.7)` | Modal backdrop |
+
+### 7.2 Foreground tokens
+
+| Token | Light | Dark | Usage |
+|---|---|---|---|
+| `fg-default` | `neutral-900` | `neutral-50` | Body text |
+| `fg-strong` | `neutral-950` | `#ffffff` | Headings |
+| `fg-muted` | `neutral-600` | `neutral-400` | Secondary text |
+| `fg-subtle` | `neutral-500` | `neutral-500` | Tertiary text |
+| `fg-disabled` | `neutral-400` | `neutral-600` | Disabled text |
+| `fg-on-primary` | `#ffffff` | `#ffffff` | Text on brand surfaces |
+| `fg-on-success` | `#ffffff` | `#ffffff` | Text on success surfaces |
+| `fg-on-error` | `#ffffff` | `#ffffff` | Text on error surfaces |
+
+### 7.3 Border tokens
+
+| Token | Light | Dark | Usage |
+|---|---|---|---|
+| `border-default` | `neutral-200` | `neutral-800` | Standard dividers |
+| `border-strong` | `neutral-300` | `neutral-700` | Prominent dividers |
+| `border-subtle` | `neutral-100` | `neutral-800` | Subtle dividers |
+| `border-focus` | `brand-500` | `brand-400` | Focus ring |
+| `border-danger` | `error-500` | `error-400` | Error state border |
+
+### 7.4 Brand tokens
+
+| Token | Light | Dark | Usage |
+|---|---|---|---|
+| `brand-primary` | `brand-600` | `brand-500` | Primary buttons, links |
+| `brand-primary-hover` | `brand-700` | `brand-400` | Hover state |
+| `brand-primary-active` | `brand-800` | `brand-300` | Active state |
+| `brand-subtle-bg` | `brand-50` | `brand-950` | Brand accent background |
+| `brand-subtle-fg` | `brand-700` | `brand-300` | Text on brand-subtle-bg |
+
+### 7.5 Status tokens
+
+Each status has four variants: `bg`, `fg`, `border`, `subtle-bg`.
+
+| Status | Light bg | Light fg | Dark bg | Dark fg |
+|---|---|---|---|---|
+| `success-bg` | `success-600` | `#ffffff` | `success-500` | `#ffffff` |
+| `success-subtle-bg` | `success-50` | `success-700` | `success-950` | `success-300` |
+| `warning-bg` | `warning-500` | `#ffffff` | `warning-400` | `#000000` |
+| `warning-subtle-bg` | `warning-50` | `warning-700` | `warning-950` | `warning-300` |
+| `error-bg` | `error-600` | `#ffffff` | `error-500` | `#ffffff` |
+| `error-subtle-bg` | `error-50` | `error-700` | `error-950` | `error-300` |
+| `info-bg` | `info-600` | `#ffffff` | `info-500` | `#ffffff` |
+| `info-subtle-bg` | `info-50` | `info-700` | `info-950` | `info-300` |
+
+---
+
+## 8. Status color mapping
+
+Every status value across the platform maps to exactly one semantic color. No status reuses another status's color.
+
+### 8.1 Question lifecycle
+
+| Status | Color | Token |
+|---|---|---|
+| `DRAFT` | Neutral | `bg-surface-sunken`, `fg-muted` |
+| `IN_REVIEW` | Warning | `warning-subtle-bg`, `warning-700` |
+| `APPROVED` | Info | `info-subtle-bg`, `info-700` |
+| `REJECTED` | Error | `error-subtle-bg`, `error-700` |
+| `PUBLISHED` | Success | `success-subtle-bg`, `success-700` |
+
+### 8.2 StudentAttempt lifecycle
+
+| Status | Color | Token |
+|---|---|---|
+| `NOT_STARTED` | Neutral | `bg-surface-sunken` |
+| `IN_PROGRESS` | Brand | `brand-subtle-bg` |
+| `SUBMITTED` | Info | `info-subtle-bg` |
+| `EVALUATED` | Success | `success-subtle-bg` |
+
+### 8.3 Snapshot status
+
+| Status | Color | Token |
+|---|---|---|
+| `PENDING` | Neutral | `bg-surface-sunken` |
+| `PREPARING` | Warning | `warning-subtle-bg` |
+| `READY` | Success | `success-subtle-bg` |
+| `FAILED` | Error | `error-subtle-bg` |
+
+### 8.4 Result status
+
+| Status | Color | Token |
+|---|---|---|
+| `CALCULATED` | Info | `info-subtle-bg` |
+| `READY_FOR_PUBLICATION` | Warning | `warning-subtle-bg` |
+| `PUBLISHED` | Success | `success-subtle-bg` |
+| `SUPERSEDED` | Neutral | `bg-surface-sunken`, `fg-muted` |
+
+### 8.5 Evaluation status
+
+| Status | Color | Token |
+|---|---|---|
+| `PENDING` | Neutral | `bg-surface-sunken` |
+| `IN_PROGRESS` | Brand | `brand-subtle-bg` |
+| `COMPLETED` | Success | `success-subtle-bg` |
+| `FAILED` | Error | `error-subtle-bg` |
+| `SUPERSEDED` | Neutral | `bg-surface-sunken` |
+
+### 8.6 Payment status
+
+| Status | Color | Token |
+|---|---|---|
+| `PENDING` | Warning | `warning-subtle-bg` |
+| `SUCCESS` | Success | `success-subtle-bg` |
+| `FAILED` | Error | `error-subtle-bg` |
+| `REFUNDED` | Info | `info-subtle-bg` |
+
+### 8.7 Generic lifecycle (all entities with ACTIVE/INACTIVE/ARCHIVED)
+
+| Status | Color | Token |
+|---|---|---|
+| `ACTIVE` | Success | `success-subtle-bg` |
+| `INACTIVE` | Warning | `warning-subtle-bg` |
+| `ARCHIVED` | Neutral | `bg-surface-sunken`, `fg-muted` |
+
+### 8.8 Notification status
+
+| Status | Color | Token |
+|---|---|---|
+| `UNREAD` | Brand | `brand-subtle-bg`, `brand-700` |
+| `READ` | Neutral | `bg-surface`, `fg-muted` |
+
+### 8.9 BackgroundJob status
+
+| Status | Color | Token |
+|---|---|---|
+| `QUEUED` | Neutral | `bg-surface-sunken` |
+| `RUNNING` | Brand | `brand-subtle-bg` |
+| `COMPLETED` | Success | `success-subtle-bg` |
+| `COMPLETED_WITH_ERRORS` | Warning | `warning-subtle-bg` |
+| `FAILED` | Error | `error-subtle-bg` |
+| `CANCELLED` | Neutral | `bg-surface-sunken`, `fg-muted` |
+
+### 8.10 System health
+
+| Status | Color | Token |
+|---|---|---|
+| `HEALTHY` | Success | `success-subtle-bg` |
+| `DEGRADED` | Warning | `warning-subtle-bg` |
+| `UNAVAILABLE` | Error | `error-subtle-bg` |
+| `UNKNOWN` | Neutral | `bg-surface-sunken`, `fg-muted` |
+
+---
+
+## 9. Question palette colors
+
+The palette is the most color-critical UI on the platform. Students must be able to read every state at a glance during a high-stress exam. Contrast targets are higher than platform minimum.
+
+| Palette state | Light bg | Light fg | Dark bg | Dark fg |
+|---|---|---|---|---|
+| `NOT_VISITED` | `#ffffff` | `neutral-700` | `neutral-800` | `neutral-300` |
+| `VISITED_NOT_ANSWERED` | `#fef3c7` | `#78350f` | `#78350f` | `#fde68a` |
+| `ANSWERED` | `#d1fae5` | `#065f46` | `#065f46` | `#a7f3d0` |
+| `MARKED_FOR_REVIEW` | `#e0e7ff` | `#3730a3` | `#312e81` | `#c7d2fe` |
+| `ANSWERED_AND_MARKED` | `#a7f3d0` | `#065f46` | `#047857` | `#d1fae5` |
+| `LOCKED` | `#e2e8f0` | `#64748b` | `#334155` | `#64748b` |
+
+Additional palette border colors:
+
+| Palette state | Border |
+|---|---|
+| `NOT_VISITED` | `neutral-200` / `neutral-700` |
+| `VISITED_NOT_ANSWERED` | `warning-400` / `warning-600` |
+| `ANSWERED` | `success-400` / `success-600` |
+| `MARKED_FOR_REVIEW` | `brand-400` / `brand-500` |
+| `ANSWERED_AND_MARKED` | `success-600` / `success-400` |
+| `LOCKED` | `neutral-300` / `neutral-700` |
+
+The palette must use **at least 3:1 contrast** for icon/border distinctions and **4.5:1** for text.
+
+---
+
+## 10. Timer colors
+
+The timer's color reflects urgency. Never use color as the only signal — pair it with a text label or icon.
+
+| Remaining time | Color | Token |
+|---|---|---|
+| Greater than 25% remaining | Neutral | `fg-default` |
+| Between 10% and 25% | Warning | `warning-600` |
+| Less than 10% | Error | `error-600` |
+| Expired | Error | `error-700` |
+| Auto-submitted | Neutral | `fg-muted` |
+
+In addition to color, the timer shows a textual warning ("Last 5 minutes", "Last 1 minute", "Time up") when applicable.
+
+---
+
+## 11. Save status colors
+
+The save indicator shows three states. Each has a color and an icon.
+
+| State | Color | Token | Icon |
+|---|---|---|---|
+| `saved` | Success | `success-600` | check |
+| `saving` | Neutral | `fg-muted` | spinner |
+| `failed` | Error | `error-600` | alert |
+| `retrying` | Warning | `warning-600` | refresh |
+
+---
+
+## 12. Session recovery colors
+
+| State | Color | Token |
+|---|---|---|
+| `RECOVERING` | Info | `info-600` |
+| `OFFLINE` | Warning | `warning-600` |
+| `RECONNECTED` | Success | `success-600` |
+| `FAILED` | Error | `error-600` |
+
+---
+
+## 13. Dark mode design rules
+
+Dark mode is not a tinted light mode. It is designed separately.
+
+Rules:
+
+1. **Never pure black.** The canvas is `neutral-950`, not `#000000`. Pure black is harsh and causes eye strain.
+2. **Never pure white text.** The strongest foreground is `#f8fafc`, not `#ffffff`. Pure white on dark backgrounds causes halation.
+3. **Reduce saturation of bright colors.** Status backgrounds that are bright in light mode are quieter in dark mode. The warning amber is `warning-400` rather than `warning-500`.
+4. **Elevate with lighter surfaces.** In dark mode, "raised" surfaces are lighter, not darker. A modal sits at `neutral-800` on a `neutral-950` canvas.
+5. **Soften borders.** Dividers use `neutral-800`, not `neutral-600`. Borders should be visible but not loud.
+6. **Test on real screens.** Dark mode looks different on OLED (true black) vs IPS (grey blacks). Verify against both.
+
+---
+
+## 14. Accessibility requirements
+
+Every color pairing meets WCAG 2.1 AA at minimum. The following pairs meet **AAA (7:1)** where the design allows.
+
+### 14.1 Contrast targets
+
+| Text type | Minimum ratio | Preferred |
+|---|---|---|
+| Body text | 4.5:1 | 7:1 |
+| Large text (18pt+) | 3:1 | 4.5:1 |
+| UI components | 3:1 | 4.5:1 |
+| Graphical elements | 3:1 | 4.5:1 |
+| Examination runtime | 7:1 | 10:1 |
+
+The examination runtime is held to the highest standard because students use it under stress.
+
+### 14.2 Non-color indicators
+
+Color is never the only signal for a state. Every color indicator is paired with:
+
+- A text label
+- An icon
+- A pattern (for charts)
+- A numeric value
+
+Example: a status badge shows "Published" in a green pill — the word "Published" is the signal, the green reinforces it.
+
+Example: a chart uses color plus distinct line styles (solid, dashed, dotted) to distinguish series.
+
+### 14.3 Focus indicators
+
+Every focusable element shows a focus ring:
+
+- **Light mode:** 2px outline, `brand-500`, 2px offset
+- **Dark mode:** 2px outline, `brand-400`, 2px offset
+
+The focus ring is never removed. `outline: none` is forbidden.
+
+---
+
+## 15. Tailwind configuration
+
+The Tailwind config exposes the tokens as utility classes.
+
+```ts
+// tailwind.config.ts
+import type { Config } from 'tailwindcss';
+
+const config: Config = {
+  darkMode: 'class',
+  content: [
+    './app/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+    './features/**/*.{ts,tsx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        // Base scales
+        neutral: {
+          50:  '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          800: '#1e293b',
+          900: '#0f172a',
+          950: '#020617',
+        },
+        brand: {
+          50:  '#eef2ff',
+          100: '#e0e7ff',
+          200: '#c7d2fe',
+          300: '#a5b4fc',
+          400: '#818cf8',
+          500: '#6366f1',
+          600: '#4f46e5',
+          700: '#4338ca',
+          800: '#3730a3',
+          900: '#312e81',
+          950: '#1e1b4b',
+        },
+        success: {
+          50:  '#ecfdf5',
+          100: '#d1fae5',
+          200: '#a7f3d0',
+          300: '#6ee7b7',
+          400: '#34d399',
+          500: '#10b981',
+          600: '#059669',
+          700: '#047857',
+          800: '#065f46',
+          900: '#064e3b',
+          950: '#022c22',
+        },
+        warning: {
+          50:  '#fffbeb',
+          100: '#fef3c7',
+          200: '#fde68a',
+          300: '#fcd34d',
+          400: '#fbbf24',
+          500: '#f59e0b',
+          600: '#d97706',
+          700: '#b45309',
+          800: '#92400e',
+          900: '#78350f',
+          950: '#451a03',
+        },
+        error: {
+          50:  '#fef2f2',
+          100: '#fee2e2',
+          200: '#fecaca',
+          300: '#fca5a5',
+          400: '#f87171',
+          500: '#ef4444',
+          600: '#dc2626',
+          700: '#b91c1c',
+          800: '#991b1b',
+          900: '#7f1d1d',
+          950: '#450a0a',
+        },
+        info: {
+          50:  '#f0f9ff',
+          100: '#e0f2fe',
+          200: '#bae6fd',
+          300: '#7dd3fc',
+          400: '#38bdf8',
+          500: '#0ea5e9',
+          600: '#0284c7',
+          700: '#0369a1',
+          800: '#075985',
+          900: '#0c4a6e',
+          950: '#082f49',
+        },
+      },
+      // Semantic tokens map to CSS variables set per-mode
+      backgroundColor: {
+        canvas: 'rgb(var(--bg-canvas) / <alpha-value>)',
+        surface: 'rgb(var(--bg-surface) / <alpha-value>)',
+        raised: 'rgb(var(--bg-surface-raised) / <alpha-value>)',
+        sunken: 'rgb(var(--bg-surface-sunken) / <alpha-value>)',
+        overlay: 'rgb(var(--bg-overlay) / <alpha-value>)',
+      },
+      textColor: {
+        default: 'rgb(var(--fg-default) / <alpha-value>)',
+        strong: 'rgb(var(--fg-strong) / <alpha-value>)',
+        muted: 'rgb(var(--fg-muted) / <alpha-value>)',
+        subtle: 'rgb(var(--fg-subtle) / <alpha-value>)',
+        disabled: 'rgb(var(--fg-disabled) / <alpha-value>)',
+      },
+      borderColor: {
+        default: 'rgb(var(--border-default) / <alpha-value>)',
+        strong: 'rgb(var(--border-strong) / <alpha-value>)',
+        subtle: 'rgb(var(--border-subtle) / <alpha-value>)',
+        focus: 'rgb(var(--border-focus) / <alpha-value>)',
+        danger: 'rgb(var(--border-danger) / <alpha-value>)',
+      },
+    },
+  },
+  plugins: [],
+};
+
+export default config;
+```
+
+---
+
+## 16. CSS variables
+
+The CSS variables are set on `:root` and `.dark`. Every component that uses a semantic token receives both values automatically.
+
+```css
+/* styles/globals.css */
+
+@layer base {
+  :root {
+    /* Canvas */
+    --bg-canvas: 248 250 252;              /* neutral-50 */
+    --bg-surface: 255 255 255;             /* white */
+    --bg-surface-raised: 248 250 252;      /* neutral-50 */
+    --bg-surface-sunken: 241 245 249;      /* neutral-100 */
+    --bg-overlay: 15 23 42;                /* neutral-900, use with 0.5 alpha */
+
+    /* Foreground */
+    --fg-default: 15 23 42;                /* neutral-900 */
+    --fg-strong: 2 6 23;                   /* neutral-950 */
+    --fg-muted: 71 85 105;                 /* neutral-600 */
+    --fg-subtle: 100 116 139;              /* neutral-500 */
+    --fg-disabled: 148 163 184;            /* neutral-400 */
+
+    /* Border */
+    --border-default: 226 232 240;         /* neutral-200 */
+    --border-strong: 203 213 225;          /* neutral-300 */
+    --border-subtle: 241 245 249;          /* neutral-100 */
+    --border-focus: 99 102 241;            /* brand-500 */
+    --border-danger: 239 68 68;            /* error-500 */
+
+    /* Brand */
+    --brand-primary: 79 70 229;            /* brand-600 */
+    --brand-primary-hover: 67 56 202;      /* brand-700 */
+    --brand-primary-active: 55 48 163;     /* brand-800 */
+    --brand-subtle-bg: 238 242 255;        /* brand-50 */
+    --brand-subtle-fg: 67 56 202;          /* brand-700 */
+  }
+
+  .dark {
+    /* Canvas */
+    --bg-canvas: 2 6 23;                   /* neutral-950 */
+    --bg-surface: 15 23 42;                /* neutral-900 */
+    --bg-surface-raised: 30 41 59;         /* neutral-800 */
+    --bg-surface-sunken: 2 6 23;           /* neutral-950 */
+    --bg-overlay: 0 0 0;                   /* black, use with 0.7 alpha */
+
+    /* Foreground */
+    --fg-default: 248 250 252;             /* neutral-50 */
+    --fg-strong: 255 255 255;              /* white */
+    --fg-muted: 148 163 184;               /* neutral-400 */
+    --fg-subtle: 100 116 139;              /* neutral-500 */
+    --fg-disabled: 71 85 105;              /* neutral-600 */
+
+    /* Border */
+    --border-default: 30 41 59;            /* neutral-800 */
+    --border-strong: 51 65 85;             /* neutral-700 */
+    --border-subtle: 30 41 59;             /* neutral-800 */
+    --border-focus: 129 140 248;           /* brand-400 */
+    --border-danger: 248 113 113;          /* error-400 */
+
+    /* Brand */
+    --brand-primary: 99 102 241;           /* brand-500 */
+    --brand-primary-hover: 129 140 248;    /* brand-400 */
+    --brand-primary-active: 165 180 252;   /* brand-300 */
+    --brand-subtle-bg: 30 27 75;           /* brand-950 */
+    --brand-subtle-fg: 165 180 252;        /* brand-300 */
+  }
+
+  body {
+    @apply bg-canvas text-default;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+}
+```
+
+Every component uses these variables indirectly through the Tailwind utilities (`bg-canvas`, `text-default`, `border-default`, etc.). No component references raw `neutral-*` or `brand-*` for surfaces. Base scales are used only for one-off accents where the semantic mapping does not apply (e.g., a gradient).
+
+---
+
+## 17. Component color mapping
+
+### 17.1 Buttons
+
+| Variant | Light | Dark |
+|---|---|---|
+| Primary | `bg-brand-600 text-white hover:bg-brand-700` | `bg-brand-500 text-white hover:bg-brand-400` |
+| Secondary | `bg-surface border border-default text-default` | `bg-surface-raised border border-strong text-default` |
+| Ghost | `bg-transparent text-default hover:bg-sunken` | `bg-transparent text-default hover:bg-raised` |
+| Destructive | `bg-error-600 text-white hover:bg-error-700` | `bg-error-500 text-white hover:bg-error-400` |
+| Disabled | `bg-sunken text-disabled cursor-not-allowed` | Same |
+
+### 17.2 Badges
+
+| Badge | Colors |
+|---|---|
+| `success` | `bg-success-subtle-bg text-success-subtle-fg` |
+| `warning` | `bg-warning-subtle-bg text-warning-subtle-fg` |
+| `error` | `bg-error-subtle-bg text-error-subtle-fg` |
+| `info` | `bg-info-subtle-bg text-info-subtle-fg` |
+| `neutral` | `bg-sunken text-muted` |
+
+### 17.3 Inputs
+
+| State | Colors |
+|---|---|
+| Default | `bg-surface border-default text-default` |
+| Focus | `border-focus ring-2 ring-focus/20` |
+| Error | `border-danger` |
+| Disabled | `bg-sunken text-disabled` |
+
+### 17.4 Cards
+
+| Element | Light | Dark |
+|---|---|---|
+| Card body | `bg-surface border border-default` | `bg-surface border border-default` |
+| Card header | `text-strong` | `text-strong` |
+| Card muted | `text-muted` | `text-muted` |
+| Hover (interactive) | `hover:bg-raised` | `hover:bg-raised` |
+
+### 17.5 Tables
+
+| Element | Light | Dark |
+|---|---|---|
+| Header | `bg-sunken text-strong font-medium` | `bg-sunken text-strong font-medium` |
+| Body row | `bg-surface text-default` | `bg-surface text-default` |
+| Alternating row | `bg-raised` | `bg-raised` |
+| Hover row | `bg-raised` | `bg-raised` |
+| Selected row | `bg-brand-subtle-bg text-brand-subtle-fg` | Same |
+
+### 17.6 Alerts
+
+| Variant | Light | Dark |
+|---|---|---|
+| Info | `bg-info-subtle-bg text-info-700 border border-info-200` | `bg-info-950 text-info-300 border border-info-800` |
+| Warning | `bg-warning-subtle-bg text-warning-700 border border-warning-200` | `bg-warning-950 text-warning-300 border border-warning-800` |
+| Error | `bg-error-subtle-bg text-error-700 border border-error-200` | `bg-error-950 text-error-300 border border-error-800` |
+| Success | `bg-success-subtle-bg text-success-700 border border-success-200` | `bg-success-950 text-success-300 border border-success-800` |
+
+### 17.7 Modals
+
+| Element | Light | Dark |
+|---|---|---|
+| Backdrop | `bg-overlay/50` | `bg-overlay/70` |
+| Dialog | `bg-surface border border-default shadow-xl` | `bg-surface border border-default shadow-2xl` |
+| Title | `text-strong` | `text-strong` |
+| Body | `text-default` | `text-default` |
+
+### 17.8 Sidebar and navigation
+
+| Element | Light | Dark |
+|---|---|---|
+| Sidebar background | `bg-surface border-r border-default` | `bg-surface border-r border-default` |
+| Item default | `text-muted` | `text-muted` |
+| Item hover | `bg-raised text-default` | `bg-raised text-default` |
+| Item active | `bg-brand-subtle-bg text-brand-subtle-fg` | Same |
+| Section header | `text-subtle text-xs uppercase tracking-wide` | Same |
+
+---
+
+## 18. Chart colors
+
+Charts use a dedicated, colorblind-safe categorical palette.
+
+| Series | Light | Dark |
+|---|---|---|
+| 1 | `#4f46e5` (indigo-600) | `#818cf8` (indigo-400) |
+| 2 | `#0ea5e9` (sky-500) | `#38bdf8` (sky-400) |
+| 3 | `#10b981` (emerald-500) | `#34d399` (emerald-400) |
+| 4 | `#f59e0b` (amber-500) | `#fbbf24` (amber-400) |
+| 5 | `#ef4444` (red-500) | `#f87171` (red-400) |
+| 6 | `#8b5cf6` (violet-500) | `#a78bfa` (violet-400) |
+| 7 | `#14b8a6` (teal-500) | `#2dd4bf` (teal-400) |
+| 8 | `#ec4899` (pink-500) | `#f472b6` (pink-400) |
+
+Every chart also uses line styles (solid, dashed, dotted) and marker shapes (circle, square, triangle) to distinguish series beyond color.
+
+---
+
+## 19. Empty state and skeleton colors
+
+| Element | Light | Dark |
+|---|---|---|
+| Skeleton pulse base | `bg-sunken` | `bg-sunken` |
+| Skeleton pulse highlight | `bg-raised` | `bg-raised` |
+| Empty state icon | `text-subtle` | `text-subtle` |
+| Empty state title | `text-strong` | `text-strong` |
+| Empty state text | `text-muted` | `text-muted` |
+
+---
+
+## 20. The theme switcher
+
+The theme switcher offers three modes:
+
+- **Light**
+- **Dark**
+- **System** (default — follows `prefers-color-scheme`)
+
+Persist the user's choice in `localStorage` under `theme-preference`. Apply the theme before first paint to avoid a flash of unstyled content.
+
+```tsx
+// app/layout.tsx — inline script to apply the theme before hydration
+const themeScript = `
+  (function() {
+    try {
+      var stored = localStorage.getItem('theme-preference');
+      var system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      var resolved = stored === 'light' || stored === 'dark' ? stored : system;
+      if (resolved === 'dark') document.documentElement.classList.add('dark');
+    } catch (e) {}
+  })();
+`;
+```
+
+The switcher itself is a three-way toggle in the header.
+
+---
+
+## 21. The examination runtime theme override
+
+The runtime uses the platform theme but applies stricter contrast rules.
+
+Rules:
+
+- **No subtle colors for state.** The runtime uses the `-600`/`-700` variants rather than the `-subtle-bg` variants for critical state (timer, save, palette).
+- **No animations that could distract.** State transitions are instant or fade only.
+- **No gradients.** Flat colors only.
+- **Larger touch targets.** Palette cells are at least 44x44 px.
+- **High-contrast focus rings.** 3px, not 2px.
+- **No dark mode until validated.** If the runtime is only validated in one mode at launch, only that mode is offered. Do not ship a runtime that "probably works" in dark mode.
+
+---
+
+## 22. Color anti-patterns
+
+**Hard-coded hex in a component.**
+
+```tsx
+// Wrong
+<div style={{ backgroundColor: '#4f46e5' }} />
+```
+
+```tsx
+// Right
+<div className="bg-brand-primary" />
+```
+
+**A status color used for decoration.**
+
+```tsx
+// Wrong — green here means "I like this section", not "success"
+<SectionHeader className="text-success-600">Physics</SectionHeader>
+```
+
+```tsx
+// Right
+<SectionHeader className="text-strong">Physics</SectionHeader>
+```
+
+**Color as the only signal.**
+
+```tsx
+// Wrong — a colorblind user sees nothing
+<span className="bg-success-500 w-2 h-2 rounded-full" />
+```
+
+```tsx
+// Right — icon and text
+<Badge variant="success">
+  <CheckIcon /> Published
+</Badge>
+```
+
+**Pure black or pure white.**
+
+```tsx
+// Wrong
+<div className="bg-black text-white" />
+```
+
+```tsx
+// Right
+<div className="bg-canvas text-default" />
+```
+
+**Removing the focus ring.**
+
+```tsx
+// Wrong
+<button className="outline-none" />
+```
+
+```tsx
+// Right — use focus-visible and a visible ring
+<button className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2" />
+```
+
+**Using a status palette for a non-status use.**
+
+```tsx
+// Wrong — amber means "warning", not "featured"
+<div className="bg-warning-100">Featured Question</div>
+```
+
+```tsx
+// Right — use brand for emphasis
+<div className="bg-brand-subtle-bg text-brand-subtle-fg">Featured Question</div>
+```
+
+**Mixing dark mode colors into light mode.**
+
+```tsx
+// Wrong — this class bypasses the theme system
+<div className="bg-neutral-900 text-neutral-50" />
+```
+
+```tsx
+// Right — token that resolves in both modes
+<div className="bg-surface text-default" />
+```
+
+---
+
+## 23. Testing the theme
+
+The theme must be verified in both modes at every review.
+
+Mandatory checks:
+
+- **Contrast:** A contrast checker confirms every foreground/background pairing meets WCAG AA. The examination runtime is checked against AAA.
+- **Visual regression:** Screenshots of every major surface in both modes are compared against baseline.
+- **Focus rings:** Every focusable element shows a visible ring in both modes.
+- **Charts:** Series remain distinguishable in both modes and for colorblind users.
+- **Palette:** All six palette states remain distinguishable in both modes.
+- **Timer:** All timer warning colors remain distinguishable in both modes.
+- **Empty and error states:** Every state renders correctly in both modes.
+- **Skeleton:** Loading states animate correctly in both modes.
+
+A theme bug is a release blocker when it affects the examination runtime.
+
+---
+
+## 24. Adding a new color
+
+If a new color is needed:
+
+1. **First ask: does an existing semantic token express this?** If yes, use it. Do not add a new color.
+2. **If a new semantic token is needed, add it to this file first.** Name it by role (`bg-warning-surface`, not `bg-amber-50`).
+3. **Define both light and dark values.**
+4. **Define contrast ratios against every surface it will appear on.**
+5. **Update the Tailwind config and CSS variables.**
+6. **Add tests.**
+7. **Only then use it in a component.**
+
+Adding a raw hex to a component file is a code review rejection.
+
+---
+
+## 25. The theme principles summary
+
+| Principle | Enforced by |
+|---|---|
+| Every color maps to a documented role | This file, code review |
+| Every token has a light and dark value | CSS variable layer |
+| Every foreground/background pair meets AA | Contrast test suite |
+| The examination runtime meets AAA | Runtime contrast tests |
+| Color is never the only signal | Accessibility tests |
+| No hard-coded hex in components | Lint rule, code review |
+| Dark mode is designed, not tinted | Design review |
+| Focus rings are always visible | Accessibility tests |
+| Charts are colorblind-safe | Chart palette |
+| Palette states are distinguishable in both modes | Palette contrast tests |
+
+---
+
+## 26. Status
+
+**Status:** FROZEN theme reference.
+
+**Owner:** Frontend Engineering.
+
+**Reviewed with:** `Design-Frontend.md`, `AGENTS.md`, `specs/06-Architecture-Freeze-V1.5.md`, `docs/known-gaps.md`.
+
+**Update rule:** This file changes only when a frozen theme decision changes. Adding a color requires an entry in this file before any component uses it.

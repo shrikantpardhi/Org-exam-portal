@@ -96,7 +96,7 @@ public class SubmissionService {
 
         StudentAttempt submitted = attemptRepository.findById(attemptId).orElseThrow();
         sessionService.endActiveForAttempt(attemptId, now);
-        evaluationHandoffService.enqueue(attemptId);
+        evaluationHandoffService.enqueue(attemptId, submitted.getAssessmentVersionId());
         metrics.attemptSubmitted();
         return new DeliveryDtos.SubmitResponse(submitted.getId(), AttemptStatus.SUBMITTED.name(),
                 submitted.getSubmittedOn());

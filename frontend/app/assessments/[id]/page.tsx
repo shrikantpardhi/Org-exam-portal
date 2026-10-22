@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 
+import { AnalyticsLink } from "@/components/analytics/analytics-link";
 import { AssessmentValidationPanel } from "@/features/assessment/components/assessment-validation-panel";
 import { useAssessment } from "@/features/assessment/hooks/use-assessment";
 
@@ -15,6 +16,7 @@ export default function AssessmentDetailPage() {
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-16">
       <h1 className="text-2xl font-semibold tracking-tight">{assessment.data?.name ?? "Assessment"}</h1>
       <p className="font-mono text-xs text-slate-500">{id}</p>
+      <AnalyticsLink href={`/analytics/assessments/${id}`} label="View assessment analytics" />
 
       {assessment.isPending ? <p role="status">Loading…</p> : null}
       {assessment.isError ? <p role="alert">The assessment could not be loaded.</p> : null}

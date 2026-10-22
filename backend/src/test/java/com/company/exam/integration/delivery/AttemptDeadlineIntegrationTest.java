@@ -101,6 +101,9 @@ class AttemptDeadlineIntegrationTest extends AbstractDeliveryIntegrationTest {
     void theExpirySweepSubmitsAStaleAttemptExactlyOnce() throws Exception {
         Attempt started = startAttempt("p13-expiry-sweep");
         backdateStart(started.attemptId());
+        // A published answer key lets the submit handoff designate the key (GAP-071); the single
+        // evaluation job below proves the handoff fired exactly once.
+        insertPublishedAnswerKeyForAttempt(started.attemptId());
 
         attemptExpiryService.sweep(50);
         Instant firstSubmittedOn = submittedOn(started.attemptId());
@@ -131,6 +134,9 @@ class AttemptDeadlineIntegrationTest extends AbstractDeliveryIntegrationTest {
     void aManualSubmitRacingTheExpiryProducesOneSubmission() throws Exception {
         Attempt started = startAttempt("p13-expiry-race");
         backdateStart(started.attemptId());
+        // A published answer key lets the submit handoff designate the key (GAP-071); the single
+        // evaluation job below proves exactly one handoff fired despite the manual/expiry race.
+        insertPublishedAnswerKeyForAttempt(started.attemptId());
 
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService pool = Executors.newFixedThreadPool(2);
@@ -208,5 +214,13 @@ class AttemptDeadlineIntegrationTest extends AbstractDeliveryIntegrationTest {
                 "select count(*) from background_job where job_type = 'EVALUATION' and reference_id = ?",
                 Long.class, attemptId);
         return count == null ? 0 : count;
+    }
+
+    /** Inserts one published answer key for the attempt's assessment version so submit can hand off (GAP-071). */
+    private void insertPublishedAnswerKeyForAttempt(UUID attemptId) {
+        UUID versionId = jdbcTemplate.queryForObject("select assessment_version_id from student_attempt where id = ?",
+                UUID.class, attemptId);
+        jdbcTemplate.update("insert into answer_key (id, assessment_version_id, version, status, is_published, "
+                + "created_on, updated_on) values (?, ?, 1, 'ACTIVE', true, now(), now())", UUID.randomUUID(), versionId);
     }
 }

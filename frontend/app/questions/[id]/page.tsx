@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+import { AnalyticsLink } from "@/components/analytics/analytics-link";
 import { ReviewActions } from "@/features/content/components/review-actions";
 import { useQuestion } from "@/features/content/hooks/use-content";
 
@@ -16,6 +17,7 @@ export default function QuestionDetailPage() {
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-16">
       <h1 className="text-2xl font-semibold tracking-tight">Question</h1>
       <p className="font-mono text-xs text-slate-500">{id}</p>
+      <AnalyticsLink href={`/analytics/questions/${id}`} label="View question analytics" />
 
       {question.isPending ? <p role="status">Loading…</p> : null}
       {question.isError ? <p role="alert">The question could not be loaded.</p> : null}

@@ -6,6 +6,7 @@ import com.company.exam.evaluation.entity.AnswerKeyDetail;
 import com.company.exam.evaluation.entity.Evaluation;
 import com.company.exam.evaluation.entity.Result;
 import com.company.exam.evaluation.entity.Scorecard;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -18,9 +19,10 @@ public class EvaluationMapper {
                 key.isPublished(), key.getPublishedBy(), key.getPublishedOn(), key.getCreatedOn(), key.getUpdatedOn());
     }
 
-    public EvaluationDtos.AnswerKeyDetailResponse toResponse(AnswerKeyDetail detail) {
+    public EvaluationDtos.AnswerKeyDetailResponse toResponse(AnswerKeyDetail detail, List<UUID> correctOptionIds) {
         return new EvaluationDtos.AnswerKeyDetailResponse(detail.getId(), detail.getAnswerKeyId(),
-                detail.getQuestionVersionId(), detail.getCorrectOptionId(), detail.getCorrectAnswerText(),
+                detail.getQuestionVersionId(), detail.getCorrectOptionId(), correctOptionIds,
+                detail.getCorrectAnswerText(),
                 detail.getQuestionOutcome() == null ? null : detail.getQuestionOutcome().name(),
                 detail.getAwardedMarks(), detail.getAwardedNegativeMarks(), detail.getRemarks());
     }

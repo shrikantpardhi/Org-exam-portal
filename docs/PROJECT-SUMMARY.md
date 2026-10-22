@@ -10,7 +10,7 @@ Detailed material lives elsewhere — this document points at it rather than rep
 |---|---|
 | [`docs/implementation-status.md`](implementation-status.md) | The per-task, per-phase status tables and the release decision |
 | [`docs/known-gaps.md`](known-gaps.md) | The register of every open gap, deferred item and by-design limitation |
-| [`docs/decisions/`](decisions/) | Architecture Decision Records (ADR-0001 … ADR-0024) |
+| [`docs/decisions/`](decisions/) | Architecture Decision Records (ADR-0001 … ADR-0027) |
 | [`docs/testing/`](testing/) | Per-phase testing notes and the P12 rehearsal evidence package |
 | [`docs/runbooks/`](runbooks/) | Operational runbooks (local setup, and others as they land) |
 | [`specs/`](../specs) | The frozen V1.5 specification package — the source of truth |
@@ -36,10 +36,10 @@ module reads another module's repository.
 | Dimension | Value |
 |---|---|
 | Phases implemented | P0 – P13 (P12 is a hardening/rehearsal phase) |
-| Flyway migrations | 25 (`V1` … `V25`), no gaps, no duplicated versions |
+| Flyway migrations | 26 (`V1` … `V26`), no gaps, no duplicated versions |
 | Controllers / endpoint mappings | 56 / 237 |
-| Backend tests | **337 passing, 0 failures** |
-| Frontend tests | 18 files / 56 tests passing; lint clean; production build succeeds |
+| Backend tests | **388 passing, 0 failures** |
+| Frontend tests | 43 files / 167 tests passing; lint clean; production build succeeds |
 | Tracked gaps | 152 (see `docs/known-gaps.md` for the register) |
 | Container stack | Full stack runs; `scripts/verify-stack.sh` passes 15/15 edge assertions |
 | Observability | Prometheus target UP, 9 alert rules load, 2 datasources + 3 dashboards provisioned, Loki ingesting |
@@ -53,14 +53,14 @@ module reads another module's repository.
 | P1 | Identity and security: sessions, RBAC, password reset | Complete |
 | P2 | Academic structure: exams, subjects, chapters, topics | Complete |
 | P3 | Content and question bank, authoring and review | Complete |
-| P4 | Blueprint and assessment management | Complete |
-| P5 | Assessment delivery and the runtime exam engine | Complete — **deadline enforcement and expiry auto-submit added 2026-10-20 (GAP-062 closed)** |
-| P6 | Evaluation, results and scorecards | Complete |
+| P4 | Blueprint and assessment management | Complete — **the assessment `examId` filter now works through the selection-rule provenance (GAP-041, 2026-10-22, ADR-0027)** |
+| P5 | Assessment delivery and the runtime exam engine | Complete — **deadline enforcement + auto-submit (GAP-062, 2026-10-20), submit-time answer-key handoff (GAP-071, 2026-10-21), the paid-content entitlement gate (GAP-100) and the session expiry sweep + staff attempt read (GAP-064/065, 2026-10-22) added** |
+| P6 | Evaluation, results and scorecards | Complete — **attempt completion contract added 2026-10-21 (GAP-073 closed); the results and scorecard UI is delivered (GAP-128, 2026-10-22)** |
 | P7 | Scale validation and live pilot | Tooling complete; **staged load evidence outstanding** (GAP-083/084) |
-| P8 | Analytics and insights | Complete; derived aggregates only, no time-series tables |
-| P9 | Commerce and access management | Complete; reference gateway only (GAP-099) |
-| P10 | Communication and notification | Complete; fake email provider only (GAP-108) |
-| P11 | Full administration | Complete; 4 of 22 report-family surfaces still partial |
+| P8 | Analytics and insights | Complete; derived aggregates only, no time-series tables — **the analytics dashboard frontend is delivered (GAP-092, 2026-10-22)** |
+| P9 | Commerce and access management | Complete; reference gateway only (GAP-099) — **the entitlement contract is now enforced by Delivery (GAP-100, 2026-10-22) and the commerce UI is delivered (GAP-104, 2026-10-22)** |
+| P10 | Communication and notification | Complete; fake email provider only (GAP-108) — **the communication UI is delivered (GAP-109, 2026-10-22)** |
+| P11 | Full administration | Complete; 4 of 22 report-family surfaces still partial — **the administration UI is delivered (GAP-123, 2026-10-22)** |
 | P12 | Production hardening and readiness | Rehearsal executed; **NO-GO** |
 | P13 | Broader and operational reporting | Framework complete; 4 of 22 report types backed (GAP-141) |
 
@@ -81,36 +81,401 @@ Gates that *were* closed by the 2026-10-19 rehearsal: **GAP-131** (logical backu
 integrity checks) and **GAP-132** (rollback, 12/12 checks). PITR is deliberately **not** claimed
 (`scripts/backup/pitr.md`).
 
-## 5. The most recent change — P5 deadline enforcement (GAP-062)
+## 5. The most recent change — attempt completion contract (GAP-073)
 
-**The problem.** The backend derived and returned the attempt deadline but never enforced it: a
-student whose time had run out could still save answers, and their attempt was only finalized if
-they pressed Submit.
+**The problem.** Evaluation persisted the official `Evaluation` and `Result` but never told
+Delivery, so the Delivery-owned `student_attempt.attempt_status` stayed `SUBMITTED` and
+`student_attempt.total_score` stayed null forever. P6 must not write Delivery state directly, so the
+completion had no path at all.
 
 **The change.**
-- `delivery/application/DeadlineEnforcementService` — the single authority for the deadline,
-  computed from `student_attempt.started_on` plus the effective duration resolved from the published
-  assessment version and the delivery policy (the same computation the client is given at Start
-  Exam, so the browser countdown and the server can never disagree).
-- `delivery/exception/AttemptExpiredException` — HTTP 409, code `ATTEMPT_EXPIRED`.
-- Enforcement wired into the response save, the attempt question and question-list reads, the
-  attempt summary (the navigation entry point) and session recovery.
-- `delivery/application/AttemptExpiryService` + `delivery/worker/AttemptExpiryWorker` — a bounded,
-  scheduled sweep that finalizes attempts whose deadline has passed.
-- `SubmissionService` now has **one** shared `finalize(...)` path. Manual submit and expiry both use
-  the same conditional `IN_PROGRESS → SUBMITTED` update, so only one of them can win: the loser sees
-  zero affected rows. Exactly one session end and one evaluation handoff result.
-- `V25__enable_auto_submit_on_expiry.sql` — sets `autoSubmitOnExpiry` on the `DEFAULT` delivery
-  policy. It is a JSONB configuration value on an existing row: **no table, no column, no endpoint.**
+- `delivery/api/AttemptCompletionContract` — a Delivery-owned contract exposing
+  `markEvaluated(attemptId, totalScore, evaluatedOn)`. Evaluation reports the completed attempt
+  through it and still touches no Delivery repository.
+- `delivery/service/AttemptCompletionService` — the implementation. It performs the
+  `SUBMITTED -> EVALUATED` transition as a **conditional** update (so the affected-row count is the
+  ownership signal), writes `total_score`, and emits an `EVALUATE` audit event through the shared
+  `SecurityEventLogger` boundary, which persists durably and transactionally. Repeating the call for
+  an attempt already `EVALUATED` with the same score is a no-op, so a retried evaluation is safe and
+  does not duplicate the audit event; any other state is rejected with `INVALID_STATE`.
+- `StudentAttemptRepository.markEvaluated` — the conditional bulk update, matching the pattern of
+  every other attempt transition.
+- `EvaluationService.evaluate` calls the contract at the end of the successful evaluation, after the
+  Evaluation and the Result are persisted, **inside the same transaction**.
+- `AttemptCompletionContract.refreshScore(attemptId, totalScore, evaluatedOn)` — the second
+  operation of the same contract, used by `ReEvaluationService`. A controlled re-evaluation
+  supersedes the previous Result and creates a new one with a new `obtained_marks` (`15-P6 §46,
+  §52, §56`), so the Delivery-owned `total_score` must follow the current official score. The
+  refresh is a conditional update on an `EVALUATED` attempt, is idempotent for the same score, and
+  emits its own audit event. Without it, `total_score` kept the superseded score while the current
+  Result carried a different one.
+- Two frozen-behaviour adjustments the completion forced, both required to keep P6's own rules true:
+  the evaluate-once check now precedes the `SUBMITTED` precondition (`15-P6 §44, §45`: a repeated
+  request is routed to the existing evaluation, and a completed attempt is no longer `SUBMITTED`),
+  and re-evaluation accepts an `EVALUATED` attempt (`§46, §52`: a corrected key re-evaluates
+  attempts that were already evaluated).
+- **No table, no column, no endpoint was added.**
 
-**Verification.** `AttemptDeadlineIntegrationTest` — 8 tests: post-deadline save / question load /
-recovery each rejected with 409 `ATTEMPT_EXPIRED`; pre-deadline save and question load unaffected; the
-sweep submits a stale attempt exactly once (a second sweep leaves the timestamp unchanged and the
-evaluation count at one); the sweep leaves an attempt inside its deadline alone; and a manual submit
-racing the expiry yields one `SUBMITTED` state and one evaluation job.
+**Verification.** `AttemptCompletionServiceTest` — 7 tests: the transition and its audit event; a
+repeat for the same score is a no-op with no second audit; an attempt that is not `SUBMITTED` is
+rejected; an already-evaluated attempt with a different score is rejected; the score refresh
+updates an evaluated attempt and audits it; repeating the refresh for the same score is a no-op; a
+refresh for an attempt that is not `EVALUATED` is rejected.
+`AttemptCompletionIntegrationTest` — 3 tests through the HTTP contract: a successful evaluation
+advances the attempt to `EVALUATED` with `total_score` equal to the Result's `obtained_marks`;
+repeating the evaluation returns the same evaluation and keeps one score; a re-evaluation of a
+completed attempt still succeeds and `total_score` follows the new official score.
+Full backend suite: **388 tests, 0 failures**.
 
-**Still open (related, not fixed).** GAP-065 — an assessment *session* still has no expiry sweep of
-its own, so a session row can linger `ACTIVE` after its attempt has been finalized.
+**Related (already closed).** GAP-071 — the submit handoff that triggers the evaluation now carries
+an explicit answer key, so the worker that completes the attempt carries a key too.
+
+## 5a. The most recent change — multi-correct answer keys (GAP-072)
+
+Closed GAP-072 with additive schema amendment ADR-0025: new child table
+`answer_key_detail_option` (migration V26) holding the correct option set for a
+multi-correct `MULTIPLE_CHOICE` question. `answer_key_detail.correct_option_id`
+is retained for single-correct and free-text keys; when child rows exist they
+form the authoritative set. `AnswerKeyDetailRequest`/`Response` gain a
+`correctOptionIds` array; the evaluator compares the student's selected option
+set against the authoritative set with all-or-nothing scoring (partial selection
+scores 0). Single-correct behaviour is unchanged.
+
+## 5b. The most recent change — the paid-content entitlement gate (GAP-100)
+
+**The problem.** The Commerce entitlement contract existed and was implemented, but Delivery never
+consulted it, so **every assessment was startable by any eligible student regardless of purchase**.
+The frozen schema carries no "free assessment" configuration field, so there was no rule at all
+telling the platform which assessments are paid and which are free — and without such a rule paid
+content could not be gated even in principle.
+
+**The decision (ADR-0026).** An assessment is **free if and only if no AccessPackage grants access
+to it**, derived from the package→collection→assessment graph. The rejected alternative — an
+explicit `is_free` column on the assessment — would have needed a schema amendment to a frozen
+table and would have created a second, contradicting source of truth (an assessment sold by a
+package yet flagged free). The derived rule needs no migration, cannot contradict the package
+mapping, and puts the free/paid decision in the module that owns packages and grants.
+
+**The change.**
+- `EntitlementResolver.checkAssessmentAccess(userId, assessmentId, serverNow)` — the frozen contract
+  method (`18-P9 §28.1`), implemented in `EntitlementResolverService`. It resolves the assessment's
+  collections, the `ACTIVE` package mappings for them, and the valid-grant count over the covering
+  packages at the given server time. No package ⇒ free; a package ⇒ a currently valid grant is
+  required. `serverNow` is a parameter, so the decision is reproducible.
+- `canAccessAssessment` now delegates to the same decision, so the boolean and the rich decision
+  cannot drift. One deliberate behaviour change: a free assessment now reports accessible, where the
+  old implementation returned `false` for any unmapped assessment (correct per `18-P9 §16`).
+- `delivery/application/EntitlementAccessGate` — the single place where the decision becomes a
+  request outcome. It calls the Commerce **contract**, never the AccessGrant repository
+  (`18-P9 §99, §100`); the module boundary was verified by grepping cross-module imports.
+- `delivery/exception/PaidContentAccessDeniedException` — HTTP 403 with the controlled error code
+  `ACCESS_DENIED_PAID_CONTENT`.
+- `StartAssessmentService.startAttempt` calls the gate **after schedule validation and before the
+  attempt transition**, so a denied start mutates no attempt state: the attempt stays `NOT_STARTED`
+  and no session is created.
+- **No table, no column, no migration, no endpoint was added.** The gate adds three indexed reads
+  and no writes, so the Start Exam latency budget is unchanged in shape; the p95 gate itself remains
+  unmeasured (GAP-130).
+
+**PRACTICE mode is not gated** (ADR-0026, Decision 3). The mode is server-owned — copied from the
+schedule by the preparation worker (`14-P5 §94`) — so a client cannot move a paid EXAM assessment
+into an ungated mode. The residual is operator misconfiguration: a paid assessment also scheduled
+in PRACTICE mode stays reachable in that mode. This is recorded deliberately.
+
+**Verification.** `EntitlementGateIntegrationTest` — 8 tests through the HTTP contract: a student
+with a valid grant starts a paid assessment; a student without one is denied with HTTP 403
+`ACCESS_DENIED_PAID_CONTENT` and the attempt is left `NOT_STARTED` with no session; a free
+assessment starts with no grant; an assessment in a collection that no package maps is also free;
+the gate cannot be bypassed from the client (query parameters and a body claiming entitlement are
+ignored); a grant for a different package does not unlock the assessment; an expired grant does not
+unlock it; a paid assessment scheduled in PRACTICE mode is not gated (ADR-0026, Decision 3).
+Full backend suite: **388 tests, 0 failures**.
+
+**Related.** ADR-0021 §8's "implemented but not yet enforced" consequence was amended in the same
+change.
+
+## 5c. The most recent change — session expiry sweep and the staff attempt read (GAP-064, GAP-065)
+
+**The problem.** Two gaps. GAP-065: a runtime session ended only on submit or an explicit
+`/sessions/{id}/end`, so a stale session stayed ACTIVE indefinitely — and attempt expiry was not
+separated from session expiry at all. GAP-064: `DELIVERY_ATTEMPT_VIEW_ANY` was seeded but nothing
+used it, so staff could not read another student's runtime attempt through the API.
+
+**Part 1 — the session expiry sweep** (`14-P5 §90`, `§91`).
+- `delivery/application/SessionExpiryService` — the derived-expiry policy and the sweep. The frozen
+  `assessment_session` table has no expiry column, so expiry is **derived** from persisted state:
+  a session is stale when (a) no runtime activity was recorded since `last_activity_on` for longer
+  than the idle timeout, or (b) the attempt deadline has passed **and** the attempt is no longer
+  `IN_PROGRESS`. The deadline comes from the same `DeadlineEnforcementService` authority used
+  everywhere else, so the two can never disagree.
+- `delivery/config/DeliverySessionProperties` — the idle timeout, default **two hours**
+  (`app.delivery.session.idle-timeout`). Runtime activity is recorded on every autosave (the DEFAULT
+  policy autosaves every 10 s), so only an abandoned connection goes quiet for that long.
+- `delivery/worker/SessionExpiryWorker` — the scheduled sweep, on its own bounded batch and interval,
+  disabled in tests like the other Delivery workers.
+- `AssessmentSessionRepository.markExpired` — a conditional `ACTIVE -> EXPIRED` update. The
+  affected-row count is the ownership signal: a retry affects no rows, `ended_on` is not rewritten,
+  and the audit event is emitted exactly once.
+- **The sweep never mutates an attempt.** It expires the session row only, so a submitted attempt
+  is left byte-identical. Attempt expiry and session expiry stay distinct (§91): the attempt's own
+  expiry path remains the single owner of `IN_PROGRESS -> SUBMITTED`.
+- **No table, column or migration was added.** The idle timeout is a configuration value.
+
+**Part 2 — the staff attempt read** (`14-P5 §83`).
+- `GET /attempts/{attemptId}` now resolves `DELIVERY_ATTEMPT_VIEW_ANY` from the authenticated
+  principal through `AuthorizationService` and passes it to `AttemptQueryService.getAttempt`. The
+  permission is never taken from the request, so the check cannot be skipped by the client.
+- **Self-scoping remains the default**; the staff scope is a widening of the same read, not a
+  replacement. A student reading another student's attempt is still refused with 404.
+- Both paths render the same `AttemptResponse`, so a staff read cannot expose anything an owner read
+  cannot — no answer keys, no correct-answer flags, no audit columns.
+- A staff read is an operational inspection rather than the runtime, so it is not refused with 409
+  on an attempt past its deadline; staff must be able to see the state of a finished attempt.
+- **No new endpoint was added.** The question and response sub-reads under the same path remain
+  self-scoped; widening them is a separate contract decision and is recorded as a residual.
+
+**Verification.** `SessionExpiryIntegrationTest` — 7 tests: a session past its idle timeout becomes
+EXPIRED while its attempt is untouched; a session left ACTIVE behind a finished attempt is EXPIRED; a
+session inside its window is unaffected; an expired attempt still IN_PROGRESS keeps its session until
+the idle timeout (attempt expiry and session expiry stay distinct); a submitted attempt and its
+session are unchanged by a sweep; a repeated sweep is a no-op that rewrites neither `ended_on` nor the
+audit event; expiring a stale session does not strand a live attempt (the student can still save and a
+Start Exam re-establishes a session).
+`StaffAttemptReadIntegrationTest` — 4 tests: a student reading another student's attempt is refused;
+a staff holder with the permission reads it; the owner still reads their own; and the staff response
+carries no correct-answer data, no audit columns and no owner identifier.
+Full backend suite: **388 tests, 0 failures**.
+
+## 5d. The most recent change — the assessment `examId` filter (GAP-041)
+
+**The problem.** `13-P4 §64` and `§95` both name the assessment list filters: status, **examId**,
+blueprintId, search. The frozen `assessment` table has no exam column (`04-Schema §28.4`), so the
+filter had no path and was implemented as a controlled 400 `UNSUPPORTED_FILTER` — a documented filter
+answering with an error.
+
+**What the schema actually contains.** Every `exam_id` column in the platform is on `subject`
+(Academic), `question` and `previous_exam_history` (Content). None is on an Assessment table. So two
+of the candidate routes are **not paths at all**: `blueprint` (neither the table nor its
+configuration shape carries an exam) and `assessment_collection` (it is the commerce bundle, with no
+academic taxonomy).
+
+**The decision (ADR-0027).** The link is the `examId` in a version's **selection-rule configuration**
+— the scope the platform itself acts on when it materializes the question pool (`13-P4 §45`, `§46`),
+and which `04-Schema §28.8` calls the rule's provenance. The rejected alternatives: removing the
+filter (contradicts `§64`/`§95`, and answers a filtered query with an unfiltered list); adding an
+`exam_id` column (a schema amendment creating a lossy second source of truth — a version may draw
+from several exams or none).
+
+**The change.**
+- `AssessmentRepository.findAssessmentIdsBySelectionRuleExamId` — the exam-scoped assessment ids,
+  resolved through an indexed join on `assessment_version` → `assessment_selection_rule` with the
+  JSONB extraction applied only to those rules.
+- `AssessmentService.list` / `specification` — the id set restricts the existing paginated query, so
+  the filter composes with status, blueprintId and search. An exam no assessment is authored against
+  yields an empty page, never an error and never an unfiltered list.
+- **No table, column, migration or endpoint was added**, and the frontend does not use the filter.
+
+**Verification.** `AssessmentExamFilterIntegrationTest` — 3 tests: the filter returns the assessment
+authored against that exam and excludes one authored against a different exam and one with no
+versions; an exam with no assessment and an unknown exam id both return an empty page; and the filter
+composes with the status filter while the other filters stay unaffected.
+Full backend suite: **388 tests, 0 failures**.
+
+## 5e. The most recent change — the analytics dashboard frontend (GAP-092)
+
+**The problem.** P8 delivered the analytics read models and the nine frozen read endpoints, but the
+frontend was a stub: a student or an authorized staff member could only call the API by hand.
+GAP-092 recorded that UI as deferred, so P8 was marked partial even though its backend was complete.
+
+**The change (frontend only).**
+- Routes under `frontend/app/analytics/`: `student`, `assessments/[id]`, `questions/[id]`,
+  `topics/[id]` and `organization`, plus an index that links the views the caller may use.
+- Six reusable components in `frontend/components/analytics/`: `MetricCard`, `TrendChart`,
+  `SectionAnalysis`, `TopicAnalysis`, `QuestionAnalysis` and `ProgressView`, with shared
+  loading, empty, error and freshness primitives.
+- TanStack Query hooks in `frontend/features/analytics/hooks/use-analytics.ts` call only the frozen
+  endpoints (`GET /analytics/student`, `/student/assessments`, `/student/topics`,
+  `/assessments/{id}`, `/assessments/{id}/questions`, `/questions/{id}`, `/topics/{id}`,
+  `/organization`); every response is validated with Zod at the boundary.
+- States: loading (`role="status"`), empty (`role="note"`, with the §146 wording), error
+  (`role="alert"` with a keyboard-operable retry). A failed refresh keeps the last known values and
+  shows a non-blocking stale notice instead of zeroing them (§147).
+- Freshness: every dashboard and every chart renders `lastCalculatedOn` with the API status
+  (CURRENT / STALE / REFRESHING / EMPTY) (§51, §69).
+- Accessibility: charts are plain inline SVG because **no charting library is on the approved
+  stack**; each data point is focusable with an accessible label, and every chart has a tabular
+  fallback in a native keyboard-operable `<details>` element (§145).
+- Authorization: `ANALYTICS_VIEW` hides staff links and gates staff pages; the student page is
+  self-scoped by the backend because its path carries no user id. Hiding a link is never treated as
+  authorization (§148).
+- **No backend file, endpoint, migration, API contract or dependency changed.**
+
+**Verification.** 29 new frontend tests: schema tolerance for null populations and decimal strings
+(4), `MetricCard` missing-versus-zero and freshness (4), `TrendChart` focusable points, tabular
+fallback, disclosure activation and empty state (5), and loading/empty/error for all five dashboards
+plus a data-rendering student dashboard (16). Full frontend suite: **22 files / 85 tests, 0
+failures**; `npm run lint` and `npm run type-check` clean; `npm run build` succeeds and emits all
+five analytics routes. The release decision is unchanged (NO-GO): GAP-092 was a product-surface gap,
+not a release gate.
+
+## 5f. The most recent change — the results and scorecard frontend (GAP-128)
+
+**The problem.** P6 delivered evaluation, results, publication and scorecards, but the frontend had
+no screen for any of it: students could not see a published result or a scorecard, and only the API
+could. GAP-128 recorded that UI as deferred.
+
+**The change (frontend only).**
+- Routes under `frontend/app/results/`: a student result list (`/results`), a single result
+  (`/results/[id]`) showing obtained marks, percentage, rank, percentile and status, and a
+  scorecard view (`/results/[id]/scorecard`); plus the attempt-bound result at
+  `/attempts/[id]/result`.
+- Reusable components in `frontend/components/results/`: `ResultCard`, `ScorecardView`,
+  `RankBadge` and `ResultStatusBadge`, with explicit loading, empty, error and visibility states.
+- TanStack Query hooks in `frontend/features/evaluation/hooks/use-results.ts` call only the frozen
+  reads: `GET /results/{id}`, `GET /attempts/{attemptId}/result`,
+  `GET /results/{resultId}/scorecard` and the self-scoped `GET /attempts`. Every payload is
+  validated with Zod at the boundary.
+- **Publication is enforced twice.** The backend answers 404 for an unpublished result or another
+  student's result; the UI independently renders only a PUBLISHED, non-superseded result and shows a
+  "not published" notice otherwise. A 404 is presented as "not available", so neither existence nor
+  ownership is revealed.
+- **The student list is composed, not invented.** `GET /results` requires `RESULT_VIEW`, which only
+  ADMIN and STAFF hold, and the platform freezes no student-scoped result-list endpoint. The list
+  therefore composes the self-scoped attempt read with the per-attempt result read, ignores a 404,
+  accepts only PUBLISHED non-superseded results, and is bounded to the 25 most recent terminal
+  attempts.
+- **No backend file, endpoint, migration, API contract or dependency changed.**
+
+**Verification.** 27 new frontend tests: schema tolerance and the missing-status default (5);
+`ResultCard` metrics, unranked-versus-zero and status labels (4); `ScorecardView` metadata and the
+unpublished-result guard (3); `ResultDetail` publication/supersession guards (3); and student-list
+loading/empty/error, the exclusion of a 404 and a superseded result, the single-result and
+attempt-result 404 paths, and the scorecard render/empty/unpublished paths (12). Full frontend
+suite: **27 files / 112 tests, 0 failures**; `npm run lint` and `npm run type-check` clean;
+`npm run build` succeeds and emits `/results`, `/results/[id]`, `/results/[id]/scorecard` and
+`/attempts/[id]/result`. The release decision is unchanged (NO-GO): GAP-128 was a product-surface
+gap, not a release gate.
+
+## 5g. The most recent change — the commerce frontend (GAP-104)
+
+**The problem.** P9 delivered the catalog, purchase, payment, refund and entitlement APIs, but the
+product had no commerce screen: students could not browse packages or check out, and finance could
+not review or refund a purchase. GAP-104 recorded that UI as deferred.
+
+**The change (frontend only).**
+- Student routes: `app/student/store` (catalog), `packages/[id]` (detail, collections and plans),
+  `checkout` (plan + coupon + summary), `purchases` (history), `purchases/[id]` (payment status and
+  retry) and `access` (entitlements).
+- Finance routes: `app/finance/purchases`, `payments`, `refunds`, `coupons` and `plans`; staff
+  route `app/staff/access-grants`; admin route `app/admin/commerce` (packages, collection mapping
+  and reconciliation).
+- The eight reusable components (`PackageCard`, `PackageDetail`, `PlanSelector`, `CouponInput`,
+  `PurchaseSummary`, `PaymentStatus`, `AccessGrantCard`, `PurchaseHistory`) sit on TanStack Query
+  hooks over the frozen endpoints; Zod validates every response and every form.
+- **No client pricing.** The checkout submits only `subscriptionPlanId` and `couponCode`. Every
+  displayed amount is the plan price, the server's coupon-validation `finalAmount`, or the
+  server-created purchase amount; the browser never subtracts a discount or totals a cart.
+- **No client status mutation.** Payment state is read from the purchase/payment endpoints, may be
+  initiated through `POST /purchases/{id}/payment`, and is otherwise followed by polling or an
+  explicit refresh. The pending-to-success transition is observed from the server, never set
+  locally.
+- **No client-side unlock.** On a server-confirmed SUCCESS the screen invalidates the access and
+  catalog reads so entitlement appears without a re-login; content remains gated by the backend.
+- Permission-gated links and controls (refund, manual grant, administration) are UI affordances
+  only; every endpoint re-authorizes.
+- **No backend file, endpoint, migration, API contract or dependency changed.**
+- **Recorded limitation:** no staff purchase-list endpoint is frozen, so the finance purchase and
+  payment workspace looks up one purchase by id (`GET /purchases/{id}`, `PURCHASE_VIEW`), and provider
+  payment detail remains owner-only.
+
+**Verification.** 19 new frontend tests: schema parsing and server-coupon preservation (5); checkout
+validation, server-priced summary and a purchase body that carries no amount (3); the payment
+PENDING -> SUCCESS transition observed through a refetch with no POST (2); student access cards,
+empty state and a staff lookup scoped by user id (3); finance view + confirmed refund + a pending
+purchase that cannot be refunded (3); purchase history (1); store catalog (2). Full frontend suite:
+**34 files / 131 tests, 0 failures**; `npm run lint` and `npm run type-check` clean; `npm run build`
+succeeds and emits every commerce route. The release decision is unchanged (NO-GO): GAP-104 was a
+product-surface gap, not a release gate.
+
+## 5h. The most recent change — the communication frontend (GAP-109)
+
+**The problem.** P10 delivered notifications, email templates and announcements, but the product had
+no communication screen: students could not see notifications or announcements, and administrators
+had no template or announcement UI. GAP-109 recorded that UI as deferred.
+
+**The change (frontend only).**
+- Student routes: `app/student/notifications` (inbox, bell, filters, optimistic read actions) and
+  `app/student/announcements` (published announcements within their visibility window).
+- Admin routes: `app/admin/communication/templates` (list/create/search), `templates/[id]` (edit,
+  code immutable) and `templates/[id]/preview` (synthetic context); plus
+  `announcements` (list/create) and `announcements/[id]` (edit, publish, archive).
+- The eight required components — `NotificationBell`, `UnreadBadge`, `NotificationPopover`,
+  `NotificationList`, `NotificationItem`, `NotificationFilters`, `MarkReadAction`,
+  `MarkAllReadAction` — sit on TanStack Query hooks over the frozen endpoints; Zod validates every
+  response and form.
+- **Optimistic read UX with rollback.** Mark-read updates every cached notification list and the
+  unread count immediately, snapshots the prior cache, and restores it exactly if the mutation
+  fails (`§107`). Mark-all-read uses the same discipline.
+- **No invented unread endpoint.** The unread count is derived from the paginated unread read
+  (`§106`), not a new API.
+- **Safe preview.** Placeholders use the frozen `{{variableName}}` syntax with the documented
+  synthetic context (`§71`); the body is rendered as text, never injected as HTML, so admin-authored
+  markup cannot execute in the browser (`§72`).
+- **No SMS or push channel** was added; the platform remains in-app notification plus the existing
+  email boundary.
+- **No backend file, endpoint, migration, API contract or dependency changed.**
+
+**Verification.** 16 new frontend tests: schema parsing and preview substitution (4); optimistic
+mark-read removal, failure rollback and mark-all (3); bell, popover, filter and read actions (3);
+announcement edit + publish and student visibility without admin controls (3); template list, edit
+with immutable code and safe preview (3). Full frontend suite: **39 files / 147 tests, 0 failures**;
+`npm run lint` and `npm run type-check` clean; `npm run build` succeeds and emits every communication
+route. The release decision is unchanged (NO-GO): GAP-109 was a product-surface gap, not a release
+gate.
+
+## 5i. The most recent change — the administration frontend (GAP-123)
+
+**The problem.** P11 delivered the administrative APIs — dashboard, users, roles, permissions,
+settings, business rules, lookups, audit and system health — but there was no admin UI at all.
+GAP-123 recorded the frontend as deferred.
+
+**The change (frontend only).**
+- Ten admin routes: `/admin/dashboard`, `/admin/users`, `/admin/students`, `/admin/roles`,
+  `/admin/permissions`, `/admin/settings`, `/admin/business-rules`, `/admin/lookups`,
+  `/admin/audit` and `/admin/system-health`, plus an `/admin` navigation entry.
+- The required components: `AdminPageHeader`, `PermissionGuard`, `DataTable`, `FilterBar`,
+  `StatusBadge`, `ConfirmDialog`, `DangerActionDialog`, `AuditDrawer` and `HealthCard`, with
+  server pagination, loading/empty/error states and keyboard-accessible dialogs.
+- TanStack Query hooks over the frozen reads; Zod validates every response and filter, and React
+  Hook Form drives the configuration forms.
+- **Permission-driven navigation** from the current-user permission context (`GET /me` via the auth
+  provider): each link renders only when one of its permissions is present. Hidden links and
+  disabled actions are affordances; the backend re-checks every permission (§67).
+- **Dangerous actions require confirmation** (§68): user archive, role-permission replacement,
+  settings and rule changes, and lookup delete all pass through `DangerActionDialog`.
+- **Audit explorer** filters by actor, entity, entity id, action and date range, paginates on the
+  server, and opens a read-only `AuditDrawer`. It exposes no mutation control (§73).
+- **Allow-listed server sorting** (§65) was added after the first pass: `components/admin/sorting.ts`
+  mirrors each frozen controller's `QuerySupport` allow-list (users: createdOn/email/firstName/
+  lastName/status; roles and permissions: code/name/status/createdOn; audit: createdOn/action/
+  entityName), `DataTable` renders a sortable header only for an allow-listed field and exposes
+  `aria-sort`, and the screens send the Spring `field,direction` parameter. A non-allow-listed field
+  is neither offered nor sent, because the backend rejects the whole request.
+- **No backend file, endpoint, migration, API contract or dependency changed.** Composite screens
+  use existing APIs: students resolve the STUDENT role then filter the user list, because no
+  composite student endpoint is frozen (§75).
+- **Test runner stabilisation.** The growing jsdom/userEvent suite was flaky at the default 5s
+  timeout when files ran in parallel on a busy host, so `vitest.config.ts` now runs files
+  sequentially. Every test still runs; only parallel file execution was disabled.
+
+**Verification.** 20 new frontend tests: permission-gated archive visibility with and without
+`USER_ARCHIVE` (2), permission-driven navigation filtered and full (2), audit filter translation and
+read-only drawer plus malformed-id rejection (3), audit server sorting — allow-listed sort carries
+the active filters, direction cycling, and no control on a non-allow-listed column (3), the sorting
+allow-list helper (7), and accessible dialog/table/health components (3).
+Full frontend suite: **43 files / 167 tests, 0 failures**; `npm run lint` and
+`npm run type-check` clean; `npm run build` succeeds and emits every administration route. The
+release decision is unchanged (NO-GO): GAP-123 was a product-surface gap, not a release gate.
 
 ## 6. Conventions that must be kept
 
@@ -130,7 +495,7 @@ its own, so a session row can linger `ACTIVE` after its attempt has been finaliz
 
 ```bash
 # Backend
-cd backend && JAVA_HOME=C:\java\jdk-25.0.4.1 ./mvnw test      # 337 tests, 0 failures
+cd backend && JAVA_HOME=C:\java\jdk-25.0.4.1 ./mvnw test      # 388 tests, 0 failures
 
 # Frontend
 cd frontend && npm ci && npm run lint && npm run type-check && npm test && npm run build

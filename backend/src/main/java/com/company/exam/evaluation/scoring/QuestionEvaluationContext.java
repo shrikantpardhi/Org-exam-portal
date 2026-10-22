@@ -2,6 +2,7 @@ package com.company.exam.evaluation.scoring;
 
 import com.company.exam.evaluation.entity.QuestionOutcome;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -21,6 +22,7 @@ public record QuestionEvaluationContext(
         String response,
         QuestionOutcome answerOutcome,
         UUID correctOptionId,
+        List<UUID> correctOptionIds,
         String correctAnswerText,
         BigDecimal overrideMarks,
         BigDecimal overrideNegativeMarks,

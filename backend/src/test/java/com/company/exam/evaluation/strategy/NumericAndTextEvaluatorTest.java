@@ -10,6 +10,7 @@ import com.company.exam.evaluation.scoring.QuestionEvaluationOutcome;
 import com.company.exam.evaluation.scoring.QuestionOutcomeState;
 import com.company.exam.evaluation.scoring.QuestionScoringPolicy;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -24,12 +25,12 @@ class NumericAndTextEvaluatorTest {
 
     private QuestionEvaluationContext numericContext(String response, String correct) {
         return new QuestionEvaluationContext(questionVersionId, "INTEGER", new BigDecimal("1.00"), BigDecimal.ZERO,
-                response, QuestionOutcome.NORMAL, null, correct, null, null, Map.of());
+                response, QuestionOutcome.NORMAL, null, List.<UUID>of(), correct, null, null, Map.of());
     }
 
     private QuestionEvaluationContext textContext(String response, String correct) {
         return new QuestionEvaluationContext(questionVersionId, "FILL_IN_THE_BLANK", new BigDecimal("1.00"),
-                BigDecimal.ZERO, response, QuestionOutcome.NORMAL, null, correct, null, null, Map.of());
+                BigDecimal.ZERO, response, QuestionOutcome.NORMAL, null, List.<UUID>of(), correct, null, null, Map.of());
     }
 
     @Test

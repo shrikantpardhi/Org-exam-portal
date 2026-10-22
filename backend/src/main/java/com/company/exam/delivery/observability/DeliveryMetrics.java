@@ -23,6 +23,8 @@ public class DeliveryMetrics {
     public static final String SNAPSHOT_PREPARED = "delivery.snapshot.prepared";
     public static final String ATTEMPT_SUBMITTED = "delivery.attempt.submitted";
     public static final String STALE_RESPONSE = "delivery.response.stale";
+    // P5 §90: the session expiry worker emits its own counter.
+    public static final String SESSION_EXPIRED = "delivery.session.expired";
 
     // P12 §112: assessment start success and latency.
     public static final String ATTEMPT_START_DURATION = "delivery.attempt.start.duration";
@@ -63,6 +65,11 @@ public class DeliveryMetrics {
 
     public void staleResponse() {
         registry.counter(STALE_RESPONSE).increment();
+    }
+
+    /** A stale assessment session was expired by the session expiry worker (§90). */
+    public void sessionExpired() {
+        registry.counter(SESSION_EXPIRED).increment();
     }
 
     /** Times an operation and records its success/failure outcome (§112). */

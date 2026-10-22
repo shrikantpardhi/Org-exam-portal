@@ -1,0 +1,19 @@
+agent-default-model: # routes fresh agents (incl. dsh --profile headless) to Hive
+  provider: hive
+  model: deepseek-ai/deepseek-v4.1-flash-1017
+llm-pi-ai:
+  defaultModel: # web-UI model picker falls back here
+    provider: hive
+    model: deepseek-ai/deepseek-v4.1-flash-1017
+  providers:
+    hive:
+      apiKeyEnv: lf23J20ELoqr5sz+jvBuNQ==
+      api: openai-completions
+      baseURL: https://api-cdn.thehive.ai/api/v3
+      compat:
+        supportsDeveloperRole: false
+        maxTokensField: max_tokens
+      models:
+        - id: deepseek-ai/deepseek-v4.1-flash-1017
+          name: Deepseek 4.1 Flash 1017
+          input: [text, image]

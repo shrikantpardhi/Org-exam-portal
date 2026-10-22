@@ -27,13 +27,14 @@ import tools.jackson.databind.ObjectMapper;
  * submission handoff, claims each job with a race-safe conditional update, and evaluates it through
  * {@link EvaluationService} (which is itself evaluate-once, so a redelivered job is safe).
  *
- * <p><strong>Frozen-contract gap (GAP-071):</strong> the P5 submission handoff carries no
- * {@code answerKeyId}, while {@code §26} forbids defaulting to a "current published key". The worker
- * therefore evaluates only jobs that carry an explicit {@code answerKeyId} in their parameters; a
- * job without one is failed with {@code ANSWER_KEY_REQUIRED} rather than silently scored. The
- * synchronous, explicit {@code POST /attempts/{id}/evaluate} is the supported staff path until an
- * approved rule designates the key at submission time. The worker is disabled by default
- * ({@code app.evaluation.worker.enabled=false}).
+ * <p>The submission handoff designates the answer key at submission time: it carries an explicit
+ * {@code answerKeyId} in the job parameters, resolved by Evaluation to the highest published key for
+ * the attempt's exact {@code AssessmentVersion} ({@code §25, §26}). The worker consumes that carried
+ * key, so submit-triggered jobs are scored without ever defaulting to a "current published key". A
+ * job that still arrives without a key (for example a malformed or legacy row) is failed with
+ * {@code ANSWER_KEY_REQUIRED} rather than silently scored. The synchronous, explicit
+ * {@code POST /attempts/{id}/evaluate} remains available for staff. The worker is disabled by
+ * default ({@code app.evaluation.worker.enabled=false}).
  */
 @Component
 @ConditionalOnProperty(name = "app.evaluation.worker.enabled", havingValue = "true")
@@ -48,7 +49,7 @@ public class EvaluationWorker {
     private final ObjectMapper objectMapper;
 
     @Value("${app.evaluation.worker.batch-size:50}")
-    private int batchSize;
+    private int batchSize = 50;
 
     public EvaluationWorker(BackgroundJobRepository jobRepository, EvaluationService evaluationService,
             WorkerExecutionTemplate workerTemplate, ObjectMapper objectMapper) {

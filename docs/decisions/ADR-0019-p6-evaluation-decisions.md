@@ -76,22 +76,40 @@ frozen contract is changed.
     repositories directly (`§64`). It consumes narrow application contracts: `AttemptEvaluationCatalog`
     (Delivery), `AssessmentDefinitionCatalog` (Assessment plumbing context), `ContentCatalog`
     (Content), and `UserDirectory` (Identity display names). The evaluation input is read-only;
-    P6 does not mutate the attempt snapshot, responses, or the attempt lifecycle.
+    P6 does not mutate the attempt snapshot or the responses. The attempt's own lifecycle state is
+    Delivery-owned, so P6 does not write it either — it reports the completed attempt through the
+    Delivery-owned `AttemptCompletionContract` (decision 12).
 
 11. **Asynchronous handoff.** The durable `background_job` handoff is implemented as an
-    `EvaluationWorker`, but it requires an explicit `answerKeyId` in the job parameters because
-    `§26` forbids defaulting to a "current published key". The P5 submission handoff carries no answer
-    key, so the worker is disabled by default and jobs without a key are failed with
-    `ANSWER_KEY_REQUIRED` (see `docs/known-gaps.md` GAP-071). The synchronous, explicit
+    `EvaluationWorker`, and it requires an explicit `answerKeyId` in the job parameters because
+    `§26` forbids defaulting to a "current published key". The P5 submission handoff resolves that
+    key at submission time through the evaluation-owned `SubmitAnswerKeyResolver` contract and
+    carries it in the job parameters (GAP-071); a job that still arrives without a key is failed
+    with `ANSWER_KEY_REQUIRED`. The synchronous, explicit
     `POST /attempts/{id}/evaluate` is the supported staff path.
+
+12. **Attempt completion.** A successful evaluation advances the attempt to `EVALUATED` and records
+    the official total score, because `student_attempt.attempt_status` and `student_attempt.total_score`
+    are Delivery-owned columns (`14-P5 §8`) and P6 must not write them directly. Delivery exposes the
+    operation as the `AttemptCompletionContract` application contract; `AttemptCompletionService`
+    implements it as a conditional `SUBMITTED -> EVALUATED` update, so the affected-row count is the
+    ownership signal and a retry is a no-op rather than a second transition. The call is made at the
+    end of the successful evaluation transaction, after the `Evaluation` and the `Result` are
+    persisted, so the completion joins that transaction. The same contract exposes `refreshScore`
+    for a controlled re-evaluation, because a re-evaluation supersedes the previous `Result` and
+    creates a new `obtained_marks` (`§46, §52, §56`) and the Delivery-owned `total_score` must follow
+    the current official score. No table, column, or endpoint was added (GAP-073).
 
 ## Consequences
 
 - Evaluation is deterministic and reproducible for identical inputs and policy (`§31`); the
   reproducibility, negative-marking, override, bonus, dropped, re-evaluation, and rank/percentile
   behaviours are covered by unit and integration tests.
-- The multi-correct `MULTIPLE_CHOICE` case is not representable in the frozen `answer_key_detail`
-  schema (one `correct_option_id`), recorded as GAP-072.
+- The multi-correct `MULTIPLE_CHOICE` case is now representable via the `answer_key_detail_option`
+  child table (ADR-0025, V26); GAP-072 is closed.
+- The attempt reaches `EVALUATED` with `total_score` after a successful evaluation, and the score
+  follows a controlled re-evaluation; GAP-073 is closed. The attempt completion is owned by
+  Delivery and reached through an application contract, so the module boundary is preserved.
 - Durable audit persistence remains deferred to Administration (GAP-001); P6 emits structured
   `SECURITY` events in the business transaction.
 - Load/performance evidence (5,000-attempt throughput) is not produced on the development host;
