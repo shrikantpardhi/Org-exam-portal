@@ -39,8 +39,8 @@ module reads another module's repository.
 | Flyway migrations | 26 (`V1` … `V26`), no gaps, no duplicated versions |
 | Controllers / endpoint mappings | 56 / 237 |
 | Backend tests | **397 passing, 0 failures** |
-| Frontend tests | 46 files / 197 tests passing; lint clean; production build succeeds |
-| Tracked gaps | 153 (see `docs/known-gaps.md` for the register) |
+| Frontend tests | 70 files / **422 tests passing**; lint clean; production build succeeds (59 routes) |
+| Tracked gaps | 156 (see `docs/known-gaps.md` for the register) |
 | Container stack | Full stack runs; `scripts/verify-stack.sh` passes 15/15 edge assertions |
 | Observability | Prometheus target UP, 9 alert rules load, 2 datasources + 3 dashboards provisioned, Loki ingesting |
 | **Release decision** | **NO-GO** — see §4 |
@@ -52,9 +52,9 @@ module reads another module's repository.
 | P0 | Foundation: schema, security, Docker, Nginx, PgBouncer, observability boundary | Complete; stack verified 2026-10-19 |
 | P1 | Identity and security: sessions, RBAC, password reset | Complete |
 | P2 | Academic structure: exams, subjects, chapters, topics | Complete |
-| P3 | Content and question bank, authoring and review | Complete |
-| P4 | Blueprint and assessment management | Complete — **the assessment `examId` filter now works through the selection-rule provenance (GAP-041, 2026-10-22, ADR-0027)** |
-| P5 | Assessment delivery and the runtime exam engine | Complete — **deadline enforcement + auto-submit (GAP-062, 2026-10-20), submit-time answer-key handoff (GAP-071, 2026-10-21), the paid-content entitlement gate (GAP-100) and the session expiry sweep + staff attempt read (GAP-064/065, 2026-10-22) added** |
+| P3 | Content and question bank, authoring and review | Complete — **the full authoring editor is delivered: template/taxonomy/language selectors, options editor, math helpers, asset uploader, explanation/hint, tags and previous-exam history (GAP-049, 2026-10-22)** |
+| P4 | Blueprint and assessment management | Complete — **the assessment `examId` filter now works through the selection-rule provenance (GAP-041, 2026-10-22, ADR-0027)**; **the blueprint/assessment builders, schedule and collection UI are delivered (GAP-049, 2026-10-22)** |
+| P5 | Assessment delivery and the runtime exam engine | Complete — **deadline enforcement + auto-submit (GAP-062, 2026-10-20), submit-time answer-key handoff (GAP-071, 2026-10-21), the paid-content entitlement gate (GAP-100) and the session expiry sweep + staff attempt read (GAP-064/065, 2026-10-22) added**; **the full runtime page, multi-tab guard and offline queue are delivered (GAP-058, 2026-10-22)** |
 | P6 | Evaluation, results and scorecards | Complete — **attempt completion contract added 2026-10-21 (GAP-073 closed); the results and scorecard UI is delivered (GAP-128, 2026-10-22)** |
 | P7 | Scale validation and live pilot | Tooling complete; **staged load evidence outstanding** (GAP-083/084) |
 | P8 | Analytics and insights | Complete; derived aggregates only, no time-series tables — **the analytics dashboard frontend is delivered (GAP-092, 2026-10-22)** |
@@ -84,7 +84,71 @@ Gates that *were* closed by the 2026-10-19 rehearsal: **GAP-131** (logical backu
 integrity checks) and **GAP-132** (rollback, 12/12 checks). PITR is deliberately **not** claimed
 (`scripts/backup/pitr.md`).
 
-## 5. The most recent change — attempt completion contract (GAP-073)
+## 5. The most recent change — the assessment authoring, runtime and content-authoring UIs (GAP-049, GAP-058, GAP-153)
+
+*(2026-10-22. Frontend and documentation only; `backend/` is untouched and no frozen contract,
+table, column, migration or endpoint was added.)*
+
+**The problem.** P3, P4 and P5 were complete on the server but the frontend was a lean slice. Staff
+could list blueprints and assessments and see a validation panel, but the actual authoring — writing a
+blueprint configuration, picking questions, building selection rules, scheduling, grouping into
+collections — existed only as raw API calls. Content authors could not use the template, taxonomy,
+asset, explanation, hint, tag or previous-exam capabilities at all. And the runtime was a single lean
+runner: no palette legend, no section navigator, no mark-for-review or clear-response, no submission
+confirmation, no recovery banner, no multi-tab protection and no offline queue.
+
+**The change.**
+- **Blueprint builder** (`app/blueprints/[id]/versions/[versionId]`) — sections editor (name, order,
+  question count, marks, duration), navigation, timer, calculator and language selection. The emitted
+  `configuration` is a strict Zod projection of the frozen `BlueprintConfiguration` record, so an
+  unknown key cannot be sent; the platform parser would reject it anyway.
+- **Assessment builder** (`app/assessments/[id]/versions/[versionId]/builder`) — version editor,
+  server-side question picker (search/filter/pagination with explicit version choice and published-only
+  Add, never a full bank download), rule builder, hybrid counts, section assignment restricted to the
+  selected BlueprintVersion's sections, scoring editor that states QuestionVersion defaults may differ
+  from AssessmentQuestion actuals, reorder, the seven-category validation panel, authoring-only
+  preview, and publish gated on a successful server validation.
+- **Schedule and collection UI** (`app/schedules`, `app/collections`, `app/collections/[id]`).
+- **Runtime** (`app/exam/[attemptId]`, rewritten) — palette with a five-state legend, previous/next,
+  section navigator, mark for review, clear response, save indicator, non-blocking offline indicator,
+  submission confirmation with answered/unanswered/review counts, expired state and recovery banner.
+  The timer is server-authoritative through an **arrival anchor** (`buildTimerAnchor`,
+  `remainingFromAnchor`, `reconcileAnchor`): it advances locally, survives sleep/wake, and can only
+  move *earlier*, so a replayed payload cannot extend it. Auto-submit fires once from the same
+  calculation.
+- **Multi-tab guard** (`lib/tab-lock.ts`) — a client-only single-owner lease (storage token +
+  heartbeat, 15 s staleness) that makes the non-owning tab read-only and fails open when storage is
+  unavailable. It claims no authority the backend does not grant.
+- **Offline queue** (`lib/response-queue.ts`) — bounded and per-question: latest value wins,
+  `MAX_SAVE_ATTEMPTS=5` with capped exponential backoff, batched draining, and an entry reaches
+  "saved" only on server acknowledgement. A failed entry is never presented as committed.
+- **Content authoring** (`app/questions/new`, `app/questions/[id]`, `app/questions/review`) — template,
+  data-driven taxonomy cascade, language, options editor, math helpers that emit only `\(...\)` and
+  `\[...\]` (never `$...$`, and `$500` is left alone), asset uploader inserting canonical
+  `[asset: <uuid>]`, version-bound explanation and hint disabled for published versions, tag
+  multi-select, previous-exam history driven by the Academic masters, version history, and a review
+  queue.
+
+**Two integration bugs found and fixed during review.** The rule builder was emitting `templateId` and
+`tagId`, but `QuestionSelectionService.criteria` reads `templateCode` and `tagIds` (a list) — a rule
+scoped that way would have parsed cleanly and silently matched nothing. And `materialize` was offering
+`MANUAL`/`RULE`/`HYBRID` when the contract defines exactly one mode, `REPLACE_UNMATERIALIZED`
+(`13-P4 §63`); every other value is rejected with `VALIDATION_ERROR`. Both are now correct and pinned by
+tests, and the materialize mode is rejected client-side before any request. Recorded as GAP-153.
+
+**Verification.** `npx tsc --noEmit` clean; `npx eslint .` clean (0 errors, 0 warnings); **422 frontend
+tests in 70 files passing** (225 new); `npx next build` succeeds with 59 routes, including all 20 new
+assessment, blueprint, schedule, collection, question and exam routes. Key behavioural coverage: the
+runtime is driven end-to-end (load → answer → mark → clear → navigate → confirm → submit → read-only)
+against a mocked transport; a rejected save is asserted never to render as "saved"; a 412 is retried
+with the fresh ETag; the frozen configuration round-trips with no extra keys; the anchor tests catch the
+frozen-countdown bug that a per-render offset would cause; and a section literally named `IBPS` is used
+in a test to prove no exam-name branching exists.
+
+**Release decision unchanged: NO-GO** — see §4. The remaining gates are staging load evidence
+(GAP-083/084/130) and the release rehearsals (GAP-131/132/135).
+
+## 5a. The most recent change — attempt completion contract (GAP-073)
 
 **The problem.** Evaluation persisted the official `Evaluation` and `Result` but never told
 Delivery, so the Delivery-owned `student_attempt.attempt_status` stayed `SUBMITTED` and

@@ -27,11 +27,12 @@ import { groupBySection, paletteCounts, questionStatus } from "@/features/delive
 import { ResponseQueue, flushQueue } from "@/features/delivery/lib/response-queue";
 import { isStaleResponse } from "@/features/delivery/lib/runtime-helpers";
 import {
-  computeOffsetMs,
-  reconcileDeadline,
-  remainingSecondsWithOffset,
+  buildTimerAnchor,
+  reconcileAnchor,
+  remainingFromAnchor,
   shouldAutoSubmit,
   timerSeverity,
+  type TimerAnchor,
 } from "@/features/delivery/lib/server-clock";
 import type { AttemptQuestion, ResponseSaveRequest } from "@/features/delivery/schemas/delivery";
 import { ApiClientError } from "@/lib/errors";
@@ -84,7 +85,6 @@ export function ExamRuntime({ attemptId }: { attemptId: string }) {
   const [queue, setQueue] = useState(() => ResponseQueue.empty<ResponseSaveRequest>());
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
-  const [expired, setExpired] = useState(false);
 
   // ----- refs holding the latest values for async callbacks -----
   const answersRef = useRef(answers);
@@ -96,26 +96,27 @@ export function ExamRuntime({ attemptId }: { attemptId: string }) {
   const autoSubmitted = useRef(false);
   const revalidating = useRef(false);
 
-  const list = questionsQuery.data ?? [];
+  // Memoized so every hook and callback that depends on the question list sees a stable reference.
+  const list = useMemo(() => questionsQuery.data ?? [], [questionsQuery.data]);
   const configuration = attempt.data?.deliveryConfiguration;
 
-  // The server clock offset, recomputed from every authoritative payload (§132).
-  const offsetMs = useMemo(
-    () => computeOffsetMs(attempt.data?.serverTime, now),
-    // `now` intentionally excluded: the offset is derived at the moment a payload arrives.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [attempt.data?.serverTime],
-  );
-
-  // The deadline may only move earlier than what is already displayed (§132).
-  const [deadline, setDeadline] = useState<string | null>(null);
+  // The deadline may only move earlier than what is already displayed (§132). The anchor pins the
+  // server-computed remaining time to the instant the payload arrived, so the countdown advances
+  // locally without the browser ever becoming the deadline authority.
+  const [anchor, setAnchor] = useState<TimerAnchor | null>(null);
+  const serverDeadline = attempt.data?.timer.deadline ?? null;
+  const serverTime = attempt.data?.serverTime ?? null;
   useEffect(() => {
-    const incoming = attempt.data?.timer.deadline ?? null;
-    setDeadline((previous) => reconcileDeadline(previous, incoming));
-  }, [attempt.data?.timer.deadline]);
+    if (!serverDeadline && !serverTime) {
+      return;
+    }
+    setAnchor((previous) =>
+      reconcileAnchor(previous, buildTimerAnchor(serverDeadline, serverTime, Date.now())),
+    );
+  }, [serverDeadline, serverTime]);
 
   const durationSeconds = attempt.data?.timer.durationSeconds ?? null;
-  const remaining = remainingSecondsWithOffset(deadline, now, offsetMs);
+  const remaining = remainingFromAnchor(anchor, now);
   const severity = timerSeverity(remaining, durationSeconds);
 
   // One tick per second drives the display; the deadline itself comes from the server.
@@ -138,9 +139,14 @@ export function ExamRuntime({ attemptId }: { attemptId: string }) {
     }
   }, [attempt.data, recovered]);
 
-  // Terminally submitted attempts are read-only, including after a reload (§133).
+  // Terminally submitted attempts are read-only, including after a reload (§133). The local
+  // `submit.isSuccess` is included so the runtime locks immediately on acknowledgement rather than
+  // waiting for the invalidated attempt query to refetch — a window in which the student could still
+  // edit an attempt the server has already closed.
   const submitted =
-    attempt.data?.attemptStatus === "SUBMITTED" || attempt.data?.attemptStatus === "EVALUATED";
+    attempt.data?.attemptStatus === "SUBMITTED" ||
+    attempt.data?.attemptStatus === "EVALUATED" ||
+    submit.isSuccess;
 
   /** Persists one answer, honouring the ETag and retrying once on a stale precondition (§43). */
   const persist = useCallback(
@@ -276,7 +282,6 @@ export function ExamRuntime({ attemptId }: { attemptId: string }) {
     }
     if (shouldAutoSubmit(remaining, configuration.submission.autoSubmitOnExpiry, submitted)) {
       autoSubmitted.current = true;
-      setExpired(true);
       void doSubmit();
     }
   }, [remaining, configuration, submitted, doSubmit]);
@@ -385,12 +390,19 @@ export function ExamRuntime({ attemptId }: { attemptId: string }) {
           {current.sectionName ? ` · ${current.sectionName}` : ""}
         </p>
         <div className="flex items-center gap-3">
-          <SaveIndicator saving={saving} savedAt={savedAt} failed={failures} offline={!online} />
+          <SaveIndicator
+            saving={saving}
+            savedAt={savedAt}
+            failed={failures}
+            offline={!online}
+            pending={queue.size - failures}
+          />
           {configuration.presentation.showTimer ? (
             <RuntimeTimer
-              deadline={deadline}
+              remaining={remaining}
               serverTime={attempt.data.serverTime}
               severity={severity}
+              durationSeconds={durationSeconds}
             />
           ) : null}
         </div>

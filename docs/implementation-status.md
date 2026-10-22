@@ -114,8 +114,8 @@ P3 Content and Question Bank:
 | P3-13 | Search and filter API | Completed |
 | P3-14 | Review workflow state machine (self-review blocked) | Completed |
 | P3-15 | Publication service with preconditions and immutability | Completed |
-| P3-16 | Authoring frontend (list, editor, options, tags) | Completed |
-| P3-17 | Review frontend (queue, approve/reject/publish) | Completed |
+| P3-16 | Authoring frontend (list, editor, options, tags) | Completed — full editor at `app/questions/new` and `app/questions/[id]`: template, data-driven taxonomy cascade, language, options, math helpers, assets, explanation/hint, tags and previous-exam history (GAP-049 closed) |
+| P3-17 | Review frontend (queue, approve/reject/publish) | Completed — queue at `app/questions/review`; approval acts on an explicit version (GAP-049 closed) |
 | P3-18 | Preview + rendering integration (same renderer) | Completed |
 | P3-19 | RBAC, audit, correct-answer leakage guard | Completed |
 | P3-20 | Rendering regression corpus + API/integration/security tests | Completed |
@@ -147,7 +147,7 @@ P4 Blueprint and Assessment Management:
 | P4-18 | Assessment publication (blocks incomplete, immutable, engine immutable) | Completed |
 | P4-19 | Scheduling (published version, valid window, mode, close) | Completed |
 | P4-20 | Collections | Completed |
-| P4-21 | Frontend builders (blueprint/assessment list, validation panel) | Completed (lean) |
+| P4-21 | Frontend builders (blueprint/assessment list, validation panel) | Completed — blueprint builder, assessment builder (server-side question picker, rule builder, hybrid counts, section assignment, scoring, reorder, validation panel, preview, gated publish), schedule UI and collection UI; 12 new routes (GAP-049 closed) |
 | P4-22 | Security, audit, tests, performance baseline | Partial — security/audit/tests done; performance baseline not measured (GAP-038) |
 | P4-23 | Delivery handoff and exit gate | Completed |
 
@@ -178,7 +178,7 @@ P5 Assessment Delivery and Runtime Examination Engine:
 | P5-21 | Timer enforcement (server-authoritative global timer) | Completed — central `DeadlineEnforcementService`, post-deadline rejection with 409 `ATTEMPT_EXPIRED`, and expiry auto-submit (GAP-062 closed; section-wise timing remains GAP-060) |
 | P5-22 | Idempotent submission | Completed |
 | P5-23 | Evaluation handoff via `background_job` | Completed |
-| P5-24 | Runtime frontend (engine-agnostic, Zod-validated, ETag autosave) | Partial — lean slice (GAP-058) |
+| P5-24 | Runtime frontend (engine-agnostic, Zod-validated, ETag autosave) | Completed — full runtime: palette with legend, section navigator, mark-for-review, clear response, save/offline indicators, submission confirmation, recovery banner, server-authoritative timer with arrival anchor, multi-tab guard and bounded offline queue (GAP-058 closed) |
 | P5-25 | Observability (runtime counters + structured logs) | Partial — dashboards/alerts outstanding (GAP-025) |
 | P5-26 | Security tests (ownership, no correct-answer leakage, config safety) | Completed |
 | P5-27 | Concurrency tests (start burst, submission idempotency) | Completed |

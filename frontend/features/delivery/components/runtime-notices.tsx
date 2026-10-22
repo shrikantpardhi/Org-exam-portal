@@ -36,18 +36,23 @@ export function SaveIndicator({
   savedAt,
   failed,
   offline,
+  pending = 0,
 }: {
   saving: boolean;
   savedAt: string | null;
   failed: number;
   offline: boolean;
+  /** Answers queued but not yet acknowledged. Non-zero means they are *not* saved. */
+  pending?: number;
 }) {
+  // Order matters: an unacknowledged answer may never be reported as saved (§78). Only when the queue
+  // is empty and nothing failed can the indicator claim everything is committed.
   const text = offline
     ? "Not saved yet — offline"
-    : saving
-      ? "Saving…"
-      : failed > 0
-        ? "Not saved — will retry"
+    : failed > 0
+      ? "Not saved — will retry"
+      : saving || pending > 0
+        ? "Saving…"
         : savedAt
           ? `Saved ${savedAt}`
           : "All answers saved";

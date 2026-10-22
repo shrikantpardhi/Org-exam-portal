@@ -22,6 +22,87 @@ export function computeOffsetMs(serverTimeIso: string | null | undefined, client
 }
 
 /**
+ * A fixed reference point captured the instant a server payload arrives.
+ *
+ * <p>This exists because recomputing a clock offset on every render is wrong: the offset shrinks by
+ * one second per second, which cancels the tick and freezes the countdown at a constant value. Storing
+ * the *server-calculated* remaining time at arrival and then subtracting locally measured elapsed time
+ * is immune to that, and is also immune to clock skew, because both operands of the subtraction come
+ * from the server.
+ */
+export interface TimerAnchor {
+  /** Whole seconds remaining according to the server at the moment the payload arrived. */
+  readonly remainingSecondsAtArrival: number;
+  /** The local clock reading at that same moment. */
+  readonly clientMsAtArrival: number;
+}
+
+/**
+ * Builds an anchor from a payload's deadline and server time.
+ *
+ * <p>Returns {@code null} for an untimed attempt, or when either timestamp is unparseable — in which
+ * case the caller shows no countdown rather than inventing one.
+ */
+export function buildTimerAnchor(
+  deadlineIso: string | null | undefined,
+  serverTimeIso: string | null | undefined,
+  clientNowMs: number,
+): TimerAnchor | null {
+  if (!deadlineIso) {
+    return null;
+  }
+  const deadlineMs = Date.parse(deadlineIso);
+  if (Number.isNaN(deadlineMs)) {
+    return null;
+  }
+  // Prefer the server's own "now" so the anchor is independent of this machine's clock. Falling back
+  // to the local clock only happens if the payload omitted `serverTime`, which the contract does not
+  // allow but a degraded proxy might.
+  const serverMs = serverTimeIso ? Date.parse(serverTimeIso) : Number.NaN;
+  const referenceMs = Number.isNaN(serverMs) ? clientNowMs : serverMs;
+  return {
+    remainingSecondsAtArrival: Math.max(0, Math.floor((deadlineMs - referenceMs) / 1000)),
+    clientMsAtArrival: clientNowMs,
+  };
+}
+
+/**
+ * Remaining whole seconds for an anchor at a given local instant, clamped at zero.
+ *
+ * <p>Measuring elapsed time locally (rather than recomputing an offset) is what makes the countdown
+ * advance, and it correctly reflects a tab that was asleep: the local clock jumped forward, so the
+ * elapsed subtraction consumes the right amount of time (§132 sleep/wake handling).
+ */
+export function remainingFromAnchor(anchor: TimerAnchor | null, clientNowMs: number): number | null {
+  if (!anchor) {
+    return null;
+  }
+  const elapsedSeconds = Math.floor((clientNowMs - anchor.clientMsAtArrival) / 1000);
+  return Math.max(0, anchor.remainingSecondsAtArrival - elapsedSeconds);
+}
+
+/**
+ * Keeps the earlier of two anchors, so a replayed or stale payload cannot extend the timer (§132).
+ * An earlier deadline yields a smaller {@code remainingSecondsAtArrival} at the same reference moment.
+ */
+export function reconcileAnchor(
+  previous: TimerAnchor | null,
+  incoming: TimerAnchor | null,
+): TimerAnchor | null {
+  if (!incoming) {
+    return previous;
+  }
+  if (!previous) {
+    return incoming;
+  }
+  // Compare at a common instant: both anchors are projected onto the incoming anchor's arrival time.
+  const previousProjected =
+    previous.remainingSecondsAtArrival -
+    Math.floor((incoming.clientMsAtArrival - previous.clientMsAtArrival) / 1000);
+  return incoming.remainingSecondsAtArrival <= previousProjected ? incoming : previous;
+}
+
+/**
  * Remaining whole seconds until the deadline as measured on the corrected clock, clamped at zero.
  * Returns {@code null} for an untimed attempt (no deadline).
  */
