@@ -226,30 +226,30 @@ P7 Pilot Operations, Scale Validation, and Live Pilot (evidence phase):
 
 | Task | Description | State |
 |---|---|---|
-| P7-01 | Build load-test data | Partial — dataset runbook + harness shipped; reduced-scale dataset built by the smoke; 5,000-user cohort credential provisioning blocked (GAP-085) |
-| P7-02 | Build test environment | Blocked — no production-like environment on the host (GAP-083/084/087/088) |
+| P7-01 | Build load-test data | **Done** — `load/seed.mjs` builds 5,000 students, 100 published questions, 3 schedules and 15,003 prepared attempts through the frozen HTTP contract (2026-10-22) |
+| P7-02 | Build test environment | Partial — single co-resident dev host only; not production-like (P7 §12/§13, P12 §56). Generator capacity itself is proven (GAP-084 closed) |
 | P7-03 | Validate release candidate | Partial — working-tree candidate; not immutably tagged (GAP-083) |
-| P7-04 | Run 100-user baseline | Blocked (representative-stage smoke only) |
-| P7-05 | Run 500-user baseline | Blocked |
-| P7-06 | Run 1,000-user test | Blocked |
-| P7-07 | Run 2,000-user test | Blocked |
-| P7-08 | Run 3,000-user test | Blocked |
-| P7-09 | Run 4,000-user test | Blocked |
-| P7-10 | Run 5,000-user test | Blocked |
-| P7-11 | Run autosave burst | Blocked — profile implemented and exercised at reduced scale |
-| P7-12 | Run submission burst | Blocked — profile implemented and exercised at reduced scale |
-| P7-13 | Run recovery burst | Blocked — profile implemented and exercised at reduced scale |
-| P7-14 | Run soak test | Blocked |
-| P7-15 | Run failure injection | Blocked — no Redis/edge/worker/store to fail |
-| P7-16 | Verify data integrity | Partial — reduced-scale reconciliation PASS (`PilotSmokeIntegrationTest`); `scripts/p7/reconcile.sql` for staged runs |
+| P7-04 | Run 100-user baseline | **Executed** — p95 155.1 ms, submit 100%, exam failure 0.00%, Δ snapshot 0. **Gate FAILS** (>100 ms) |
+| P7-05 | Run 500-user baseline | **Executed** — p95 352.6 ms, submit 100%, exam failure 0.00%, Δ snapshot 0. **FAILS** |
+| P7-06 | Run 1,000-user test | **Executed** — p95 475.5 ms, submit 100%, exam failure 0.00%, Δ snapshot 0. **FAILS** |
+| P7-07 | Run 2,000-user test | Not run — the ramp followed the spec's 2,500 step instead of a 2,000 step |
+| P7-08 | Run 3,000-user test | Not run — the ramp followed the spec's 2,500 step instead of a 3,000 step |
+| P7-09 | Run 4,000-user test | Not run — the ramp followed the spec's 2,500 step instead of a 4,000 step |
+| P7-10 | Run 5,000-user test | **Executed** — p95 430.3 ms, submit 100%, exam failure 0.00%, Δ snapshot 0. **Gate FAILS** (GAP-130); evidence `docs/testing/p7/load-2026-10-22.md` |
+| P7-11 | Run autosave burst | Partial — profile implemented and exercised inside profile F; no standalone burst at target scale |
+| P7-12 | Run submission burst | Partial — profile implemented; `attempt.submit` p95 16 ms at 5,000 users inside profile F |
+| P7-13 | Run recovery burst | Partial — profile implemented; `session.recover` p95 62 ms at 5,000 users inside profile F |
+| P7-14 | Run soak test | Not run |
+| P7-15 | Run failure injection | Not run — no Redis/edge/worker/store failure exercised |
+| P7-16 | Verify data integrity | **Passed at scale** — zero `AttemptQuestion`/`AttemptQuestionOption` inserts across all five ramp steps; 100% submission success (reduced-scale `PilotSmokeIntegrationTest` also passes) |
 | P7-17 | Verify security | Partial — functional P6 security suite; not under concurrency |
-| P7-18 | Validate dashboards and alerts | Blocked — observability stack absent (GAP-087) |
+| P7-18 | Validate dashboards and alerts | Partial — observability stack runs (Prometheus/Grafana/Loki); not validated under ramp load |
 | P7-19 | Full dress rehearsal | Blocked |
 | P7-20 | Live pilot | Not started |
-| P7-21 | Reconcile results | Partial — procedure and gates provided |
-| P7-22 | Archive evidence | Partial — `docs/testing/p7/README.md` + `scripts/p7/` |
+| P7-21 | Reconcile results | Partial — procedure and gates provided; post-ramp reconciliation not yet run |
+| P7-22 | Archive evidence | **Done for this run** — `docs/testing/p7/load-2026-10-22.md`, `load-run.md`, `load/out/*.summary.json` |
 | P7-23 | Post-pilot review | Not started |
-| P7-24 | Prepare next-phase recommendation | Completed — recommendation: provision the production-like environment and load host before any P7 scale claim |
+| P7-24 | Prepare next-phase recommendation | **Done** — fix the `attempt.questions` N+1 (GAP-156) and the `attempt.start` path, then re-run on production-like infrastructure with an immutably tagged candidate (GAP-083) |
 
 P8 Full Analytics and Insights:
 

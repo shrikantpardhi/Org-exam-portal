@@ -1,0 +1,131 @@
+{
+  "profile": "mixed",
+  "baseUrl": "http://localhost:8080",
+  "targetUsers": 2000,
+  "questionsPerAttempt": 100,
+  "configuredDurationSeconds": 45,
+  "measured": {
+    "iterations": 2000,
+    "httpRequests": 14410,
+    "httpFailedRate": 0.1208882720333102,
+    "applicableLatency": {
+      "count": 14410,
+      "p50": 7.92935,
+      "p95": 552.5881049999992,
+      "p99": 2768.752075999998,
+      "avg": 102.93915764746575,
+      "min": 0,
+      "max": 3984.7948
+    },
+    "submissionSuccessRate": 1,
+    "examFailureRate": 0,
+    "snapshotInsertSuspected": 0,
+    "crossUserExposure": 0,
+    "wrongSnapshot": null,
+    "iterationsCompleted": 2000,
+    "dataSentBytes": 6667791,
+    "dataReceivedBytes": 44177777
+  },
+  "perEndpoint": {
+    "session.recover": {
+      "count": 258,
+      "p50": 51.26565,
+      "p95": 116.879415,
+      "p99": 131.32320400000003,
+      "max": 155.5668
+    },
+    "attempt.questions": {
+      "count": 258,
+      "p50": 2077.5704,
+      "p95": 3534.4878049999998,
+      "p99": 3576.625891,
+      "max": 3984.7948
+    },
+    "response.save": {
+      "count": 5560,
+      "p50": 8.7043,
+      "p95": 111.76654000000016,
+      "p99": 375.1348359999992,
+      "max": 3203.7226
+    },
+    "attempt.start": {
+      "count": 258,
+      "p50": 443.687,
+      "p95": 862.36752,
+      "p99": 1071.5551560000006,
+      "max": 1365.0517
+    },
+    "attempt.read": {
+      "count": 5560,
+      "p50": 7.4494,
+      "p95": 130.63610500000004,
+      "p99": 2720.0696629999998,
+      "max": 3249.4956
+    },
+    "attempt.submit": {
+      "count": 258,
+      "p50": 8.2904,
+      "p95": 21.70419499999998,
+      "p99": 31.051053000000028,
+      "max": 37.7906
+    },
+    "auth.login": {
+      "count": 2000,
+      "p50": 0,
+      "p95": 572.87017,
+      "p99": 635.6518719999999,
+      "max": 757.7563
+    },
+    "response.list": {
+      "count": 258,
+      "p50": 4.232950000000001,
+      "p95": 10.602544999999989,
+      "p99": 15.303208000000009,
+      "max": 22.6853
+    }
+  },
+  "thresholds": {
+    "http_req_duration{applicable:true}: p(95)<100": {
+      "ok": false,
+      "failures": []
+    },
+    "snapshot_insert_suspected: count==0": {
+      "ok": true,
+      "failures": []
+    },
+    "submission_success_rate: rate>0.99": {
+      "ok": true,
+      "failures": []
+    },
+    "exam_failure_rate: rate<0.01": {
+      "ok": true,
+      "failures": []
+    },
+    "http_req_failed: rate<0.01": {
+      "ok": false,
+      "failures": []
+    },
+    "cross_user_exposure: count==0": {
+      "ok": true,
+      "failures": []
+    }
+  },
+  "gatesAssessed": [
+    "snapshot_insert_suspected: count==0",
+    "submission_success_rate: rate>0.99",
+    "exam_failure_rate: rate<0.01",
+    "http_req_failed: rate<0.01",
+    "cross_user_exposure: count==0",
+    "http_req_duration{applicable:true}: p(95)<100"
+  ],
+  "allThresholdsPassed": false,
+  "provenance": {
+    "generatedAt": "2026-10-22T16:11:27.996Z",
+    "k6Version": "see run log",
+    "release": "dev-a6672ba",
+    "environment": "local-docker-single-host",
+    "operator": "automated-harness",
+    "seed": null,
+    "label": "spec-steps-2000"
+  }
+}

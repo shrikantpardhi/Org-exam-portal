@@ -179,6 +179,13 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081}
       DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE:-10}
       DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE:-2}
+      # Snapshot preparation throughput (specs/14-P5-Delivery-V1.5.md §101-§103). The defaults are the
+      # production values. A load run raises them so a large READY dataset can be built in bounded time;
+      # the evidence file records whichever values were actually used. The worker is disabled during the
+      # measurement itself so dataset preparation cannot compete with the workload being measured.
+      DELIVERY_WORKER_ENABLED: ${DELIVERY_WORKER_ENABLED:-true}
+      DELIVERY_WORKER_BATCH_SIZE: ${DELIVERY_WORKER_BATCH_SIZE:-50}
+      DELIVERY_WORKER_INTERVAL: ${DELIVERY_WORKER_INTERVAL:-PT30S}
       STORAGE_PROVIDER: local
       STORAGE_LOCAL_ROOT: /app/data/uploads
       TZ: UTC

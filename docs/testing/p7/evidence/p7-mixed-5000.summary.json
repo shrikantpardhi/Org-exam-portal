@@ -1,0 +1,131 @@
+{
+  "profile": "mixed",
+  "baseUrl": "http://localhost:8080",
+  "targetUsers": 5000,
+  "questionsPerAttempt": 100,
+  "configuredDurationSeconds": 45,
+  "measured": {
+    "iterations": 5000,
+    "httpRequests": 21516,
+    "httpFailedRate": 0.21611823759063023,
+    "applicableLatency": {
+      "count": 21516,
+      "p50": 8.0276,
+      "p95": 430.25675,
+      "p99": 2837.1508699999968,
+      "avg": 118.83934845231451,
+      "min": 0,
+      "max": 3650.4228
+    },
+    "submissionSuccessRate": 1,
+    "examFailureRate": 0,
+    "snapshotInsertSuspected": 0,
+    "crossUserExposure": 0,
+    "wrongSnapshot": null,
+    "iterationsCompleted": 5000,
+    "dataSentBytes": 8873911,
+    "dataReceivedBytes": 59514938
+  },
+  "perEndpoint": {
+    "response.save": {
+      "count": 7383,
+      "p50": 10.9815,
+      "p95": 125.15256,
+      "p99": 1970.8114800000003,
+      "max": 2370.1476
+    },
+    "attempt.questions": {
+      "count": 350,
+      "p50": 2318.33525,
+      "p95": 3409.96477,
+      "p99": 3541.963938,
+      "max": 3551.4367
+    },
+    "auth.login": {
+      "count": 5000,
+      "p50": 0,
+      "p95": 276.4680850000001,
+      "p99": 382.96683400000063,
+      "max": 639.0528
+    },
+    "attempt.read": {
+      "count": 7383,
+      "p50": 10.1272,
+      "p95": 195.81376999999785,
+      "p99": 2692.0297660000006,
+      "max": 3596.6585
+    },
+    "session.recover": {
+      "count": 350,
+      "p50": 36.1018,
+      "p95": 62.38706,
+      "p99": 79.345159,
+      "max": 99.3456
+    },
+    "response.list": {
+      "count": 350,
+      "p50": 4.168,
+      "p95": 10.646535000000002,
+      "p99": 14.562986999999994,
+      "max": 15.9179
+    },
+    "attempt.start": {
+      "count": 350,
+      "p50": 237.1291,
+      "p95": 3106.8873,
+      "p99": 3378.1083869999975,
+      "max": 3650.4228
+    },
+    "attempt.submit": {
+      "count": 350,
+      "p50": 8.36335,
+      "p95": 15.997955000000005,
+      "p99": 20.3966,
+      "max": 22.8453
+    }
+  },
+  "thresholds": {
+    "http_req_failed: rate<0.01": {
+      "ok": false,
+      "failures": []
+    },
+    "cross_user_exposure: count==0": {
+      "ok": true,
+      "failures": []
+    },
+    "http_req_duration{applicable:true}: p(95)<100": {
+      "ok": false,
+      "failures": []
+    },
+    "snapshot_insert_suspected: count==0": {
+      "ok": true,
+      "failures": []
+    },
+    "submission_success_rate: rate>0.99": {
+      "ok": true,
+      "failures": []
+    },
+    "exam_failure_rate: rate<0.01": {
+      "ok": true,
+      "failures": []
+    }
+  },
+  "gatesAssessed": [
+    "http_req_duration{applicable:true}: p(95)<100",
+    "snapshot_insert_suspected: count==0",
+    "submission_success_rate: rate>0.99",
+    "exam_failure_rate: rate<0.01",
+    "http_req_failed: rate<0.01",
+    "cross_user_exposure: count==0"
+  ],
+  "allThresholdsPassed": false,
+  "provenance": {
+    "generatedAt": "2026-10-22T16:00:02.443Z",
+    "k6Version": "see run log",
+    "release": "dev-a6672ba",
+    "environment": "local-docker-single-host",
+    "operator": "automated-harness",
+    "seed": null,
+    "label": "diagnostic-5000"
+  }
+}

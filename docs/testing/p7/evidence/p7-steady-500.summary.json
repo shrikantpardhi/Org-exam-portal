@@ -1,0 +1,117 @@
+{
+  "profile": "steady",
+  "baseUrl": "http://localhost:8080",
+  "targetUsers": 500,
+  "questionsPerAttempt": 100,
+  "configuredDurationSeconds": 20,
+  "measured": {
+    "iterations": 500,
+    "httpRequests": 1522,
+    "httpFailedRate": 0.29500657030223393,
+    "applicableLatency": {
+      "count": 1522,
+      "p50": 26.18035,
+      "p95": 341.94191000000035,
+      "p99": 695.501855,
+      "avg": 67.85855801576879,
+      "min": 0,
+      "max": 889.4242
+    },
+    "submissionSuccessRate": 1,
+    "examFailureRate": 0.252442996742671,
+    "snapshotInsertSuspected": 0,
+    "crossUserExposure": 0,
+    "wrongSnapshot": null,
+    "iterationsCompleted": 500,
+    "dataSentBytes": 581125,
+    "dataReceivedBytes": 6894707
+  },
+  "perEndpoint": {
+    "auth.login": {
+      "count": 500,
+      "p50": 0,
+      "p95": 155.6019,
+      "p99": 191.269062,
+      "max": 215.8706
+    },
+    "attempt.questions": {
+      "count": 51,
+      "p50": 680.3383,
+      "p95": 843.4366,
+      "p99": 866.9375,
+      "max": 889.4242
+    },
+    "response.save": {
+      "count": 357,
+      "p50": 18.3623,
+      "p95": 47.29186,
+      "p99": 56.780696,
+      "max": 60.6467
+    },
+    "attempt.submit": {
+      "count": 51,
+      "p50": 22.9698,
+      "p95": 31.8129,
+      "p99": 34.2843,
+      "max": 35.382
+    },
+    "attempt.read": {
+      "count": 357,
+      "p50": 33.3447,
+      "p95": 316.24075999999985,
+      "p99": 373.65223199999997,
+      "max": 427.6764
+    },
+    "attempt.start": {
+      "count": 206,
+      "p50": 115.87485000000001,
+      "p95": 352.106175,
+      "p99": 447.0731399999996,
+      "max": 492.3818
+    }
+  },
+  "thresholds": {
+    "cross_user_exposure: count==0": {
+      "ok": true,
+      "failures": []
+    },
+    "submission_success_rate: rate>0.99": {
+      "ok": true,
+      "failures": []
+    },
+    "exam_failure_rate: rate<0.01": {
+      "ok": false,
+      "failures": []
+    },
+    "http_req_failed: rate<0.01": {
+      "ok": false,
+      "failures": []
+    },
+    "http_req_duration{applicable:true}: p(95)<100": {
+      "ok": false,
+      "failures": []
+    },
+    "snapshot_insert_suspected: count==0": {
+      "ok": true,
+      "failures": []
+    }
+  },
+  "gatesAssessed": [
+    "cross_user_exposure: count==0",
+    "submission_success_rate: rate>0.99",
+    "exam_failure_rate: rate<0.01",
+    "http_req_failed: rate<0.01",
+    "http_req_duration{applicable:true}: p(95)<100",
+    "snapshot_insert_suspected: count==0"
+  ],
+  "allThresholdsPassed": false,
+  "provenance": {
+    "generatedAt": "2026-10-22T16:01:30.541Z",
+    "k6Version": "see run log",
+    "release": null,
+    "environment": null,
+    "operator": null,
+    "seed": null,
+    "label": "probe-steady"
+  }
+}

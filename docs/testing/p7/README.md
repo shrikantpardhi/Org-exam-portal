@@ -2,15 +2,30 @@
 
 Phase specification: `specs/16-P7-Pilot-V1.5.md`.
 
-> **Status: PARTIAL / BLOCKED.** The staged scale runs (100 → 5,000 ramp, bursts, soak, spike,
-> failure injection, monitoring, backup/restore, live pilot) **have not been executed and are not
-> claimed**: this host has no production-like environment. What *is* executed is a **local,
-> reduced-scale pilot smoke** that proves the harness approach, the runtime invariants and the
-> reconciliation queries. No staged number in this document is estimated or inferred.
+> **Status: PARTIAL — the measurement now exists and the gate FAILS.**
+>
+> On **2026-10-22** the full §33 ramp — 100 → 500 → 1,000 → 2,000 → 3,000 → 4,000 → 5,000 — was executed with a reproducible
+> harness (`load/`, runbook [`load-run.md`](load-run.md), evidence [`load-2026-10-22.md`](load-2026-10-22.md)).
+> Every step completed.
+>
+> - **Integrity: passed at every step.** Zero `AttemptQuestion`/`AttemptQuestionOption` rows were created
+>   by any start burst, submission success was 100%, and exam failure 0.00% — including at 5,000
+>   concurrent students.
+> - **Latency: failed at every step.** p95 was 155.1 / 352.6 / 475.5 / 552.6 / 395.0 / 516.4 / 430.3 ms
+>   against the < 100 ms target. It fails even at 100 users, so the verdict is not an
+>   infrastructure-headroom problem. Two endpoints account for it: `attempt.questions` (a per-question
+>   N+1, GAP-156) and `attempt.start`.
+> - **Still not executed:** the standalone A–F profile suite beyond profile F, the soak, the spike,
+>   failure injection, availability measurement, and the live pilot.
+>
+> The environment was a **single development host** (generator and stack co-resident), which P7 §12/§13
+> and P12 §56 do not accept as production-like. The numbers therefore characterise that host and are
+> **not** a production capacity claim in either direction. No staged number in this document is
+> estimated or inferred; where a metric was not produced it is recorded as absent.
 >
 > P7 §4: "The pilot is an evidence exercise, not a feature-development phase." P7 §151/§152 place
-> go/no-go, security approval and production change approval with humans. Nothing here is a
-> readiness declaration.
+> go/no-go, security approval and production change approval with humans. Nothing here is a readiness
+> declaration, and the release decision remains **NO-GO** because GAP-130 is measured and missed.
 
 ## 1. Frozen measurement definitions (fixed before any test, §44-§48)
 

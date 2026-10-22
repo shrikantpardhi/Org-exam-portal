@@ -32,6 +32,10 @@ node_modules/
 out/
 .turbo/
 .vercel/
+
+# P7 load harness output: generated manifests, credential manifests and run evidence.
+# Holds load-test credentials, so it must never be committed.
+load/out/
 *.tsbuildinfo
 npm-debug.log*
 yarn-debug.log*

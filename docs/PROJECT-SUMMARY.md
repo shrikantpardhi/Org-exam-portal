@@ -40,9 +40,10 @@ module reads another module's repository.
 | Controllers / endpoint mappings | 56 / 237 |
 | Backend tests | **397 passing, 0 failures** |
 | Frontend tests | 70 files / **422 tests passing**; lint clean; production build succeeds (59 routes) |
-| Tracked gaps | 156 (see `docs/known-gaps.md` for the register) |
+| Tracked gaps | 158 (see `docs/known-gaps.md` for the register) |
 | Container stack | Full stack runs; `scripts/verify-stack.sh` passes 15/15 edge assertions |
 | Observability | Prometheus target UP, 9 alert rules load, 2 datasources + 3 dashboards provisioned, Loki ingesting |
+| Load harness | `load/` (k6) — six profiles, seed, ramp runner; 100 → 5,000 ramp executed 2026-10-22 |
 | **Release decision** | **NO-GO** — see §4 |
 
 ## 3. Phase map
@@ -56,7 +57,7 @@ module reads another module's repository.
 | P4 | Blueprint and assessment management | Complete — **the assessment `examId` filter now works through the selection-rule provenance (GAP-041, 2026-10-22, ADR-0027)**; **the blueprint/assessment builders, schedule and collection UI are delivered (GAP-049, 2026-10-22)** |
 | P5 | Assessment delivery and the runtime exam engine | Complete — **deadline enforcement + auto-submit (GAP-062, 2026-10-20), submit-time answer-key handoff (GAP-071, 2026-10-21), the paid-content entitlement gate (GAP-100) and the session expiry sweep + staff attempt read (GAP-064/065, 2026-10-22) added**; **the full runtime page, multi-tab guard and offline queue are delivered (GAP-058, 2026-10-22)** |
 | P6 | Evaluation, results and scorecards | Complete — **attempt completion contract added 2026-10-21 (GAP-073 closed); the results and scorecard UI is delivered (GAP-128, 2026-10-22)** |
-| P7 | Scale validation and live pilot | Tooling complete; **staged load evidence outstanding** (GAP-083/084) |
+| P7 | Scale validation and live pilot | **Load harness delivered and the 100 → 5,000 ramp executed 2026-10-22 (GAP-084 closed). The latency gate was measured and FAILS (GAP-130), driven by a per-question N+1 in `attempt.questions` (GAP-156).** Soak, spike, failure injection, availability and the live pilot remain outstanding |
 | P8 | Analytics and insights | Complete; derived aggregates only, no time-series tables — **the analytics dashboard frontend is delivered (GAP-092, 2026-10-22)** |
 | P9 | Commerce and access management | Complete; reference gateway only (GAP-099) — **the entitlement contract is now enforced by Delivery (GAP-100, 2026-10-22) and the commerce UI is delivered (GAP-104, 2026-10-22)** |
 | P10 | Communication and notification | Complete; fake email provider only (GAP-108) — **the communication UI is delivered (GAP-109, 2026-10-22)** |
@@ -68,9 +69,14 @@ module reads another module's repository.
 
 The P12 release gates are not all met. The outstanding trigger:
 
-- **GAP-130** — no performance gate was measured (5,000 concurrent users, 99.9% availability,
-  p95 < 100 ms, >99% submission success, <1% exam failure). An unmeasured gate cannot be claimed
-  as passed.
+- **GAP-130** — the performance gate has now been **measured, and it fails**. The 100 → 500 → 1,000 →
+  2,000 → 3,000 → 4,000 → 5,000 ramp ran on 2026-10-22. Integrity passed at every step (zero snapshot inserts, 100%
+  submission success, 0.00% exam failure), but **p95 latency was 155.1 / 352.6 / 475.5 / 483.1 /
+  430.3 ms against the < 100 ms target** — it fails even at 100 users. The cause is identified: a
+  per-question N+1 in `attempt.questions` issues ~400 queries and 400 LaTeX renders per 100-question
+  read while the underlying SQL takes 0.08 ms (**GAP-156**), plus a slow `attempt.start` path. A missed
+  gate is still a missed gate: this stays NO-GO until the endpoints are fixed and the ramp is re-run on
+  production-like infrastructure. Evidence: `docs/testing/p7/load-2026-10-22.md`.
 
 Also open: **GAP-135** (dress rehearsal, production smoke test, post-release monitoring),
 **GAP-088** (the live pilot), **GAP-008/010** (the CI workflows exist but have not run, and branch
@@ -80,11 +86,70 @@ protection is documented rather than configured), **GAP-141a** (three commerce r
 report permission, so the student screen is present and unreachable until the permission decision is
 taken).
 
+**GAP-084 is closed:** load-generation capacity exists and was proven — the generator sustained 5,000
+concurrent VUs for 30 s with zero interrupted iterations, and a full 5,000-student ramp ran to
+completion.
+
 Gates that *were* closed by the 2026-10-19 rehearsal: **GAP-131** (logical backup and restore, 6/6
 integrity checks) and **GAP-132** (rollback, 12/12 checks). PITR is deliberately **not** claimed
 (`scripts/backup/pitr.md`).
 
-## 5. The most recent change — the assessment authoring, runtime and content-authoring UIs (GAP-049, GAP-058, GAP-153)
+## 5. The most recent change — the P7 load harness and the first executed scale ramp (GAP-084, GAP-130, GAP-156, GAP-157)
+
+*(2026-10-22. New `load/` harness, runbook and evidence. `backend/` application code is untouched: no
+frozen contract, table, column, migration or endpoint was added. The only non-documentation source
+changes are two optional environment pass-throughs in `docker-compose.yml` and the harness itself.)*
+
+**The problem.** GAP-130 said the P12 §9 performance gate had never been measured, so nothing was known
+about behaviour under production load — and GAP-084 said it *could not* be measured, because a single
+development host supposedly had no capacity to generate 5,000 concurrent users.
+
+**What was built.** A reproducible k6 harness under `load/`: a seed script that creates 5,000 students,
+100 published questions and 15,003 prepared attempts entirely through the frozen HTTP contract; a
+readiness poller; a credential builder; a ramp runner that enforces the stop-and-diagnose rule; and six
+workload profiles, including profile F (mixed realistic exam). Every student authenticates as itself. The
+start burst asserts the snapshot invariant externally by counting `attempt_question` and
+`attempt_question_option` before and after each step, so GAP-059's core claim is now tested at scale by
+observation rather than by inference.
+
+**What happened.** GAP-084's premise is **false**. A generator-only probe sustained 5,000 VUs for 30 s
+with zero interrupted iterations, and the full §33 ramp — 100 → 500 → 1,000 → 2,000 → 3,000 → 4,000 → 5,000 — ran to completion
+with 5,000 real student exam flows. GAP-084 is closed.
+
+The gate itself **fails**, and this is a genuine platform finding rather than a harness artefact:
+
+| Users | p95 (ms) | Submission success | Exam failure | Δ snapshot rows |
+|---:|---:|---:|---:|---:|
+| 100 | 155.1 | 100% | 0.00% | 0 |
+| 500 | 352.6 | 100% | 0.00% | 0 |
+| 1,000 | 475.5 | 100% | 0.00% | 0 |
+| 2,000 | 552.6 | 100% | 0.00% | 0 |
+| 3,000 | 395.0 | 100% | 0.00% | 0 |
+| 4,000 | 516.4 | 100% | 0.00% | 0 |
+| 5,000 | 430.3 | 100% | 0.00% | 0 |
+
+**Integrity passed at every step; latency failed at every step, including 100 users** — so the verdict
+cannot be changed by adding infrastructure headroom. The dominant cost is `attempt.questions`: it returns
+the whole 100-question snapshot, its SQL runs in **0.08 ms**, yet a single-session read takes 90–104 ms
+because `AttemptQueryService.toView` calls `contentCatalog.runtimeQuestion(...)` **once per question**,
+and each of those performs four lookups plus a LaTeX re-render of every option. One read therefore issues
+roughly **400 queries and 400 renders** for immutable content (filed as GAP-156). `attempt.start` is the
+second hotspot, rising to 3,107 ms p95 at 5,000 users (GAP-059 latency half). An operator finding is also
+recorded: a `FAILED` snapshot from an interrupted preparation has no retry path, because `retryFailed` is
+unreachable through the API (GAP-157).
+
+**How it was verified.** Four bugs in the harness itself were found and fixed before its numbers were
+trusted, because each would have produced a wrong result: a single ETag reused across questions (43.8%
+spurious `412`s), `constant-vus` restarting a fresh exam each loop (6,591 logins for 500 users), cohort
+selection derived from a consumed count that is not a contiguous prefix (55–100% spurious exam failures),
+and an over-broad readiness gate. The evidence file records provenance (commit `a6672ba`, V24, image, DB
+settings), the workload, the dataset, and every limitation — including that the host was a single
+co-resident development machine and is **not** production-like under P7 §12/§13 or P12 §56.
+
+**Release decision unchanged: NO-GO.** GAP-130 is now *measured and missed* rather than unmeasured. See
+§4 and `docs/testing/p7/load-2026-10-22.md`.
+
+## 5a. The most recent change — the assessment authoring, runtime and content-authoring UIs (GAP-049, GAP-058, GAP-153)
 
 *(2026-10-22. Frontend and documentation only; `backend/` is untouched and no frozen contract,
 table, column, migration or endpoint was added.)*
@@ -148,7 +213,7 @@ in a test to prove no exam-name branching exists.
 **Release decision unchanged: NO-GO** — see §4. The remaining gates are staging load evidence
 (GAP-083/084/130) and the release rehearsals (GAP-131/132/135).
 
-## 5a. The most recent change — attempt completion contract (GAP-073)
+## 5b. The most recent change — attempt completion contract (GAP-073)
 
 **The problem.** Evaluation persisted the official `Evaluation` and `Result` but never told
 Delivery, so the Delivery-owned `student_attempt.attempt_status` stayed `SUBMITTED` and
@@ -197,7 +262,7 @@ Full backend suite: **388 tests, 0 failures**.
 **Related (already closed).** GAP-071 — the submit handoff that triggers the evaluation now carries
 an explicit answer key, so the worker that completes the attempt carries a key too.
 
-## 5a. The most recent change — multi-correct answer keys (GAP-072)
+## 5c. The most recent change — multi-correct answer keys (GAP-072)
 
 Closed GAP-072 with additive schema amendment ADR-0025: new child table
 `answer_key_detail_option` (migration V26) holding the correct option set for a
@@ -208,7 +273,7 @@ form the authoritative set. `AnswerKeyDetailRequest`/`Response` gain a
 set against the authoritative set with all-or-nothing scoring (partial selection
 scores 0). Single-correct behaviour is unchanged.
 
-## 5b. The most recent change — the paid-content entitlement gate (GAP-100)
+## 5d. The most recent change — the paid-content entitlement gate (GAP-100)
 
 **The problem.** The Commerce entitlement contract existed and was implemented, but Delivery never
 consulted it, so **every assessment was startable by any eligible student regardless of purchase**.
@@ -261,7 +326,7 @@ Full backend suite: **388 tests, 0 failures**.
 **Related.** ADR-0021 §8's "implemented but not yet enforced" consequence was amended in the same
 change.
 
-## 5c. The most recent change — session expiry sweep and the staff attempt read (GAP-064, GAP-065)
+## 5e. The most recent change — session expiry sweep and the staff attempt read (GAP-064, GAP-065)
 
 **The problem.** Two gaps. GAP-065: a runtime session ended only on submit or an explicit
 `/sessions/{id}/end`, so a stale session stayed ACTIVE indefinitely — and attempt expiry was not
@@ -313,7 +378,7 @@ a staff holder with the permission reads it; the owner still reads their own; an
 carries no correct-answer data, no audit columns and no owner identifier.
 Full backend suite: **388 tests, 0 failures**.
 
-## 5d. The most recent change — the assessment `examId` filter (GAP-041)
+## 5f. The most recent change — the assessment `examId` filter (GAP-041)
 
 **The problem.** `13-P4 §64` and `§95` both name the assessment list filters: status, **examId**,
 blueprintId, search. The frozen `assessment` table has no exam column (`04-Schema §28.4`), so the
@@ -348,7 +413,7 @@ versions; an exam with no assessment and an unknown exam id both return an empty
 composes with the status filter while the other filters stay unaffected.
 Full backend suite: **388 tests, 0 failures**.
 
-## 5e. The most recent change — the analytics dashboard frontend (GAP-092)
+## 5g. The most recent change — the analytics dashboard frontend (GAP-092)
 
 **The problem.** P8 delivered the analytics read models and the nine frozen read endpoints, but the
 frontend was a stub: a student or an authorized staff member could only call the API by hand.
@@ -385,7 +450,7 @@ failures**; `npm run lint` and `npm run type-check` clean; `npm run build` succe
 five analytics routes. The release decision is unchanged (NO-GO): GAP-092 was a product-surface gap,
 not a release gate.
 
-## 5f. The most recent change — the results and scorecard frontend (GAP-128)
+## 5h. The most recent change — the results and scorecard frontend (GAP-128)
 
 **The problem.** P6 delivered evaluation, results, publication and scorecards, but the frontend had
 no screen for any of it: students could not see a published result or a scorecard, and only the API
@@ -423,7 +488,7 @@ suite: **27 files / 112 tests, 0 failures**; `npm run lint` and `npm run type-ch
 `/attempts/[id]/result`. The release decision is unchanged (NO-GO): GAP-128 was a product-surface
 gap, not a release gate.
 
-## 5g. The most recent change — the commerce frontend (GAP-104)
+## 5i. The most recent change — the commerce frontend (GAP-104)
 
 **The problem.** P9 delivered the catalog, purchase, payment, refund and entitlement APIs, but the
 product had no commerce screen: students could not browse packages or check out, and finance could
@@ -464,7 +529,7 @@ purchase that cannot be refunded (3); purchase history (1); store catalog (2). F
 succeeds and emits every commerce route. The release decision is unchanged (NO-GO): GAP-104 was a
 product-surface gap, not a release gate.
 
-## 5h. The most recent change — the communication frontend (GAP-109)
+## 5j. The most recent change — the communication frontend (GAP-109)
 
 **The problem.** P10 delivered notifications, email templates and announcements, but the product had
 no communication screen: students could not see notifications or announcements, and administrators
@@ -500,7 +565,7 @@ with immutable code and safe preview (3). Full frontend suite: **39 files / 147 
 route. The release decision is unchanged (NO-GO): GAP-109 was a product-surface gap, not a release
 gate.
 
-## 5i. The most recent change — the administration frontend (GAP-123)
+## 5k. The most recent change — the administration frontend (GAP-123)
 
 **The problem.** P11 delivered the administrative APIs — dashboard, users, roles, permissions,
 settings, business rules, lookups, audit and system health — but there was no admin UI at all.
@@ -544,7 +609,7 @@ Full frontend suite: **43 files / 167 tests, 0 failures**; `npm run lint` and
 `npm run type-check` clean; `npm run build` succeeds and emits every administration route. The
 release decision is unchanged (NO-GO): GAP-123 was a product-surface gap, not a release gate.
 
-## 5j. The most recent change — the remaining report providers and the reporting UI (GAP-141, GAP-148)
+## 5l. The most recent change — the remaining report providers and the reporting UI (GAP-141, GAP-148)
 
 **The problem.** P13 shipped the reporting framework — catalog, validation, sync/async execution,
 CSV and PDF renderers, protected download and history — but only 5 of the 23 catalog report types

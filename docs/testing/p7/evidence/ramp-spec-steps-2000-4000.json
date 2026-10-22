@@ -1,0 +1,370 @@
+{
+  "generatedAt": "2026-10-22T16:13:20.785Z",
+  "profile": "mixed",
+  "label": "spec-steps",
+  "baseUrl": "http://localhost:8080",
+  "questionsPerAttempt": 100,
+  "requestedSteps": [
+    2000,
+    3000,
+    4000
+  ],
+  "baseline": {
+    "attemptQuestion": 1362000,
+    "attemptQuestionOption": 5448000,
+    "readyAttempts": 13620,
+    "totalAttempts": 15003
+  },
+  "results": [
+    {
+      "users": 2000,
+      "cohortOffset": 0,
+      "startedAt": "2026-10-22T16:10:33.974Z",
+      "finishedAt": "2026-10-22T16:11:28.651Z",
+      "durationSeconds": 54.7,
+      "k6ExitCode": 99,
+      "iterations": 2000,
+      "httpRequests": 14410,
+      "p50": 7.92935,
+      "p95": 552.5881049999992,
+      "p99": 2768.752075999998,
+      "submissionSuccessRate": 1,
+      "examFailureRate": 0,
+      "httpFailedRate": 0.1208882720333102,
+      "snapshotDelta": {
+        "attemptQuestion": 0,
+        "attemptQuestionOption": 0
+      },
+      "zeroSnapshotInsert": true,
+      "allThresholdsPassed": false,
+      "gatesAssessed": [
+        "snapshot_insert_suspected: count==0",
+        "submission_success_rate: rate>0.99",
+        "exam_failure_rate: rate<0.01",
+        "http_req_failed: rate<0.01",
+        "cross_user_exposure: count==0",
+        "http_req_duration{applicable:true}: p(95)<100"
+      ],
+      "thresholds": {
+        "http_req_duration{applicable:true}: p(95)<100": {
+          "ok": false,
+          "failures": []
+        },
+        "snapshot_insert_suspected: count==0": {
+          "ok": true,
+          "failures": []
+        },
+        "submission_success_rate: rate>0.99": {
+          "ok": true,
+          "failures": []
+        },
+        "exam_failure_rate: rate<0.01": {
+          "ok": true,
+          "failures": []
+        },
+        "http_req_failed: rate<0.01": {
+          "ok": false,
+          "failures": []
+        },
+        "cross_user_exposure: count==0": {
+          "ok": true,
+          "failures": []
+        }
+      },
+      "perEndpoint": {
+        "session.recover": {
+          "count": 258,
+          "p50": 51.26565,
+          "p95": 116.879415,
+          "p99": 131.32320400000003,
+          "max": 155.5668
+        },
+        "attempt.questions": {
+          "count": 258,
+          "p50": 2077.5704,
+          "p95": 3534.4878049999998,
+          "p99": 3576.625891,
+          "max": 3984.7948
+        },
+        "response.save": {
+          "count": 5560,
+          "p50": 8.7043,
+          "p95": 111.76654000000016,
+          "p99": 375.1348359999992,
+          "max": 3203.7226
+        },
+        "attempt.start": {
+          "count": 258,
+          "p50": 443.687,
+          "p95": 862.36752,
+          "p99": 1071.5551560000006,
+          "max": 1365.0517
+        },
+        "attempt.read": {
+          "count": 5560,
+          "p50": 7.4494,
+          "p95": 130.63610500000004,
+          "p99": 2720.0696629999998,
+          "max": 3249.4956
+        },
+        "attempt.submit": {
+          "count": 258,
+          "p50": 8.2904,
+          "p95": 21.70419499999998,
+          "p99": 31.051053000000028,
+          "max": 37.7906
+        },
+        "auth.login": {
+          "count": 2000,
+          "p50": 0,
+          "p95": 572.87017,
+          "p99": 635.6518719999999,
+          "max": 757.7563
+        },
+        "response.list": {
+          "count": 258,
+          "p50": 4.232950000000001,
+          "p95": 10.602544999999989,
+          "p99": 15.303208000000009,
+          "max": 22.6853
+        }
+      },
+      "summaryPath": "load\\out\\p7-mixed-2000.summary.json",
+      "evidencePresent": true
+    },
+    {
+      "users": 3000,
+      "cohortOffset": 2000,
+      "startedAt": "2026-10-22T16:11:29.868Z",
+      "finishedAt": "2026-10-22T16:12:24.203Z",
+      "durationSeconds": 54.3,
+      "k6ExitCode": 99,
+      "iterations": 3000,
+      "httpRequests": 17633,
+      "p50": 7.8284,
+      "p95": 394.9802399999851,
+      "p99": 2780.6223120000122,
+      "submissionSuccessRate": 1,
+      "examFailureRate": 0,
+      "httpFailedRate": 0.15272500425338853,
+      "snapshotDelta": {
+        "attemptQuestion": 0,
+        "attemptQuestionOption": 0
+      },
+      "zeroSnapshotInsert": true,
+      "allThresholdsPassed": false,
+      "gatesAssessed": [
+        "submission_success_rate: rate>0.99",
+        "snapshot_insert_suspected: count==0",
+        "cross_user_exposure: count==0",
+        "http_req_failed: rate<0.01",
+        "http_req_duration{applicable:true}: p(95)<100",
+        "exam_failure_rate: rate<0.01"
+      ],
+      "thresholds": {
+        "submission_success_rate: rate>0.99": {
+          "ok": true,
+          "failures": []
+        },
+        "snapshot_insert_suspected: count==0": {
+          "ok": true,
+          "failures": []
+        },
+        "cross_user_exposure: count==0": {
+          "ok": true,
+          "failures": []
+        },
+        "http_req_failed: rate<0.01": {
+          "ok": false,
+          "failures": []
+        },
+        "http_req_duration{applicable:true}: p(95)<100": {
+          "ok": false,
+          "failures": []
+        },
+        "exam_failure_rate: rate<0.01": {
+          "ok": true,
+          "failures": []
+        }
+      },
+      "perEndpoint": {
+        "attempt.questions": {
+          "count": 307,
+          "p50": 2525.3449,
+          "p95": 3384.50569,
+          "p99": 3882.198202,
+          "max": 4680.9927
+        },
+        "attempt.read": {
+          "count": 6549,
+          "p50": 7.598,
+          "p95": 81.88347999999971,
+          "p99": 2567.5009519999876,
+          "max": 3293.6725
+        },
+        "attempt.submit": {
+          "count": 307,
+          "p50": 8.8486,
+          "p95": 17.76239,
+          "p99": 19.931569999999997,
+          "max": 49.0697
+        },
+        "response.list": {
+          "count": 307,
+          "p50": 4.3199,
+          "p95": 9.297749999999999,
+          "p99": 13.019685999999997,
+          "max": 18.5161
+        },
+        "attempt.start": {
+          "count": 307,
+          "p50": 214.1986,
+          "p95": 2848.32782,
+          "p99": 2884.380198,
+          "max": 3561.7293
+        },
+        "response.save": {
+          "count": 6549,
+          "p50": 8.941,
+          "p95": 62.25987999999984,
+          "p99": 1604.1630599999987,
+          "max": 2287.5999
+        },
+        "session.recover": {
+          "count": 307,
+          "p50": 21.0346,
+          "p95": 39.59961,
+          "p99": 48.600673999999984,
+          "max": 56.1608
+        },
+        "auth.login": {
+          "count": 3000,
+          "p50": 0,
+          "p95": 154.27969499999998,
+          "p99": 260.6261329999999,
+          "max": 651.4056
+        }
+      },
+      "summaryPath": "load\\out\\p7-mixed-3000.summary.json",
+      "evidencePresent": true
+    },
+    {
+      "users": 4000,
+      "cohortOffset": 5000,
+      "startedAt": "2026-10-22T16:12:25.395Z",
+      "finishedAt": "2026-10-22T16:13:20.174Z",
+      "durationSeconds": 54.8,
+      "k6ExitCode": 99,
+      "iterations": 4000,
+      "httpRequests": 18376,
+      "p50": 8.2348,
+      "p95": 516.4468,
+      "p99": 2386.9931749999996,
+      "submissionSuccessRate": 1,
+      "examFailureRate": 0,
+      "httpFailedRate": 0.20134958641706574,
+      "snapshotDelta": {
+        "attemptQuestion": 0,
+        "attemptQuestionOption": 0
+      },
+      "zeroSnapshotInsert": true,
+      "allThresholdsPassed": false,
+      "gatesAssessed": [
+        "http_req_failed: rate<0.01",
+        "submission_success_rate: rate>0.99",
+        "cross_user_exposure: count==0",
+        "exam_failure_rate: rate<0.01",
+        "snapshot_insert_suspected: count==0",
+        "http_req_duration{applicable:true}: p(95)<100"
+      ],
+      "thresholds": {
+        "snapshot_insert_suspected: count==0": {
+          "ok": true,
+          "failures": []
+        },
+        "http_req_duration{applicable:true}: p(95)<100": {
+          "ok": false,
+          "failures": []
+        },
+        "http_req_failed: rate<0.01": {
+          "ok": false,
+          "failures": []
+        },
+        "submission_success_rate: rate>0.99": {
+          "ok": true,
+          "failures": []
+        },
+        "cross_user_exposure: count==0": {
+          "ok": true,
+          "failures": []
+        },
+        "exam_failure_rate: rate<0.01": {
+          "ok": true,
+          "failures": []
+        }
+      },
+      "perEndpoint": {
+        "auth.login": {
+          "count": 4000,
+          "p50": 0,
+          "p95": 184.77718499999997,
+          "p99": 739.781309999999,
+          "max": 1351.5396
+        },
+        "attempt.read": {
+          "count": 6438,
+          "p50": 8.8963,
+          "p95": 82.77628499999992,
+          "p99": 2222.6053330000004,
+          "max": 3159.0376
+        },
+        "response.save": {
+          "count": 6438,
+          "p50": 9.9589,
+          "p95": 76.8619,
+          "p99": 2027.8402720000004,
+          "max": 3309.3667
+        },
+        "response.list": {
+          "count": 300,
+          "p50": 5.6370000000000005,
+          "p95": 24.210425,
+          "p99": 27.964229999999997,
+          "max": 30.668
+        },
+        "attempt.submit": {
+          "count": 300,
+          "p50": 10.20475,
+          "p95": 34.266515000000005,
+          "p99": 39.70630799999999,
+          "max": 49.04
+        },
+        "attempt.questions": {
+          "count": 300,
+          "p50": 1955.9352,
+          "p95": 3179.3580400000005,
+          "p99": 3505.662286,
+          "max": 3567.404
+        },
+        "attempt.start": {
+          "count": 300,
+          "p50": 1285.9728,
+          "p95": 1796.0808550000006,
+          "p99": 2121.015477,
+          "max": 2442.1729
+        },
+        "session.recover": {
+          "count": 300,
+          "p50": 18.3271,
+          "p95": 65.50594,
+          "p99": 80.45976799999993,
+          "max": 129.2112
+        }
+      },
+      "summaryPath": "load\\out\\p7-mixed-4000.summary.json",
+      "evidencePresent": true
+    }
+  ],
+  "stopped": null,
+  "completedAllSteps": true
+}
