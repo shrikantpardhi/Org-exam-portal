@@ -18,7 +18,7 @@
 ## Current phase
 
 - **Phase:** P13 — Broader Reporting & Operational Reporting (complete) / **P12 release rehearsal (executed 2026-10-19)**
-- **State:** Reporting framework complete (catalog, validation, sync/async execution, CSV + PDF renderers, protected download, history); 4 of 22 report types backed, 18 registered-disabled. The P12 rehearsal closed **GAP-131** (backup/restore) and **GAP-132** (rollback) and verified **GAP-007/009/087/134** against the running stack. The release decision remains **NO-GO** on **GAP-130** (no performance gate measured).
+- **State:** Reporting complete — catalog, validation, sync/async execution, CSV + PDF renderers, protected download and history; **all 23 of 23 report types are backed by a projection provider and enabled** (GAP-141 closed), and the student/staff/admin reporting UI is delivered (GAP-148 closed). Commerce Subscription Summary, Coupon Activity and Refund Activity are named by `22-P13 §55` but absent from the frozen catalog (GAP-141a); the student screen exists but is gated on a permission students do not hold (GAP-142). The P12 rehearsal closed **GAP-131** (backup/restore) and **GAP-132** (rollback) and verified **GAP-007/009/087/134** against the running stack. The release decision remains **NO-GO** on **GAP-130** (no performance gate measured).
 - **Testing notes:** [`docs/testing/p13/README.md`](testing/p13/README.md)
 - **Rehearsal record:** [`docs/testing/p12/rehearsal-2026-10-19.md`](testing/p12/rehearsal-2026-10-19.md)
 
@@ -403,7 +403,7 @@ P13 Broader Reporting and Operational Reporting:
 | Task | Description | State |
 |---|---|---|
 | P13-01 | Reporting module skeleton | Completed |
-| P13-02 | Report registry (22 types, 6 categories, filter schemas) | Completed |
+| P13-02 | Report registry (23 types, 6 categories, filter schemas) | Completed — all 23 backed by a provider and enabled (GAP-141) |
 | P13-03 | Request and filter validation | Completed |
 | P13-04 | Authorization (per-type permission, student self-scoping) | Completed — student permissions deferred (GAP-142) |
 | P13-05 | Synchronous execution | Completed |
@@ -413,12 +413,12 @@ P13 Broader Reporting and Operational Reporting:
 | P13-09 | Artifact storage (protected, per-job, sanitized names) | Completed |
 | P13-10 | PDF renderer (dependency-free, paginated) | Completed — plain presentation (GAP-147) |
 | P13-11 | CSV renderer (formula-injection mitigation) | Completed |
-| P13-12 | Student reports | Not backed — registered-disabled (GAP-141) |
-| P13-13 | Assessment reports | Not backed — registered-disabled (GAP-141) |
-| P13-14 | Content reports | Not backed — registered-disabled (GAP-141) |
-| P13-15 | Commerce reports | Not backed — registered-disabled (GAP-141) |
-| P13-16 | Operations reports | Completed — 3 reports |
-| P13-17 | Executive reports | Completed — KPI summary with definitions |
+| P13-12 | Student reports | Completed — profile, attempts, performance, topic performance |
+| P13-13 | Assessment reports | Completed — summary, attempts, performance, question analysis, schedule activity |
+| P13-14 | Content reports | Completed — question inventory, version status, tag coverage |
+| P13-15 | Commerce reports | Completed — purchases, payments, access grants, revenue summary; subscription/coupon/refund await a catalog amendment (GAP-141a) |
+| P13-16 | Operations reports | Completed — 5 reports (user activity, audit, communication status, system health, report jobs) |
+| P13-17 | Executive reports | Completed — KPI summary and organization performance, with definitions |
 | P13-18 | Observability | Completed — generation/failure/queue/latency/download meters |
 | P13-19 | Security testing | Completed — IDOR, spoofed token, filter schema, no-SQL |
 | P13-20 | Performance testing | Not started — no load environment (GAP-130, GAP-150) |
@@ -555,8 +555,11 @@ P13 Broader Reporting and Operational Reporting:
   GAP-126/127 were raised and closed by the re-verification; **GAP-131** (backup/restore) and
   **GAP-132** (rollback) are closed by the 2026-10-19 rehearsal; **GAP-007/009/087/134** were
   verified against the running stack on 2026-10-19; **GAP-130** (no performance evidence) remains
-  the outstanding P12 release blocker; **GAP-141** (18 of 22 report types unbacked) is the principal
-  P13 limitation; GAP-151/152 record what the observability stack still needs (exporters and two
+  the outstanding P12 release blocker; **GAP-141** (unbacked report types) and **GAP-148** (no
+  reporting UI) are closed — all 23 catalog types generate and the student/staff/admin screens are
+  built; **GAP-141a** records the three commerce report types that `22-P13 §55` names but the frozen
+  catalog does not define; **GAP-142** (no student report permission) leaves the student screen
+  present but unreachable; GAP-151/152 record what the observability stack still needs (exporters and two
   §112 instruments); **GAP-008/010 are implemented as four GitHub Actions workflows** that have not
   run yet (branch protection is documented, not configured); **GAP-126/127/129 are now enforced by
   CI** rather than fixed once.

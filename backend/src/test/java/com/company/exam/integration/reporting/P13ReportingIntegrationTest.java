@@ -91,27 +91,28 @@ class P13ReportingIntegrationTest extends AbstractEvaluationIntegrationTest {
     void everyCatalogEntryWithAProviderProducesAReport() throws Exception {
         String admin = adminToken();
         // GAP-141 acceptance: every type the catalog advertises is backed by a provider, so a request
-        // for any of them either returns a projection or is accepted for asynchronous generation —
-        // never the "provider is not implemented" refusal (§11, §46, §107).
-        for (String reportType : allReportTypeCodes()) {
-            String body = "{\"reportType\":\"" + reportType + "\",\"filters\":{},\"format\":\"CSV\"}";
-            String response = mockMvc.perform(post("/api/v1/reports").header(AUTHORIZATION, bearer(admin))
-                            .contentType(JSON).content(body))
-                    .andReturn().getResponse().getContentAsString();
-            assertThat(response)
-                    .as("report type %s must be generatable, not refused as unimplemented", reportType)
-                    .doesNotContain("not implemented");
-        }
-    }
-
-    /** Every registered report type code, read from the frozen catalog itself. */
-    private java.util.List<String> allReportTypeCodes() {
-        java.util.List<String> codes = new java.util.ArrayList<>();
+        // for any of them succeeds. A synchronous type returns its projection; an ASYNC_PREFERRED type
+        // is accepted for background generation. Either way the response is 200 and carries a payload
+        // with a report type — never the "provider is not implemented" refusal and never a 5xx (§11, §46).
         for (com.company.exam.reporting.catalog.ReportType type
                 : com.company.exam.reporting.catalog.ReportType.values()) {
-            codes.add(type.reportType());
+            String body = "{\"reportType\":\"" + type.reportType() + "\",\"filters\":{},\"format\":\"CSV\"}";
+            var result = mockMvc.perform(post("/api/v1/reports").header(AUTHORIZATION, bearer(admin))
+                            .contentType(JSON).content(body))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            String response = result.getResponse().getContentAsString();
+            assertThat(response)
+                    .as("report type %s must generate, not be refused or fail", type.reportType())
+                    .doesNotContain("not implemented");
+            // A synchronous type returns its projection; an ASYNC_PREFERRED type returns the accepted
+            // job. Both are a 200 above; the payload must be one of those two real shapes (§24, §28).
+            boolean producedResult = response.contains("\"reportType\"");
+            boolean acceptedForGeneration = response.contains("\"jobId\"");
+            assertThat(producedResult || acceptedForGeneration)
+                    .as("report type %s must return a projection or an accepted job", type.reportType())
+                    .isTrue();
         }
-        return codes;
     }
 
     // ------------------------------------------------------------------ synchronous report

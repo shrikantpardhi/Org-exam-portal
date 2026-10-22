@@ -38,9 +38,9 @@ module reads another module's repository.
 | Phases implemented | P0 – P13 (P12 is a hardening/rehearsal phase) |
 | Flyway migrations | 26 (`V1` … `V26`), no gaps, no duplicated versions |
 | Controllers / endpoint mappings | 56 / 237 |
-| Backend tests | **388 passing, 0 failures** |
-| Frontend tests | 43 files / 167 tests passing; lint clean; production build succeeds |
-| Tracked gaps | 152 (see `docs/known-gaps.md` for the register) |
+| Backend tests | **397 passing, 0 failures** |
+| Frontend tests | 46 files / 197 tests passing; lint clean; production build succeeds |
+| Tracked gaps | 153 (see `docs/known-gaps.md` for the register) |
 | Container stack | Full stack runs; `scripts/verify-stack.sh` passes 15/15 edge assertions |
 | Observability | Prometheus target UP, 9 alert rules load, 2 datasources + 3 dashboards provisioned, Loki ingesting |
 | **Release decision** | **NO-GO** — see §4 |
@@ -62,7 +62,7 @@ module reads another module's repository.
 | P10 | Communication and notification | Complete; fake email provider only (GAP-108) — **the communication UI is delivered (GAP-109, 2026-10-22)** |
 | P11 | Full administration | Complete; 4 of 22 report-family surfaces still partial — **the administration UI is delivered (GAP-123, 2026-10-22)** |
 | P12 | Production hardening and readiness | Rehearsal executed; **NO-GO** |
-| P13 | Broader and operational reporting | Framework complete; 4 of 22 report types backed (GAP-141) |
+| P13 | Broader and operational reporting | Complete; all 23 catalog report types backed, and the reporting UI is delivered (GAP-141, GAP-148, 2026-10-22) |
 
 ## 4. Release decision — NO-GO
 
@@ -74,8 +74,11 @@ The P12 release gates are not all met. The outstanding trigger:
 
 Also open: **GAP-135** (dress rehearsal, production smoke test, post-release monitoring),
 **GAP-088** (the live pilot), **GAP-008/010** (the CI workflows exist but have not run, and branch
-protection is documented rather than configured), and **GAP-141** (18 of 22 report types have no
-projection provider yet).
+protection is documented rather than configured), **GAP-141a** (three commerce report types named by
+`22-P13 §55` have no frozen catalog identifier, so they need a catalog amendment), and **GAP-142**
+(student self-service reporting is implemented and self-scoped on the backend, but students hold no
+report permission, so the student screen is present and unreachable until the permission decision is
+taken).
 
 Gates that *were* closed by the 2026-10-19 rehearsal: **GAP-131** (logical backup and restore, 6/6
 integrity checks) and **GAP-132** (rollback, 12/12 checks). PITR is deliberately **not** claimed
@@ -477,7 +480,76 @@ Full frontend suite: **43 files / 167 tests, 0 failures**; `npm run lint` and
 `npm run type-check` clean; `npm run build` succeeds and emits every administration route. The
 release decision is unchanged (NO-GO): GAP-123 was a product-surface gap, not a release gate.
 
-## 6. Conventions that must be kept
+## 5j. The most recent change — the remaining report providers and the reporting UI (GAP-141, GAP-148)
+
+**The problem.** P13 shipped the reporting framework — catalog, validation, sync/async execution,
+CSV and PDF renderers, protected download and history — but only 5 of the 23 catalog report types
+had a projection provider. The Student, Assessment, Content and Commerce families were registered and
+`enabled=false`, so students, staff and finance could not get a report through P13 at all (GAP-141).
+No reporting UI existed either (GAP-148).
+
+**The change — backend (read contracts and providers).**
+- Five new **owning-module read contracts**, so Reporting never reaches into another module's
+  repository (`22-P13 §10`): `ReportingAnalyticsCatalog` (student, topic, question, assessment and
+  organization aggregates), `ReportingDeliveryCatalog` (report-safe attempt rows), and
+  `ReportingAssessmentCatalog`, `ReportingContentCatalog`, `ReportingCommerceCatalog`. Each has a
+  `@Transactional(readOnly = true)` service. Every collection read takes an explicit id set and every
+  list read is bounded, so no report scans an unbounded table (`§7.6`).
+- Five provider classes following the existing `OperationsReportProviders` pattern:
+  `StudentReportProviders`, `AssessmentReportProviders`, `ContentReportProviders`,
+  `CommerceReportProviders` and `OperationalReportProviders`, plus a shared `Projections` helper that
+  caps rows at `MAX_ROWS = 2000` and renders locale-independent values.
+- **All 23 catalog types are now `enabled=true`**, and the enums' javadoc was corrected: it had
+  claimed `enabled=true` meant "reserved, not implemented", which is the inverse of the truth.
+- **Semantics preserved rather than invented.** `ASSESSMENT_PERFORMANCE` omits an assessment with no
+  calculated aggregate instead of reporting a zero (`§45`); `CONTENT_TAG_COVERAGE` emits an explicit
+  `UNTAGGED` row (`§52`); `COMMERCE_REVENUE_SUMMARY` groups by authoritative `payment_status` so a
+  pending purchase is never counted as collected (`§60`); `STUDENT_TOPIC_PERFORMANCE` derives accuracy
+  from the student's own attempts, snapshots, evaluation outcomes and taxonomy, and reports
+  `UNMAPPED` rather than guessing a topic (`§41`); `OPERATIONS_COMMUNICATION_STATUS` aggregates the
+  durable delivery backlog from `background_job` because Communication reads per user only (`§63`).
+- **Nothing sensitive is projected:** no answer key or correctness to a student (`§39`), masked
+  email and no credential in the profile (`§82`), no payment secret, and no job error *message* (only
+  the stable code), because a message can echo internals.
+- **No framework file changed:** `ReportService`, `ReportController`, `ReportRequestValidator`,
+  `ReportCriteria`, `ReportProjection`, the renderers and the storage layer are untouched. No new
+  table, migration or endpoint. All six `REPORT_*` permissions were already seeded, so no seed
+  migration was needed either.
+
+**The change — frontend (the reporting UI).**
+- Three screens: `/student/reports`, `/staff/reports` and `/admin/reports`, sharing one
+  `ReportingWorkspace`. Reusable components in `frontend/components/reporting/`: `ReportCatalog`
+  (grouped by category, disabled entries render no control at all), `ReportFilterForm` (one input per
+  frozen `filterSchema` key; `*Id` as UUID, `from`/`to` converted to ISO instants, format limited to
+  `supportedFormats`), `ReportJobStatus` and `ReportHistory`.
+- Data access in `frontend/features/reporting/` over the frozen endpoints only. **Polling is bounded
+  twice**: `pollInterval` stops on any terminal status *and* at `MAX_JOB_POLLS` (60 polls at 2.5 s ≈
+  2.5 minutes), and `refetchIntervalInBackground` is false so a backgrounded tab stops. The oracle is
+  a pure exported function so both bounds are asserted directly.
+- Zod validates every response; an unknown or missing job status resolves to `UNKNOWN`, never to
+  `COMPLETED`. A malformed UUID is rejected before any request is sent.
+
+**A repository defect found and fixed.** `.gitignore` line 58 `reports/` — intended for local runtime
+artifacts at the repository root — is unanchored, so it also matched the Next.js route segments
+`app/{student,staff,admin}/reports/`. All three new route pages were silently invisible to git
+(`git check-ignore -v` confirmed it) and would have been left out of a commit. The runtime-data
+entries are now root-anchored (`/reports/` and siblings), which preserves the original intent and
+makes the routes trackable.
+
+**Verification.** Backend: 9 new provider tests and a rewritten integration test that requests
+**every** catalog type and requires a real 200 plus a projection or an accepted job; full suite
+**397 tests, 0 failures**, `mvn compile` clean. Frontend: 30 new tests (17 schema/polling, 5 catalog,
+8 workspace); full suite **46 files / 197 tests, 0 failures**; `tsc --noEmit` and `eslint .` clean;
+`next build` succeeds and emits all three reporting routes. The release decision is unchanged
+(NO-GO): these were product-surface gaps, not release gates.
+
+**Still open, and deliberately not resolved here.** `22-P13 §55` names seven commerce reports, but
+the frozen `ReportType` catalog registers only four; Subscription Summary, Coupon Activity and Refund
+Activity have no identifier. Adding one would change the frozen catalog contract and the
+`GET /reports/catalog` payload, so it is recorded as **GAP-141a** instead of being invented. And the
+student screen is built and the backend already self-scopes student requests, but students hold no
+report permission, so that screen is reachable only once **GAP-142** is decided.
+
 
 1. Flyway for every schema change; never edit an applied migration; never invent a table or column.
 2. No endpoint that accepts SQL, a table name, or a caller-supplied expression.
