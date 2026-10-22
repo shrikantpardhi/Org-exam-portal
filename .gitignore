@@ -51,12 +51,15 @@ logs/
 !docs/**/*.log.md
 
 # --- Local runtime data ---
-data/
-pgdata/
-redis-data/
-uploads/
-reports/
-imports/
+# Anchored to the repository root so these match the local runtime directories only. Without the
+# leading slash, `reports/` also matched the Next.js route segments `app/*/reports/`, which silently
+# excluded the reporting screens from version control.
+/data/
+/pgdata/
+/redis-data/
+/uploads/
+/reports/
+/imports/
 infrastructure/monitoring/grafana/data/
 infrastructure/monitoring/loki/data/
 

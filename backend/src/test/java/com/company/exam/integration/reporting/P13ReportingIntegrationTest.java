@@ -36,10 +36,11 @@ class P13ReportingIntegrationTest extends AbstractEvaluationIntegrationTest {
         String adminCatalog = mockMvc.perform(get("/api/v1/reports/catalog").header(AUTHORIZATION, bearer(admin)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        // The catalog lists the whole registered set, including types whose provider is not built yet
-        // (advertised with enabled=false) so a client never guesses an identifier (§11).
+        // The catalog lists the whole registered set, and every entry now has a provider, so every
+        // advertised type is enabled and therefore actually generatable (§11, §46).
         assertThat(adminCatalog).contains("OPERATIONS_SYSTEM_HEALTH").contains("EXECUTIVE_KPI_SUMMARY")
-                .contains("\"enabled\":false");
+                .contains("\"enabled\":true")
+                .doesNotContain("\"enabled\":false");
 
         // A student holds no report permission (P1 froze an empty student permission set), so no report
         // type is advertised to them at all (§74, §77).
@@ -87,12 +88,30 @@ class P13ReportingIntegrationTest extends AbstractEvaluationIntegrationTest {
     }
 
     @Test
-    void unimplementedReportFailsWithAControlledError() throws Exception {
+    void everyCatalogEntryWithAProviderProducesAReport() throws Exception {
         String admin = adminToken();
-        // Registered in the catalog but not backed by a provider: a controlled refusal, not an empty file.
-        mockMvc.perform(post("/api/v1/reports").header(AUTHORIZATION, bearer(admin)).contentType(JSON)
-                        .content("{\"reportType\":\"COMMERCE_PURCHASES\",\"filters\":{},\"format\":\"CSV\"}"))
-                .andExpect(status().isBadRequest());
+        // GAP-141 acceptance: every type the catalog advertises is backed by a provider, so a request
+        // for any of them either returns a projection or is accepted for asynchronous generation —
+        // never the "provider is not implemented" refusal (§11, §46, §107).
+        for (String reportType : allReportTypeCodes()) {
+            String body = "{\"reportType\":\"" + reportType + "\",\"filters\":{},\"format\":\"CSV\"}";
+            String response = mockMvc.perform(post("/api/v1/reports").header(AUTHORIZATION, bearer(admin))
+                            .contentType(JSON).content(body))
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(response)
+                    .as("report type %s must be generatable, not refused as unimplemented", reportType)
+                    .doesNotContain("not implemented");
+        }
+    }
+
+    /** Every registered report type code, read from the frozen catalog itself. */
+    private java.util.List<String> allReportTypeCodes() {
+        java.util.List<String> codes = new java.util.ArrayList<>();
+        for (com.company.exam.reporting.catalog.ReportType type
+                : com.company.exam.reporting.catalog.ReportType.values()) {
+            codes.add(type.reportType());
+        }
+        return codes;
     }
 
     // ------------------------------------------------------------------ synchronous report
