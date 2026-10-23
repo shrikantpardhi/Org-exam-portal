@@ -26,6 +26,16 @@ public interface AssessmentDefinitionCatalog {
             String status) {
     }
 
+    /**
+     * The schedule and the published version it binds, resolved together (GAP-059).
+     *
+     * <p>Start Exam needs both on every call and neither can change during the launch, so they are
+     * read in a single statement rather than one round trip each
+     * ({@code specs/14-P5-Delivery-V1.5.md §26}).
+     */
+    record ScheduleBinding(ScheduleView schedule, PublishedAssessmentVersion version) {
+    }
+
     /** One exact question binding in the published assessment definition. */
     record AssessmentQuestionView(UUID questionVersionId, Integer displayOrder, String sectionName, BigDecimal marks,
             BigDecimal negativeMarks) {
@@ -47,6 +57,12 @@ public interface AssessmentDefinitionCatalog {
 
     /** Returns the schedule, or throws a controlled error if it does not exist. */
     ScheduleView requireSchedule(UUID scheduleId);
+
+    /**
+     * Returns the schedule and its published version in one read, throwing the same controlled
+     * errors as {@link #requireSchedule} and {@link #requirePublishedVersion}.
+     */
+    ScheduleBinding requireScheduleBinding(UUID scheduleId);
 
     /** Returns the ordered exact question bindings of a published assessment version. */
     List<AssessmentQuestionView> questions(UUID assessmentVersionId);

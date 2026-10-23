@@ -32,7 +32,22 @@ public class AttemptEligibilityService {
     /** Resolves the schedule and verifies it is active and open at the current server time. */
     @Transactional(readOnly = true)
     public AssessmentDefinitionCatalog.ScheduleView requireOpenSchedule(UUID scheduleId) {
-        AssessmentDefinitionCatalog.ScheduleView schedule = assessmentCatalog.requireSchedule(scheduleId);
+        return requireOpen(assessmentCatalog.requireSchedule(scheduleId));
+    }
+
+    /**
+     * Resolves the schedule and its published version in one read, then applies the same window
+     * checks as {@link #requireOpenSchedule} (GAP-059).
+     */
+    @Transactional(readOnly = true)
+    public AssessmentDefinitionCatalog.ScheduleBinding requireOpenScheduleBinding(UUID scheduleId) {
+        AssessmentDefinitionCatalog.ScheduleBinding binding = assessmentCatalog.requireScheduleBinding(scheduleId);
+        requireOpen(binding.schedule());
+        return binding;
+    }
+
+    private AssessmentDefinitionCatalog.ScheduleView requireOpen(
+            AssessmentDefinitionCatalog.ScheduleView schedule) {
         Instant now = Instant.now();
         if (schedule.status() != null && !"ACTIVE".equals(schedule.status())) {
             throw new InvalidStateException("Schedule is not active");

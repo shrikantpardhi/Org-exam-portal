@@ -34,7 +34,6 @@ public class StartAssessmentService {
 
     private final StudentAttemptRepository attemptRepository;
     private final AttemptQuestionRepository questionRepository;
-    private final AssessmentDefinitionCatalog assessmentCatalog;
     private final AttemptEligibilityService eligibilityService;
     private final EntitlementAccessGate entitlementAccessGate;
     private final RuntimeConfigurationService runtimeConfigurationService;
@@ -42,13 +41,12 @@ public class StartAssessmentService {
     private final com.company.exam.delivery.observability.DeliveryMetrics metrics;
 
     public StartAssessmentService(StudentAttemptRepository attemptRepository,
-            AttemptQuestionRepository questionRepository, AssessmentDefinitionCatalog assessmentCatalog,
+            AttemptQuestionRepository questionRepository,
             AttemptEligibilityService eligibilityService, EntitlementAccessGate entitlementAccessGate,
             RuntimeConfigurationService runtimeConfigurationService, AssessmentSessionService sessionService,
             com.company.exam.delivery.observability.DeliveryMetrics metrics) {
         this.attemptRepository = attemptRepository;
         this.questionRepository = questionRepository;
-        this.assessmentCatalog = assessmentCatalog;
         this.eligibilityService = eligibilityService;
         this.entitlementAccessGate = entitlementAccessGate;
         this.runtimeConfigurationService = runtimeConfigurationService;
@@ -62,9 +60,12 @@ public class StartAssessmentService {
     }
 
     private DeliveryDtos.StartResponse startAttempt(UUID scheduleId, UUID userId) {
-        AssessmentDefinitionCatalog.ScheduleView schedule = eligibilityService.requireOpenSchedule(scheduleId);
-        AssessmentDefinitionCatalog.PublishedAssessmentVersion version = assessmentCatalog
-                .requirePublishedVersion(schedule.assessmentVersionId());
+        // Schedule and published version in one statement: both are needed on every Start and
+        // neither can change during the launch (GAP-059).
+        AssessmentDefinitionCatalog.ScheduleBinding binding =
+                eligibilityService.requireOpenScheduleBinding(scheduleId);
+        AssessmentDefinitionCatalog.ScheduleView schedule = binding.schedule();
+        AssessmentDefinitionCatalog.PublishedAssessmentVersion version = binding.version();
 
         // The paid-content gate (P5 §19 "User has required access"; ADR-0026). It runs after schedule
         // validation and before the attempt transition, so a denied start mutates no attempt state.
@@ -99,11 +100,23 @@ public class StartAssessmentService {
         }
 
         Instant now = Instant.now();
-        attemptRepository.markStarted(ready.getId(), AttemptStatus.NOT_STARTED, AttemptStatus.IN_PROGRESS,
-                SnapshotStatus.READY, userId, now);
-        StudentAttempt attempt = attemptRepository.findById(ready.getId()).orElseThrow();
-        if (attempt.getAttemptStatus() != AttemptStatus.IN_PROGRESS) {
-            throw new InvalidStateException("Attempt could not be started");
+        int transitioned = attemptRepository.markStarted(ready.getId(), AttemptStatus.NOT_STARTED,
+                AttemptStatus.IN_PROGRESS, SnapshotStatus.READY, userId, now);
+        StudentAttempt attempt;
+        if (transitioned == 1) {
+            // This call won the race, so the resulting state is known without re-reading it. The
+            // entity is detached by markStarted's clearAutomatically, so this mutation is in-memory
+            // only and never flushes (GAP-059).
+            ready.setAttemptStatus(AttemptStatus.IN_PROGRESS);
+            ready.setStartedOn(now);
+            attempt = ready;
+        } else {
+            // A concurrent Start won: re-read once to report its established context, or fail if the
+            // attempt is still not started (for example the snapshot is not READY).
+            attempt = attemptRepository.findById(ready.getId()).orElseThrow();
+            if (attempt.getAttemptStatus() != AttemptStatus.IN_PROGRESS) {
+                throw new InvalidStateException("Attempt could not be started");
+            }
         }
         return established(attempt, schedule, version, userId);
     }

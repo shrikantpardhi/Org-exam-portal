@@ -43,10 +43,25 @@ public class AssessmentDefinitionCatalogService implements AssessmentDefinitionC
                     List.of(ApiError.of("assessmentVersionId", "ASSESSMENT_VERSION_NOT_PUBLISHED",
                             "Only a published assessment version can be delivered")));
         }
-        return new PublishedAssessmentVersion(version.getId(), version.getAssessmentId(),
-                version.getBlueprintVersionId(), version.getDurationMinutes(),
-                version.getEngineType() == null ? null : version.getEngineType().name(),
-                version.getEngineConfigurationVersion(), version.getDeliveryPolicyId(), version.isPublished());
+        return toVersionView(version);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ScheduleBinding requireScheduleBinding(UUID scheduleId) {
+        List<Object[]> rows = scheduleRepository.findScheduleWithVersion(scheduleId);
+        if (rows.isEmpty()) {
+            throw NotFoundException.of("Assessment schedule", scheduleId);
+        }
+        Object[] row = rows.get(0);
+        AssessmentSchedule schedule = (AssessmentSchedule) row[0];
+        AssessmentVersion version = (AssessmentVersion) row[1];
+        if (!version.isPublished()) {
+            throw new BusinessException("Assessment version is not published",
+                    List.of(ApiError.of("assessmentVersionId", "ASSESSMENT_VERSION_NOT_PUBLISHED",
+                            "Only a published assessment version can be delivered")));
+        }
+        return new ScheduleBinding(toScheduleView(schedule), toVersionView(version));
     }
 
     @Override
@@ -54,9 +69,20 @@ public class AssessmentDefinitionCatalogService implements AssessmentDefinitionC
     public ScheduleView requireSchedule(UUID scheduleId) {
         AssessmentSchedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> NotFoundException.of("Assessment schedule", scheduleId));
+        return toScheduleView(schedule);
+    }
+
+    private ScheduleView toScheduleView(AssessmentSchedule schedule) {
         return new ScheduleView(schedule.getId(), schedule.getAssessmentVersionId(), schedule.getMode(),
                 schedule.getStartTime(), schedule.getEndTime(),
                 schedule.getStatus() == null ? null : schedule.getStatus().name());
+    }
+
+    private PublishedAssessmentVersion toVersionView(AssessmentVersion version) {
+        return new PublishedAssessmentVersion(version.getId(), version.getAssessmentId(),
+                version.getBlueprintVersionId(), version.getDurationMinutes(),
+                version.getEngineType() == null ? null : version.getEngineType().name(),
+                version.getEngineConfigurationVersion(), version.getDeliveryPolicyId(), version.isPublished());
     }
 
     @Override

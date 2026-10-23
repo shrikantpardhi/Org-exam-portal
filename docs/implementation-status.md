@@ -167,8 +167,8 @@ P5 Assessment Delivery and Runtime Examination Engine:
 | P5-10 | Atomic snapshot preparation | Completed |
 | P5-11 | Snapshot retry and stale reclaim | Completed |
 | P5-12 | Snapshot integrity checks before READY | Completed |
-| P5-13 | Start Exam (zero snapshot inserts, race-safe) | Completed |
-| P5-14 | Session create/activate | Completed — plus a scheduled derived-expiry sweep that moves stale ACTIVE sessions to EXPIRED (GAP-065 closed; `§90/§91`) |
+| P5-13 | Start Exam (zero snapshot inserts, race-safe) | Completed — and the SQL cost is now bounded: free start 9 statements, paid start 10 (ceiling 10, down from 11/13), p95 19.7 ms warm on the dev host (GAP-059 residual). Enforced by `StartAssessmentQueryBudgetIntegrationTest` |
+| P5-14 | Session create/activate | Completed — plus a scheduled derived-expiry sweep that moves stale ACTIVE sessions to EXPIRED (GAP-065 closed; `§90/§91`). Start now reaches the session insert without a redundant attempt re-read when it wins the transition race |
 | P5-15 | Attempt read APIs | Completed — `GET /attempts/{id}` also honours the `DELIVERY_ATTEMPT_VIEW_ANY` permission as a widening of the self-scoped read (GAP-064 closed; `§83`) |
 | P5-16 | Question read APIs from the immutable snapshot | Completed — GAP-156 fixed: the 100-question read is batched through `ContentCatalog.runtimeQuestions`, costing **10 SQL statements regardless of question count** (was 309) in **27 ms** (was 84 ms) |
 | P5-17 | Response validation and save with ETag | Completed |

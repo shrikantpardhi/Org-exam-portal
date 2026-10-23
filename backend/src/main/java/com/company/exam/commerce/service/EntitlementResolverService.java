@@ -2,12 +2,10 @@ package com.company.exam.commerce.service;
 
 import com.company.exam.commerce.api.AccessDecision;
 import com.company.exam.commerce.api.EntitlementResolver;
-import com.company.exam.commerce.entity.AccessPackageCollection;
 import com.company.exam.commerce.observability.CommerceMetrics;
 import com.company.exam.commerce.repository.AccessGrantRepository;
 import com.company.exam.commerce.repository.AccessPackageCollectionRepository;
 import com.company.exam.assessment.api.AssessmentCollectionCatalog;
-import com.company.exam.common.enums.Status;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -59,9 +57,9 @@ public class EntitlementResolverService implements EntitlementResolver {
      * grant for one of those packages. This is the free-assessment rule of ADR-0026, derived from the
      * package-to-collection-to-assessment graph rather than from a stored flag.
      *
-     * <p>Bounded read: three indexed reads (the assessment's collections, the ACTIVE package mappings
-     * for those collections, and the valid-grant count over the covering packages) and no writes. The
-     * decision does not scale with the number of questions.
+     * <p>Bounded read: the assessment's collections, then one statement joining the ACTIVE package
+     * mappings to the user's valid grants for those packages (GAP-059). No writes, and the decision
+     * does not scale with the number of questions.
      */
     @Override
     @Transactional(readOnly = true)
@@ -70,13 +68,19 @@ public class EntitlementResolverService implements EntitlementResolver {
             metrics.authorization(false);
             return AccessDecision.deny(AccessDecision.Reason.NO_ACTIVE_GRANT);
         }
-        List<UUID> packageIds = packagesGrantingAccess(assessmentId);
-        if (packageIds.isEmpty()) {
+        List<UUID> collectionIds = assessmentCollections.collectionIdsForAssessment(assessmentId);
+        if (collectionIds.isEmpty()) {
+            // The assessment belongs to no collection, so no package can grant it (§16, ADR-0026).
+            metrics.authorization(true);
+            return AccessDecision.allow(AccessDecision.Reason.FREE_ASSESSMENT);
+        }
+        List<Object[]> rows = mappingRepository.findPackageGrants(userId, collectionIds, serverNow);
+        if (rows.isEmpty()) {
             // No AccessPackage grants this assessment, so it is free content (§16, ADR-0026).
             metrics.authorization(true);
             return AccessDecision.allow(AccessDecision.Reason.FREE_ASSESSMENT);
         }
-        boolean granted = grantRepository.countValidForPackages(userId, packageIds, serverNow) > 0;
+        boolean granted = rows.stream().anyMatch(row -> Boolean.TRUE.equals(row[1]));
         metrics.authorization(granted);
         return granted
                 ? AccessDecision.allow(AccessDecision.Reason.ACTIVE_GRANT)
@@ -91,20 +95,5 @@ public class EntitlementResolverService implements EntitlementResolver {
     @Transactional(readOnly = true)
     public boolean canAccessAssessment(UUID userId, UUID assessmentId) {
         return checkAssessmentAccess(userId, assessmentId, Instant.now()).allowed();
-    }
-
-    /**
-     * The ACTIVE packages that grant access to the assessment, resolved through the assessment's
-     * collections. Empty means the assessment is free content (ADR-0026).
-     */
-    private List<UUID> packagesGrantingAccess(UUID assessmentId) {
-        List<UUID> collectionIds = assessmentCollections.collectionIdsForAssessment(assessmentId);
-        if (collectionIds.isEmpty()) {
-            return List.of();
-        }
-        return mappingRepository.findByAssessmentCollectionIdInAndStatus(collectionIds, Status.ACTIVE).stream()
-                .map(AccessPackageCollection::getAccessPackageId)
-                .distinct()
-                .toList();
     }
 }
