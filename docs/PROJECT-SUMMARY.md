@@ -62,7 +62,7 @@ module reads another module's repository.
 | P9 | Commerce and access management | Complete; reference gateway only (GAP-099) — **the entitlement contract is now enforced by Delivery (GAP-100, 2026-10-22) and the commerce UI is delivered (GAP-104, 2026-10-22)** |
 | P10 | Communication and notification | Complete; fake email provider only (GAP-108) — **the communication UI is delivered (GAP-109, 2026-10-22)** |
 | P11 | Full administration | Complete; 4 of 22 report-family surfaces still partial — **the administration UI is delivered (GAP-123, 2026-10-22)** |
-| P12 | Production hardening and readiness | Rehearsal executed; **NO-GO**. The three security findings from the production configuration review are now fixed — API docs are refused in production (GAP-136), the CSP/HSTS/Referrer-Policy header policy is enforced at the application layer and configured at the edge (GAP-137), and the actuator tree beyond health/info requires the monitoring scope or `SYSTEM_HEALTH_VIEW` (GAP-138), all 2026-10-23. The index amendment raised by the database review is applied under ADR-0028, with measured plans (GAP-139, 2026-10-23) |
+| P12 | Production hardening and readiness | Rehearsal executed; **NO-GO**. Release candidate **v1.5.0-rc1** is tagged (`c966d1c`) with two recorded image digests and a migration rehearsal at production volume (GAP-140, GAP-133, 2026-10-23). The three security findings from the production configuration review are now fixed — API docs are refused in production (GAP-136), the CSP/HSTS/Referrer-Policy header policy is enforced at the application layer and configured at the edge (GAP-137), and the actuator tree beyond health/info requires the monitoring scope or `SYSTEM_HEALTH_VIEW` (GAP-138), all 2026-10-23. The index amendment raised by the database review is applied under ADR-0028, with measured plans (GAP-139, 2026-10-23) |
 | P13 | Broader and operational reporting | Complete; all 23 catalog report types backed, and the reporting UI is delivered (GAP-141, GAP-148, 2026-10-22) |
 
 ## 4. Release decision — NO-GO
@@ -94,7 +94,68 @@ Gates that *were* closed by the 2026-10-19 rehearsal: **GAP-131** (logical backu
 integrity checks) and **GAP-132** (rollback, 12/12 checks). PITR is deliberately **not** claimed
 (`scripts/backup/pitr.md`).
 
-## 5. The most recent change — the worker and notification index amendment (GAP-139)
+## 5. The most recent change — release candidate v1.5.0-rc1 (GAP-140, GAP-133)
+
+*(2026-10-23. No product code changed. This pins the candidate to immutable identifiers and rehearses the
+migration chain at production data volume. Two images were built; one migration was re-run against large
+tables and timed.)*
+
+**The problem.** P12 §11 requires a candidate to be identifiable by application version, frontend version,
+database migration version, container image digest and configuration revision. None of the container
+identifiers existed: no tag, no image, no digest, so no evidence could be tied to an immutable artefact.
+Separately, every migration had been proven to *apply*, but none had been timed against a production-scale
+table, so the duration, lock behaviour and expand/contract safety of large-table DDL were unknown.
+
+**What was done.** The candidate is tagged `v1.5.0-rc1` at commit `c966d1c`, and both images were built from
+that commit's own Dockerfiles:
+
+| | Identifier |
+|---|---|
+| Commit | `c966d1c2664eb5bdf5849ab163691ea02a8471f8` |
+| Tag | `v1.5.0-rc1` (annotated, on that commit) |
+| Application / frontend version | `1.5.0-SNAPSHOT` / `1.5.0` |
+| Migration version | `27` |
+| Backend image | `sha256:e1d015257c1b54988b61ee59f53cf9604c8436fe6e6230903655a1d9e93a14b4` |
+| Frontend image | `sha256:7b0c1c713c7cbaa6861cfc6cfcb5f9c132a9609799a375e7c8f3cd5e7534af2b` |
+
+The rehearsal ran on `local-docker-single-host` — Postgres 16.15 in Docker, 8 GB VM on a 24-core / 15.71 GB
+host — after inflating the two tables V27 touches to **4.4M `background_job` rows (420 MB heap)** and **5M
+`notification` rows (802 MB heap)**, with `fk_notification_user` left enforced rather than disabled to make
+seeding convenient.
+
+**The result, and the finding inside it.** V1–V26 applied 26/26 in 0.929 s; V27 applied in 10.407 s; final
+state version 27, 27/27 successful, nothing failed or pending. The indexes are not merely created but
+*chosen* at volume — 0.078 ms on `background_job`, 0.146 ms on `notification`, neither with a sort step.
+
+The rehearsal was worth running because it changed a deployment instruction from advice to evidence. GAP-133
+asked about lock behaviour, and on a table this size the non-concurrent `CREATE INDEX` that V27 uses **blocks
+concurrent writes for the entire build**:
+
+| Build method | Build duration | Concurrent writer blocked |
+|---|---|---|
+| `CREATE INDEX` (V27 as written) | ~10.2 s | **9,749 ms** |
+| `CREATE INDEX CONCURRENTLY` | ~12.6 s | **104 ms** |
+
+ADR-0028 already said production should use an out-of-band `CONCURRENTLY` build; it now records the measured
+consequence. The migration is safe to ship as written for small tables, but the production runbook must not
+simply `flyway migrate` it at volume.
+
+**Corrections to the brief, recorded rather than papered over.** The task described the working tree as dirty
+with GAP-126 uncommitted. It was not: `git status` was already empty and GAP-126's lock repair was in
+`c966d1c`. No empty commit was invented and the commit was not amended. The candidate commit's message (`H2`)
+does not describe its contents — left uncorrected because `AGENTS.md` forbids history rewriting and the brief
+forbids amending once tagged. Docker was described as unavailable; it was in fact running (29.8.2), which is
+why the rehearsal was possible at all.
+
+**What this does not do.** The digests are locally built, not registry digests, so a third party cannot yet
+reproduce the images. The base images are tag-pinned, not digest-pinned. No staging deployment or P12 §145
+smoke test was run for this candidate.
+
+**Release decision unchanged: NO-GO.** GAP-130 remains the trigger — the measured p95 was 4.3× over the
+<100 ms target across the whole P7 ramp. A reproducible candidate is not a passing candidate. This change
+closes the identity gap, not the performance gate.
+
+## 5b. The most recent change — the worker and notification index amendment (GAP-139)
 
 *(2026-10-23. Schema amendment plus one migration. Two indexes are added; no table, column, constraint,
 endpoint, or existing index is changed. SQL only — no Java or frontend behaviour changed, and the
@@ -160,7 +221,7 @@ development host and are not a capacity claim (P7 §12, P12 §56).
 **Release decision unchanged: NO-GO.** GAP-130 remains the trigger — the measured p95 is 4.3× over
 target, and indexing two worker queries does not address the `attempt.questions` N+1 behind it.
 
-## 5b. The most recent change — P12 security hardening (GAP-136, GAP-137, GAP-138)
+## 5c. The most recent change — P12 security hardening (GAP-136, GAP-137, GAP-138)
 
 *(2026-10-23. Configuration and security configuration only. No table, column, migration, business
 endpoint, or frozen contract changed: the public business endpoints — login, forgot-password,
@@ -232,7 +293,7 @@ limitation is already tracked by GAP-015.
 **Release decision unchanged: NO-GO.** Closing these three gaps does not move the blocker. GAP-130
 remains the outstanding trigger — the measured p95 was 4.3× over target.
 
-## 5c. The most recent change — synthetic load-cohort credential provisioning (GAP-085)
+## 5d. The most recent change — synthetic load-cohort credential provisioning (GAP-085)
 
 *(2026-10-22. New backend component plus harness rewiring. No frozen contract, table, column, migration or
 endpoint was added: `UserService.create` still issues a non-usable secret exactly as P1 §56/§58 requires,
@@ -286,7 +347,7 @@ the manifest carries `studentCredentials` (email → credential) instead of one 
 **Release decision unchanged: NO-GO.** GAP-130 remains measured and missed (§4). Closing GAP-085 makes the
 load evidence *reproducible*; it does not improve latency.
 
-## 5d. The most recent change — the P7 load harness and the first executed scale ramp (GAP-084, GAP-130, GAP-156, GAP-157)
+## 5e. The most recent change — the P7 load harness and the first executed scale ramp (GAP-084, GAP-130, GAP-156, GAP-157)
 
 *(2026-10-22. New `load/` harness, runbook and evidence. `backend/` application code is untouched: no
 frozen contract, table, column, migration or endpoint was added. The only non-documentation source
@@ -341,7 +402,7 @@ co-resident development machine and is **not** production-like under P7 §12/§1
 **Release decision unchanged: NO-GO.** GAP-130 is now *measured and missed* rather than unmeasured. See
 §4 and `docs/testing/p7/load-2026-10-22.md`.
 
-## 5e. The most recent change — the assessment authoring, runtime and content-authoring UIs (GAP-049, GAP-058, GAP-153)
+## 5f. The most recent change — the assessment authoring, runtime and content-authoring UIs (GAP-049, GAP-058, GAP-153)
 
 *(2026-10-22. Frontend and documentation only; `backend/` is untouched and no frozen contract,
 table, column, migration or endpoint was added.)*
@@ -405,7 +466,7 @@ in a test to prove no exam-name branching exists.
 **Release decision unchanged: NO-GO** — see §4. The remaining gates are staging load evidence
 (GAP-083/084/130) and the release rehearsals (GAP-131/132/135).
 
-## 5f. The most recent change — attempt completion contract (GAP-073)
+## 5g. The most recent change — attempt completion contract (GAP-073)
 
 **The problem.** Evaluation persisted the official `Evaluation` and `Result` but never told
 Delivery, so the Delivery-owned `student_attempt.attempt_status` stayed `SUBMITTED` and
@@ -454,7 +515,7 @@ Full backend suite: **388 tests, 0 failures**.
 **Related (already closed).** GAP-071 — the submit handoff that triggers the evaluation now carries
 an explicit answer key, so the worker that completes the attempt carries a key too.
 
-## 5g. The most recent change — multi-correct answer keys (GAP-072)
+## 5h. The most recent change — multi-correct answer keys (GAP-072)
 
 Closed GAP-072 with additive schema amendment ADR-0025: new child table
 `answer_key_detail_option` (migration V26) holding the correct option set for a
@@ -465,7 +526,7 @@ form the authoritative set. `AnswerKeyDetailRequest`/`Response` gain a
 set against the authoritative set with all-or-nothing scoring (partial selection
 scores 0). Single-correct behaviour is unchanged.
 
-## 5h. The most recent change — the paid-content entitlement gate (GAP-100)
+## 5i. The most recent change — the paid-content entitlement gate (GAP-100)
 
 **The problem.** The Commerce entitlement contract existed and was implemented, but Delivery never
 consulted it, so **every assessment was startable by any eligible student regardless of purchase**.
@@ -518,7 +579,7 @@ Full backend suite: **388 tests, 0 failures**.
 **Related.** ADR-0021 §8's "implemented but not yet enforced" consequence was amended in the same
 change.
 
-## 5i. The most recent change — session expiry sweep and the staff attempt read (GAP-064, GAP-065)
+## 5j. The most recent change — session expiry sweep and the staff attempt read (GAP-064, GAP-065)
 
 **The problem.** Two gaps. GAP-065: a runtime session ended only on submit or an explicit
 `/sessions/{id}/end`, so a stale session stayed ACTIVE indefinitely — and attempt expiry was not
@@ -570,7 +631,7 @@ a staff holder with the permission reads it; the owner still reads their own; an
 carries no correct-answer data, no audit columns and no owner identifier.
 Full backend suite: **388 tests, 0 failures**.
 
-## 5j. The most recent change — the assessment `examId` filter (GAP-041)
+## 5k. The most recent change — the assessment `examId` filter (GAP-041)
 
 **The problem.** `13-P4 §64` and `§95` both name the assessment list filters: status, **examId**,
 blueprintId, search. The frozen `assessment` table has no exam column (`04-Schema §28.4`), so the
@@ -605,7 +666,7 @@ versions; an exam with no assessment and an unknown exam id both return an empty
 composes with the status filter while the other filters stay unaffected.
 Full backend suite: **388 tests, 0 failures**.
 
-## 5k. The most recent change — the analytics dashboard frontend (GAP-092)
+## 5l. The most recent change — the analytics dashboard frontend (GAP-092)
 
 **The problem.** P8 delivered the analytics read models and the nine frozen read endpoints, but the
 frontend was a stub: a student or an authorized staff member could only call the API by hand.
@@ -642,7 +703,7 @@ failures**; `npm run lint` and `npm run type-check` clean; `npm run build` succe
 five analytics routes. The release decision is unchanged (NO-GO): GAP-092 was a product-surface gap,
 not a release gate.
 
-## 5l. The most recent change — the results and scorecard frontend (GAP-128)
+## 5m. The most recent change — the results and scorecard frontend (GAP-128)
 
 **The problem.** P6 delivered evaluation, results, publication and scorecards, but the frontend had
 no screen for any of it: students could not see a published result or a scorecard, and only the API
@@ -680,7 +741,7 @@ suite: **27 files / 112 tests, 0 failures**; `npm run lint` and `npm run type-ch
 `/attempts/[id]/result`. The release decision is unchanged (NO-GO): GAP-128 was a product-surface
 gap, not a release gate.
 
-## 5m. The most recent change — the commerce frontend (GAP-104)
+## 5n. The most recent change — the commerce frontend (GAP-104)
 
 **The problem.** P9 delivered the catalog, purchase, payment, refund and entitlement APIs, but the
 product had no commerce screen: students could not browse packages or check out, and finance could
@@ -721,7 +782,7 @@ purchase that cannot be refunded (3); purchase history (1); store catalog (2). F
 succeeds and emits every commerce route. The release decision is unchanged (NO-GO): GAP-104 was a
 product-surface gap, not a release gate.
 
-## 5n. The most recent change — the communication frontend (GAP-109)
+## 5o. The most recent change — the communication frontend (GAP-109)
 
 **The problem.** P10 delivered notifications, email templates and announcements, but the product had
 no communication screen: students could not see notifications or announcements, and administrators
@@ -757,7 +818,7 @@ with immutable code and safe preview (3). Full frontend suite: **39 files / 147 
 route. The release decision is unchanged (NO-GO): GAP-109 was a product-surface gap, not a release
 gate.
 
-## 5o. The most recent change — the administration frontend (GAP-123)
+## 5p. The most recent change — the administration frontend (GAP-123)
 
 **The problem.** P11 delivered the administrative APIs — dashboard, users, roles, permissions,
 settings, business rules, lookups, audit and system health — but there was no admin UI at all.
@@ -801,7 +862,7 @@ Full frontend suite: **43 files / 167 tests, 0 failures**; `npm run lint` and
 `npm run type-check` clean; `npm run build` succeeds and emits every administration route. The
 release decision is unchanged (NO-GO): GAP-123 was a product-surface gap, not a release gate.
 
-## 5p. The most recent change — the remaining report providers and the reporting UI (GAP-141, GAP-148)
+## 5q. The most recent change — the remaining report providers and the reporting UI (GAP-141, GAP-148)
 
 **The problem.** P13 shipped the reporting framework — catalog, validation, sync/async execution,
 CSV and PDF renderers, protected download and history — but only 5 of the 23 catalog report types

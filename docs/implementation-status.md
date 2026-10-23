@@ -388,13 +388,14 @@ P12 Production Hardening and Production Readiness:
 | P12-07 | Failure injection | Partial — in-test injection (cache, email, payment, job claim); real DB/pool/network/restart injection blocked |
 | P12-08 | Backup validation | **Executed** — consistent logical backup stored with checksums and evidence (GAP-131 closed) |
 | P12-09 | Restore rehearsal | **Executed** — restore into an isolated database, 6/6 integrity checks passed (GAP-131 closed) |
-| P12-10 | Migration rehearsal | Partial — applies cleanly on the real stack and is forward-compatible; not timed at production volume (GAP-133) |
+| P12-10 | Migration rehearsal | **Executed** — rehearsed at production volume 2026-10-23 (GAP-133 closed): 4.4M `background_job` / 5M `notification` rows, V1-V26 applied 26/26 in 0.929 s, V27 in 10.407 s, final version 27. Measured that the non-concurrent `CREATE INDEX` blocks writes for 9,749 ms versus 104 ms `CONCURRENTLY`, so the production runbook must use the out-of-band build. See `docs/testing/p12/release-candidate.md` |
 | P12-11 | Rollback rehearsal | **Executed** — 12/12 checks, 2 s redeploy, data unchanged (GAP-132 closed) |
 | P12-12 | Monitoring and alert validation | **Executed** — target UP, 9 rules load, 2 datasources and 3 dashboards provisioned, Loki ingesting (GAP-009/087/134 verified) |
 | P12-13 | UX regression | Partial — frontend lint/test/build green; no manual/visual pass possible |
 | P12-14 | Production configuration review | Executed — review complete; its three findings are now fixed (GAP-136/137/138 closed) |
 | P12-15 | Dress rehearsal | **BLOCKED** — requires staging (GAP-135) |
 | P12-16 | Release evidence package | Complete — `docs/testing/p12/README.md`, with BLOCKED gates recorded |
+| P12-RC | Release candidate identity | **Complete** — candidate **v1.5.0-rc1** = commit `c966d1c` + annotated tag + backend/frontend image digests, recorded in `docs/testing/p12/release-candidate.md` (GAP-140 closed) |
 | P12-17 | Production smoke test | **BLOCKED** — requires a deployed candidate (GAP-135) |
 | P12-18 | Post-release monitoring | **BLOCKED** — requires a released candidate and the monitoring stack (GAP-135) |
 

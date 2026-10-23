@@ -166,6 +166,23 @@ out-of-band with `CONCURRENTLY` and recorded in Flyway as an already-applied mig
 (`baseline`/`skip`), so that the write blocking of a normal `CREATE INDEX` is avoided. This is a
 deployment-procedure choice, not a change to the schema the migration produces.
 
+**This is now measured, not assumed (2026-10-23).** The GAP-133 rehearsal inflated the two tables to
+4.4M (`background_job`, 420 MB heap) and 5M (`notification`, 802 MB heap) rows and compared the two
+build methods with a concurrent writer:
+
+| Build method | Build duration | Concurrent writer blocked |
+|---|---|---|
+| `CREATE INDEX` (what V27 does) | ~10.2 s | **9,749 ms** |
+| `CREATE INDEX CONCURRENTLY` | ~12.6 s | **104 ms** |
+
+So deploying V27 to a table of this size through a plain `flyway migrate` stops writes to
+`background_job` for roughly ten seconds, and to `notification` for a similar period. The
+`CONCURRENTLY` build costs about 2 s more in wall time and blocks for about a tenth of a second. That
+ratio is the whole argument for the out-of-band procedure on a populated production database: the
+plain form is fine for an empty or small table, and the migration is safe to ship as written, but the
+production runbook must **not** simply `migrate` it at volume. Evidence:
+`docs/testing/p12/release-candidate.md` §3.
+
 ## Consequences
 
 - The notification list becomes an index-ordered backward scan: **~11× faster with the sort step
