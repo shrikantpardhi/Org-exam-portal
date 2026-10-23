@@ -140,9 +140,15 @@ public class AttemptQueryService {
                 optionsByQuestion.computeIfAbsent(option.getAttemptQuestionId(), key -> new ArrayList<>()).add(option);
             }
         }
+        Map<UUID, ContentCatalog.RuntimeQuestion> contentByVersionId = contentCatalog.runtimeQuestions(
+                snapshot.stream().map(AttemptQuestion::getQuestionVersionId).distinct().toList());
         List<DeliveryDtos.AttemptQuestionView> result = new ArrayList<>(snapshot.size());
         for (AttemptQuestion row : snapshot) {
-            result.add(toView(row, optionsByQuestion.getOrDefault(row.getId(), List.of())));
+            ContentCatalog.RuntimeQuestion content = contentByVersionId.get(row.getQuestionVersionId());
+            if (content == null) {
+                throw NotFoundException.of("Question version", row.getQuestionVersionId());
+            }
+            result.add(toView(row, optionsByQuestion.getOrDefault(row.getId(), List.of()), content));
         }
         return result;
     }
@@ -156,7 +162,7 @@ public class AttemptQueryService {
                 .orElseThrow(() -> NotFoundException.of("Attempt question", questionVersionId));
         List<AttemptQuestionOption> options = optionRepository
                 .findByAttemptQuestionIdOrderByDisplayOrderAsc(row.getId());
-        return toView(row, options);
+        return toView(row, options, contentCatalog.runtimeQuestion(row.getQuestionVersionId()));
     }
 
     private void requireActiveAttempt(StudentAttempt attempt) {
@@ -166,8 +172,8 @@ public class AttemptQueryService {
         }
     }
 
-    private DeliveryDtos.AttemptQuestionView toView(AttemptQuestion row, List<AttemptQuestionOption> snapshotOptions) {
-        ContentCatalog.RuntimeQuestion content = contentCatalog.runtimeQuestion(row.getQuestionVersionId());
+    private DeliveryDtos.AttemptQuestionView toView(AttemptQuestion row, List<AttemptQuestionOption> snapshotOptions,
+            ContentCatalog.RuntimeQuestion content) {
         Map<UUID, ContentCatalog.RuntimeOption> byOptionId = new HashMap<>();
         for (ContentCatalog.RuntimeOption option : content.options()) {
             byOptionId.put(option.optionId(), option);

@@ -2,6 +2,7 @@ package com.company.exam.content.api;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -56,4 +57,20 @@ public interface ContentCatalog {
 
     /** Returns the student-safe runtime content of an exact question version. */
     RuntimeQuestion runtimeQuestion(UUID questionVersionId);
+
+    /**
+     * Returns the student-safe runtime content of many question versions in a bounded number of
+     * reads ({@code specs/12-P3-Content-V1.5.md §62, §131}).
+     *
+     * <p>Batch form of {@link #runtimeQuestion(UUID)} for callers that render a whole attempt.
+     * Calling the single form in a loop costs four queries and one render per question, which is the
+     * GAP-156 N+1; this form issues a fixed number of queries regardless of how many versions are
+     * requested.
+     *
+     * <p>The map is keyed by question version id. Requested versions that do not exist are absent
+     * from the map rather than an error, so a caller can decide how to treat a missing version; the
+     * single form keeps throwing for its callers. An empty input returns an empty map without
+     * touching the database.
+     */
+    Map<UUID, RuntimeQuestion> runtimeQuestions(List<UUID> questionVersionIds);
 }

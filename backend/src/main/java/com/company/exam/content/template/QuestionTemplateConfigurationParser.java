@@ -25,7 +25,17 @@ public class QuestionTemplateConfigurationParser {
     }
 
     public QuestionTemplateConfiguration parse(QuestionTemplate template) {
-        String configuration = template.getConfiguration();
+        return parseConfiguration(template == null ? null : template.getConfiguration());
+    }
+
+    /**
+     * Parses a raw {@code configuration} JSON blob.
+     *
+     * <p>Exists so a caller that has already read the configuration column can parse it without
+     * reconstructing an entity (GAP-156's batch path). Routes through the same logic as
+     * {@link #parse(QuestionTemplate)} so both read the flag identically.
+     */
+    public QuestionTemplateConfiguration parseConfiguration(String configuration) {
         if (configuration == null || configuration.isBlank()) {
             return new QuestionTemplateConfiguration(false, Map.of());
         }

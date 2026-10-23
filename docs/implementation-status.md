@@ -170,7 +170,7 @@ P5 Assessment Delivery and Runtime Examination Engine:
 | P5-13 | Start Exam (zero snapshot inserts, race-safe) | Completed |
 | P5-14 | Session create/activate | Completed — plus a scheduled derived-expiry sweep that moves stale ACTIVE sessions to EXPIRED (GAP-065 closed; `§90/§91`) |
 | P5-15 | Attempt read APIs | Completed — `GET /attempts/{id}` also honours the `DELIVERY_ATTEMPT_VIEW_ANY` permission as a widening of the self-scoped read (GAP-064 closed; `§83`) |
-| P5-16 | Question read APIs from the immutable snapshot | Completed |
+| P5-16 | Question read APIs from the immutable snapshot | Completed — GAP-156 fixed: the 100-question read is batched through `ContentCatalog.runtimeQuestions`, costing **10 SQL statements regardless of question count** (was 309) in **27 ms** (was 84 ms) |
 | P5-17 | Response validation and save with ETag | Completed |
 | P5-18 | Stale-write precondition handling (412) | Completed |
 | P5-19 | Recovery (returns the same snapshot) | Completed |

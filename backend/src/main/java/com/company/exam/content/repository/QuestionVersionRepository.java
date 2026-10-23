@@ -17,6 +17,32 @@ public interface QuestionVersionRepository extends JpaRepository<QuestionVersion
 
     Page<QuestionVersion> findByQuestionId(UUID questionId, Pageable pageable);
 
+    /**
+     * Loads many versions together with the id and {@code configuration} of each one's template, in a
+     * single read (GAP-156).
+     *
+     * <p>The batch runtime read needs, per version, the version row plus its template's
+     * {@code requires_latex_parsing} flag, which lives in the template's configuration JSON. Reading
+     * them separately costs one extra query per relation; this join collapses them into one. The
+     * template join is a LEFT join so a version whose question or template is missing is still
+     * returned -- the caller treats that as the safe "requires LaTeX" default, which is the same
+     * fallback the single-version read uses.
+     *
+     * <p>The template id is selected alongside the configuration so the caller can tell "no template"
+     * from "template with a null configuration": those two cases have different, deliberately
+     * different, defaults.
+     *
+     * <p>Returns {@code Object[]} triples of {@code (QuestionVersion, templateId, configuration)}.
+     */
+    @Query("""
+            select v, qt.id, qt.configuration
+            from QuestionVersion v
+            left join Question q on q.id = v.questionId
+            left join QuestionTemplate qt on qt.id = q.templateId
+            where v.id in :versionIds
+            """)
+    List<Object[]> findWithTemplateConfiguration(@Param("versionIds") Collection<UUID> versionIds);
+
     List<QuestionVersion> findByQuestionIdIn(Collection<UUID> questionIds);
 
     List<QuestionVersion> findByQuestionIdOrderByVersionAsc(UUID questionId);

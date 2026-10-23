@@ -7,6 +7,11 @@ spring:
     url: jdbc:postgresql://localhost:5432/exam_platform_test
     username: postgres
     password: postgres
+  jpa:
+    properties:
+      # Counts the statements Hibernate prepares so tests can assert a bounded query count
+      # (GAP-156). Inspecting statements does not alter them and costs nothing measurable.
+      hibernate.session_factory.statement_inspector: com.company.exam.support.QueryCountInspector
   data:
     redis:
       host: localhost
