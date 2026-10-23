@@ -38,4 +38,19 @@ public interface AttemptQuestionRepository extends JpaRepository<AttemptQuestion
              order by min(aq.displayOrder)
             """)
     List<String> findDistinctSectionNames(@org.springframework.data.repository.query.Param("attemptId") UUID attemptId);
+
+    /**
+     * Deletes the whole snapshot for an attempt, ahead of a retry ({@code §23}, GAP-157).
+     *
+     * <p>A failed preparation can leave a partially materialized snapshot behind. The frozen table
+     * carries {@code UNIQUE(attempt_id, question_version_id)} and
+     * {@code UNIQUE(attempt_id, display_order)}, so re-preparing without clearing first collides on the
+     * second attempt and the retry can never succeed. Only ever called for an attempt that is FAILED and
+     * never started, so no candidate-visible artifact is destroyed.
+     */
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("""
+            delete from AttemptQuestion q where q.attemptId = :attemptId
+            """)
+    int deleteByAttemptId(@org.springframework.data.repository.query.Param("attemptId") UUID attemptId);
 }

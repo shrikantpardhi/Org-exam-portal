@@ -124,9 +124,24 @@ class IdentityAuthenticationIntegrationTest extends AbstractIdentityIntegrationT
         User student = createUser(syntheticEmail("student-perm"), PASSWORD, "STUDENT");
         String token = login(student.getEmail(), PASSWORD);
 
+        // The intent of this test is in its name: a student holds nothing administrative. It used to
+        // assert an empty set, which happened to be true and was stricter than the contract. ADR-0030
+        // grants exactly one self-service report permission (V28) because P1 §9 says not to encode
+        // business authorization as a role branch, and P1 §66 says students receive "self-service
+        // session and current-user permissions only" — which a self-service report read satisfies.
         mockMvc.perform(get("/api/v1/me/permissions").header(AUTHORIZATION, bearer(token)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.permissions").isEmpty());
+                .andExpect(jsonPath("$.data.permissions").value(
+                        org.hamcrest.Matchers.containsInAnyOrder("REPORT_STUDENT_READ")))
+                // No administrative capability of any kind.
+                .andExpect(jsonPath("$.data.permissions").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.startsWith("USER_")))))
+                .andExpect(jsonPath("$.data.permissions").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.startsWith("ROLE_")))))
+                .andExpect(jsonPath("$.data.permissions").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.startsWith("AUDIT_")))))
+                .andExpect(jsonPath("$.data.permissions").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.hasItem("ADMIN_ROLE_ASSIGN"))));
     }
 
     @Test

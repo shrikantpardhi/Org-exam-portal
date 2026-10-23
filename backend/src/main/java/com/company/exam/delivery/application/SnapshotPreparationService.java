@@ -179,9 +179,65 @@ public class SnapshotPreparationService {
         int retried = 0;
         for (StudentAttempt attempt : failed) {
             UUID attemptId = attempt.getId();
-            Boolean reset = transactionTemplate.execute(status -> attemptRepository.resetForRetry(attemptId,
-                    SnapshotStatus.FAILED, SnapshotStatus.PENDING, Instant.now()) == 1);
-            if (Boolean.TRUE.equals(reset) && prepare(attemptId)) {
+            if (Boolean.TRUE.equals(resetForRetry(attemptId)) && prepare(attemptId)) {
+                retried++;
+            }
+        }
+        return retried;
+    }
+
+    /**
+     * Resets one FAILED attempt to PENDING and clears the partial snapshot it left behind.
+     *
+     * <p>The clear is required, not cosmetic: {@code attempt_question} carries
+     * {@code UNIQUE(attempt_id, question_version_id)} and {@code UNIQUE(attempt_id, display_order)}, so
+     * a retry that inserted over the leftovers of the failed run would violate a unique constraint and
+     * could never succeed. Both statements share one transaction so an attempt is never left PENDING
+     * with a stale snapshot.
+     *
+     * @return {@code true} when this caller owned the reset
+     */
+    private Boolean resetForRetry(UUID attemptId) {
+        return transactionTemplate.execute(status -> {
+            if (attemptRepository.resetForRetry(attemptId, SnapshotStatus.FAILED, SnapshotStatus.PENDING,
+                    Instant.now()) != 1) {
+                return false;
+            }
+            optionRepository.deleteByAttemptId(attemptId);
+            questionRepository.deleteByAttemptId(attemptId);
+            return true;
+        });
+    }
+
+    /**
+     * Periodic retry sweep for FAILED snapshots ({@code §23}, GAP-157).
+     *
+     * <p>{@link #retryFailed(UUID)} is per-schedule and has no caller, so a failure that was not
+     * retried explicitly stayed FAILED forever and blocked that candidate's Start Exam indefinitely.
+     * This sweep is the missing automated caller.
+     *
+     * <p>It is deliberately bounded in three independent ways, because the frozen schema stores no
+     * retry counter:
+     *
+     * <ol>
+     *   <li>a per-run batch limit, so one tick cannot monopolize the worker;</li>
+     *   <li>a cool-down since the last failure, so a retry is not a zero-information re-run of the
+     *       same failure and successive retries of one attempt are spaced;</li>
+     *   <li>a maximum age since attempt creation, after which the attempt is left FAILED for an
+     *       operator instead of being retried forever.</li>
+     * </ol>
+     *
+     * <p>Correctness is unchanged: the reset is still a conditional {@code FAILED -> PENDING} update,
+     * so a concurrent explicit retry or another worker instance simply loses the race and affects zero
+     * rows. Returns the number of attempts successfully re-prepared.
+     */
+    public int retryFailedSweep(int limit, Duration coolDown, Duration maxAge) {
+        Instant now = Instant.now();
+        List<UUID> candidates = attemptRepository.findRetryCandidateIds(SnapshotStatus.FAILED,
+                now.minus(coolDown), now.minus(maxAge), PageRequest.of(0, limit));
+        int retried = 0;
+        for (UUID attemptId : candidates) {
+            if (Boolean.TRUE.equals(resetForRetry(attemptId)) && prepare(attemptId)) {
                 retried++;
             }
         }

@@ -209,4 +209,174 @@ public final class CommerceReportProviders {
                             + "as collected (§60).");
         }
     }
+
+    /**
+     * COMMERCE_SUBSCRIPTIONS — the subscription-plan catalogue (§59, ADR-0029).
+     *
+     * <p>Plan level only. §59 forbids inventing a customer-level recurring billing history, and the
+     * platform has no subscription entity: a purchase of a plan is recorded as an {@code access_grant}.
+     * The report therefore describes what plans exist and what they cost, and says so.
+     */
+    @Component
+    public static class SubscriptionSummaryProvider implements ReportDataProvider {
+
+        private final ReportingCommerceCatalog commerceCatalog;
+
+        public SubscriptionSummaryProvider(ReportingCommerceCatalog commerceCatalog) {
+            this.commerceCatalog = commerceCatalog;
+        }
+
+        @Override
+        public ReportType reportType() {
+            return ReportType.COMMERCE_SUBSCRIPTIONS;
+        }
+
+        @Override
+        public ReportProjection project(ReportCriteria criteria) {
+            var plans = commerceCatalog.subscriptionPlans(criteria.instant("from"), criteria.instant("to"),
+                    MAX_ROWS);
+            if (plans.isEmpty()) {
+                return Projections.empty(ReportType.COMMERCE_SUBSCRIPTIONS.displayName(), criteria);
+            }
+            List<Map<String, String>> rows = new ArrayList<>();
+            long active = 0;
+            for (ReportingCommerceCatalog.SubscriptionPlanRow plan : plans) {
+                if ("ACTIVE".equals(plan.status())) {
+                    active++;
+                }
+                rows.add(row(                        "planId", text(plan.planId()),
+                        "code", plan.code(),
+                        "name", plan.name(),
+                        "accessPackageId", text(plan.accessPackageId()),
+                        "durationDays", plan.durationDays() == null ? "" : String.valueOf(plan.durationDays()),
+                        "price", decimal(plan.price()),
+                        "status", plan.status(),
+                        "createdOn", text(plan.createdOn())));
+            }
+            return new ReportProjection(ReportType.COMMERCE_SUBSCRIPTIONS.displayName(), period(criteria.filters()),
+                    appliedFilters(criteria.filters()), criteria.generatedAt(), criteria.callerId(),
+                    columns("planId", "Plan id", "code", "Code", "name", "Name",
+                            "accessPackageId", "Access package", "durationDays", "Duration (days)",
+                            "price", "Price", "status", "Status", "createdOn", "Created"),
+                    rows, List.of(
+                            new ReportProjection.SummaryMetric("Plans", Integer.toString(plans.size()),
+                                    "Subscription plans created in the period"),
+                            new ReportProjection.SummaryMetric("Active plans", Long.toString(active),
+                                    "Reported plans currently in ACTIVE state")),
+                    "Plan-level summary only. The platform records purchased access as an access grant and "
+                            + "keeps no recurring subscription history (§59).");
+        }
+    }
+
+    /**
+     * COMMERCE_COUPONS — coupon activity with redemption counts (§61, ADR-0029).
+     *
+     * <p>No coupon secret is projected: the discount value and validity window are the reportable
+     * facts, and §61 requires usage count, status and validity window.
+     */
+    @Component
+    public static class CouponActivityProvider implements ReportDataProvider {
+
+        private final ReportingCommerceCatalog commerceCatalog;
+
+        public CouponActivityProvider(ReportingCommerceCatalog commerceCatalog) {
+            this.commerceCatalog = commerceCatalog;
+        }
+
+        @Override
+        public ReportType reportType() {
+            return ReportType.COMMERCE_COUPONS;
+        }
+
+        @Override
+        public ReportProjection project(ReportCriteria criteria) {
+            var coupons = commerceCatalog.coupons(criteria.string("status"), criteria.instant("from"),
+                    criteria.instant("to"), MAX_ROWS);
+            if (coupons.isEmpty()) {
+                return Projections.empty(ReportType.COMMERCE_COUPONS.displayName(), criteria);
+            }
+            List<Map<String, String>> rows = new ArrayList<>();
+            long redemptions = 0;
+            for (ReportingCommerceCatalog.CouponRow coupon : coupons) {
+                redemptions += coupon.redemptionCount();
+                rows.add(row(
+                        "couponId", text(coupon.couponId()),
+                        "code", coupon.code(),
+                        "name", coupon.name(),
+                        "discountValue", decimal(coupon.discountValue()),
+                        "validFrom", text(coupon.validFrom()),
+                        "validTo", text(coupon.validTo()),
+                        "status", coupon.status(),
+                        "redemptions", Long.toString(coupon.redemptionCount()),
+                        "createdOn", text(coupon.createdOn())));
+            }
+            return new ReportProjection(ReportType.COMMERCE_COUPONS.displayName(), period(criteria.filters()),
+                    appliedFilters(criteria.filters()), criteria.generatedAt(), criteria.callerId(),
+                    columns("couponId", "Coupon id", "code", "Code", "name", "Name",
+                            "discountValue", "Discount", "validFrom", "Valid from", "validTo", "Valid to",
+                            "status", "Status", "redemptions", "Redemptions", "createdOn", "Created"),
+                    rows, List.of(
+                            new ReportProjection.SummaryMetric("Coupons", Integer.toString(coupons.size()),
+                                    "Coupons created in the period"),
+                            new ReportProjection.SummaryMetric("Redemptions", Long.toString(redemptions),
+                                    "Purchases that reference a reported coupon")),
+                    "Coupon usage is counted from purchases that reference the coupon; no coupon secret "
+                            + "or administrative internal is projected (§61, §82).");
+        }
+    }
+
+    /**
+     * COMMERCE_REFUNDS — purchases and payments in refunded state (§62, ADR-0029).
+     *
+     * <p>Refund truth is the authoritative payment state on {@code purchase} / {@code payment_record}.
+     * No refund entity exists in the schema and none is invented; no net-revenue figure is computed
+     * here, because §60 fixes the accounting definition in the revenue report.
+     */
+    @Component
+    public static class RefundActivityProvider implements ReportDataProvider {
+
+        private final ReportingCommerceCatalog commerceCatalog;
+
+        public RefundActivityProvider(ReportingCommerceCatalog commerceCatalog) {
+            this.commerceCatalog = commerceCatalog;
+        }
+
+        @Override
+        public ReportType reportType() {
+            return ReportType.COMMERCE_REFUNDS;
+        }
+
+        @Override
+        public ReportProjection project(ReportCriteria criteria) {
+            var refunds = commerceCatalog.refunds(criteria.instant("from"), criteria.instant("to"), MAX_ROWS);
+            if (refunds.isEmpty()) {
+                return Projections.empty(ReportType.COMMERCE_REFUNDS.displayName(), criteria);
+            }
+            List<Map<String, String>> rows = new ArrayList<>();
+            BigDecimal total = BigDecimal.ZERO;
+            for (ReportingCommerceCatalog.RefundRow refund : refunds) {
+                if (refund.amount() != null) {
+                    total = total.add(refund.amount());
+                }
+                rows.add(row(
+                        "purchaseId", text(refund.purchaseId()),
+                        "userId", text(refund.userId()),
+                        "amount", decimal(refund.amount()),
+                        "purchaseDate", text(refund.purchaseDate()),
+                        "refundedOn", text(refund.refundedOn()),
+                        "purchaseStatus", refund.purchasePaymentStatus(),
+                        "paymentStatus", refund.paymentStatus()));
+            }
+            return new ReportProjection(ReportType.COMMERCE_REFUNDS.displayName(), period(criteria.filters()),
+                    appliedFilters(criteria.filters()), criteria.generatedAt(), criteria.callerId(),
+                    columns("purchaseId", "Purchase id", "userId", "User", "amount", "Amount",
+                            "purchaseDate", "Purchased", "refundedOn", "Refunded (last state change)",
+                            "purchaseStatus", "Purchase status", "paymentStatus", "Payment status"),
+                    rows, List.of(new ReportProjection.SummaryMetric("Refunds", Integer.toString(refunds.size()),
+                            "Purchases in refunded state in the period")),
+                    "Refund state is sourced from the Commerce-owned payment contract (§62). There is no "
+                            + "separate refund entity, so the refunded-on column is the last recorded state "
+                            + "change. Communication failures never change refund truth.");
+        }
+    }
 }

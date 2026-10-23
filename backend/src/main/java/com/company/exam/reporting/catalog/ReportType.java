@@ -84,6 +84,28 @@ public enum ReportType {
             "Collected revenue grouped by day for a period.", "REPORT_COMMERCE_READ",
             ReportExecutionMode.SYNC, List.of(ReportFormat.CSV, ReportFormat.PDF), true,
             List.of("from", "to")),
+    // --- Catalog amendment (ADR-0029). §55 names seven candidate commerce reports; these are the
+    // three that had no identifier. All three reuse REPORT_COMMERCE_READ: they are one financial
+    // capability, and V24 already grants it to ADMIN and FINANCE.
+    //
+    // Filters are limited to those the provider honours, because ReportRequestValidator rejects any
+    // key outside this list and a declared-but-ignored filter would silently return unfiltered data.
+    // No userId filter: these are administrative financial views, and §76 scoping exists to stop
+    // per-user reads from becoming cross-user reads.
+    COMMERCE_SUBSCRIPTIONS("COMMERCE_SUBSCRIPTIONS", ReportCategory.COMMERCE, "Subscription Summary",
+            "Subscription plans with duration, price and lifecycle state. Plan level only: the platform "
+                    + "records access in access_grant, not a recurring subscription (§59).",
+            "REPORT_COMMERCE_READ", ReportExecutionMode.SYNC, List.of(ReportFormat.CSV), true,
+            List.of("from", "to")),
+    COMMERCE_COUPONS("COMMERCE_COUPONS", ReportCategory.COMMERCE, "Coupon Activity",
+            "Coupons with validity window, discount and redemption count.",
+            "REPORT_COMMERCE_READ", ReportExecutionMode.SYNC, List.of(ReportFormat.CSV), true,
+            List.of("status", "from", "to")),
+    COMMERCE_REFUNDS("COMMERCE_REFUNDS", ReportCategory.COMMERCE, "Refund Activity",
+            "Purchases and payments in refunded state. Reported from the authoritative refund state "
+                    + "already frozen on purchase and payment_record (§62); no refund entity exists.",
+            "REPORT_COMMERCE_READ", ReportExecutionMode.SYNC, List.of(ReportFormat.CSV), true,
+            List.of("from", "to")),
 
     // ---------------------------------------------------------------- Operations
     OPERATIONS_USER_ACTIVITY("OPERATIONS_USER_ACTIVITY", ReportCategory.OPERATIONS, "User Activity",

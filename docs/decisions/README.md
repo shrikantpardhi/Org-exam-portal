@@ -25,4 +25,16 @@ process (`specs/09-P0-Foundation-V1.5.md §86`).
 | [0016](ADR-0016-p3-content-rendering-boundary-and-decisions.md) | P3 content rendering boundary and decisions | Accepted |
 | [0017](ADR-0017-p4-blueprint-and-assessment-decisions.md) | P4 blueprint and assessment decisions | Accepted |
 | [0018](ADR-0018-p5-delivery-runtime-decisions.md) | P5 delivery runtime decisions | Accepted |
+| [0019](ADR-0019-p6-evaluation-decisions.md) | P6 Evaluation: scoring, versioning, and publication decisions | Accepted |
+| [0020](ADR-0020-p8-analytics-decisions.md) | P8 Analytics: derivation, bounds, and refresh decisions | Accepted |
+| [0021](ADR-0021-p9-commerce-decisions.md) | P9 Commerce: pricing, payment, and entitlement decisions | Accepted |
+| [0022](ADR-0022-p10-communication-decisions.md) | P10 Communication: event-driven notification and delivery decisions | Accepted |
+| [0023](ADR-0023-p11-administration-decisions.md) | P11 Administration: control-plane decisions | Accepted |
+| [0024](ADR-0024-p13-reporting-decisions.md) | P13 Reporting: read-only composition without new tables | Accepted |
+| [0025](ADR-0025-answer-key-multiple-correct.md) | Answer key: multiple correct options for MULTIPLE_CHOICE | Accepted |
+| [0026](ADR-0026-free-assessment-rule.md) | The free-assessment rule, and paid-content enforcement at Start Exam | Accepted |
+| [0027](ADR-0027-assessment-exam-link.md) | Assessment exam link | Accepted |
 | [0028](ADR-0028-worker-indexes.md) | Composite indexes for worker candidate selection and the notification list | Accepted |
+| [0029](ADR-0029-commerce-report-catalog-amendment.md) | Commerce report catalog amendment: subscriptions, coupons, refunds | Accepted |
+| [0030](ADR-0030-student-reporting-permission.md) | Student reporting is permission-based, not role-based | Accepted |
+| [0031](ADR-0031-content-created-date-and-asset-preview.md) | Version created date and asset preview are by-design absent | Accepted |

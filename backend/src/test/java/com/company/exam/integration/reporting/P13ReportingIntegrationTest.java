@@ -42,15 +42,43 @@ class P13ReportingIntegrationTest extends AbstractEvaluationIntegrationTest {
                 .contains("\"enabled\":true")
                 .doesNotContain("\"enabled\":false");
 
-        // A student holds no report permission (P1 froze an empty student permission set), so no report
-        // type is advertised to them at all (§74, §77).
+        // A student now holds exactly one report permission — REPORT_STUDENT_READ — so the catalog
+        // advertises the student self-service types and nothing wider (ADR-0030, §74, §76).
         User student = newStudent("p13-catalog");
         String studentCatalog = mockMvc.perform(get("/api/v1/reports/catalog")
                         .header(AUTHORIZATION, bearer(tokenFor(student))))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(studentCatalog).doesNotContain("OPERATIONS").doesNotContain("EXECUTIVE")
-                .doesNotContain("STUDENT_PROFILE");
+        assertThat(studentCatalog).contains("STUDENT_PROFILE").contains("STUDENT_ATTEMPTS")
+                .contains("STUDENT_PERFORMANCE")
+                .doesNotContain("OPERATIONS").doesNotContain("EXECUTIVE")
+                .doesNotContain("COMMERCE").doesNotContain("ASSESSMENT").doesNotContain("CONTENT");
+    }
+
+    @Test
+    void aStudentCanGenerateTheirOwnReportAndIsScopedToThemself() throws Exception {
+        // GAP-142 / ADR-0030: granting the permission makes the screen reachable; §76 scoping means it
+        // still cannot be pointed at another student.
+        User student = newStudent("p13-self");
+        User other = newStudent("p13-other");
+        String body = "{\"reportType\":\"STUDENT_PROFILE\",\"filters\":{\"studentId\":\""
+                + other.getId() + "\"},\"format\":\"CSV\"}";
+        String response = mockMvc.perform(post("/api/v1/reports")
+                        .header(AUTHORIZATION, bearer(tokenFor(student))).contentType(JSON).content(body))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // The requested filter names another student; the self-scope must win.
+        assertThat(response).contains(student.getId().toString());
+        assertThat(response).doesNotContain(other.getId().toString());
+    }
+
+    @Test
+    void aStudentIsStillRefusedACommerceReport() throws Exception {
+        User student = newStudent("p13-commerce-denied");
+        mockMvc.perform(post("/api/v1/reports").header(AUTHORIZATION, bearer(tokenFor(student))).contentType(JSON)
+                        .content("{\"reportType\":\"COMMERCE_SUBSCRIPTIONS\",\"filters\":{},\"format\":\"CSV\"}"))
+                .andExpect(status().isForbidden());
     }
 
     @Test

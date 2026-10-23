@@ -201,6 +201,82 @@ class P13ProjectionProvidersTest {
         assertThat(projection.rows().get(0)).doesNotContainKeys("cardNumber", "cvv", "gatewaySecret");
     }
 
+    // ------------------------------------------- Commerce amendment (ADR-0029, GAP-141a)
+
+    @Test
+    void subscriptionSummaryReportsPlanLevelDataAndSaysItIsPlanLevelOnly() {
+        ReportingCommerceCatalog commerce = mock(ReportingCommerceCatalog.class);
+        UUID planId = UUID.randomUUID();
+        when(commerce.subscriptionPlans(any(), any(), anyInt())).thenReturn(List.of(
+                new ReportingCommerceCatalog.SubscriptionPlanRow(planId, UUID.randomUUID(), "PLAN_30",
+                        "30-day access", 30, new BigDecimal("499.00"), "ACTIVE", NOW),
+                new ReportingCommerceCatalog.SubscriptionPlanRow(UUID.randomUUID(), UUID.randomUUID(), "PLAN_90",
+                        "90-day access", 90, new BigDecimal("1299.00"), "INACTIVE", NOW)));
+        var provider = new CommerceReportProviders.SubscriptionSummaryProvider(commerce);
+
+        ReportProjection projection = provider.project(criteria(ReportType.COMMERCE_SUBSCRIPTIONS,
+                Map.of("from", "2026-10-01T00:00:00Z", "to", "2026-10-31T00:00:00Z"), false));
+
+        assertThat(projection.rows()).hasSize(2);
+        assertThat(projection.rows().get(0)).containsEntry("code", "PLAN_30").containsEntry("status", "ACTIVE")
+                .containsEntry("price", "499.00").containsEntry("durationDays", "30");
+        // §59: the report must not imply a customer-level recurring billing history exists.
+        assertThat(projection.freshnessNote()).contains("Plan-level");
+        assertThat(projection.metrics()).anyMatch(metric -> "Active plans".equals(metric.name())
+                && "1".equals(metric.value()));
+    }
+
+    @Test
+    void couponActivityCountsRedemptionsAndProjectsNoCouponSecret() {
+        ReportingCommerceCatalog commerce = mock(ReportingCommerceCatalog.class);
+        UUID couponId = UUID.randomUUID();
+        when(commerce.coupons(any(), any(), any(), anyInt())).thenReturn(List.of(
+                new ReportingCommerceCatalog.CouponRow(couponId, "LAUNCH10", "Launch offer",
+                        new BigDecimal("10.00"), NOW, NOW.plusSeconds(86400), "ACTIVE", NOW, 7L)));
+        var provider = new CommerceReportProviders.CouponActivityProvider(commerce);
+
+        ReportProjection projection = provider.project(criteria(ReportType.COMMERCE_COUPONS,
+                Map.of("status", "ACTIVE"), false));
+
+        assertThat(projection.rows()).hasSize(1);
+        assertThat(projection.rows().get(0)).containsEntry("code", "LAUNCH10")
+                .containsEntry("redemptions", "7");
+        assertThat(projection.metrics()).anyMatch(metric -> "Redemptions".equals(metric.name())
+                && "7".equals(metric.value()));
+        assertThat(projection.rows().get(0)).doesNotContainKeys("secret", "token", "internalNote");
+    }
+
+    @Test
+    void refundActivityReportsRefundStateAndNeverComputesNetRevenue() {
+        ReportingCommerceCatalog commerce = mock(ReportingCommerceCatalog.class);
+        when(commerce.refunds(any(), any(), anyInt())).thenReturn(List.of(
+                new ReportingCommerceCatalog.RefundRow(UUID.randomUUID(), STUDENT, new BigDecimal("30.00"),
+                        NOW, NOW.plusSeconds(3600), "REFUNDED", "REFUNDED")));
+        var provider = new CommerceReportProviders.RefundActivityProvider(commerce);
+
+        ReportProjection projection = provider.project(criteria(ReportType.COMMERCE_REFUNDS, Map.of(), false));
+
+        assertThat(projection.rows()).hasSize(1);
+        assertThat(projection.rows().get(0)).containsEntry("purchaseStatus", "REFUNDED")
+                .containsEntry("amount", "30.00");
+        // §60 fixes the revenue definition; the refund report must not restate or contradict it.
+        assertThat(projection.freshnessNote()).contains("§62");
+        assertThat(projection.columns()).noneMatch(column -> column.key().toLowerCase().contains("netrevenue"));
+    }
+
+    @Test
+    void commerceAmendmentReportsDeclareOnlyFiltersTheirProvidersHonour() {
+        // A declared-but-ignored filter would silently return unfiltered financial data, so the
+        // catalog entry and the provider must agree (ADR-0029).
+        assertThat(ReportType.COMMERCE_SUBSCRIPTIONS.filterSchema()).containsExactly("from", "to");
+        assertThat(ReportType.COMMERCE_COUPONS.filterSchema()).containsExactly("status", "from", "to");
+        assertThat(ReportType.COMMERCE_REFUNDS.filterSchema()).containsExactly("from", "to");
+        // All three are one financial capability, so they reuse the existing commerce permission.
+        assertThat(List.of(ReportType.COMMERCE_SUBSCRIPTIONS, ReportType.COMMERCE_COUPONS,
+                ReportType.COMMERCE_REFUNDS))
+                .allMatch(type -> "REPORT_COMMERCE_READ".equals(type.permission()) && type.enabled());
+    }
+
     // ------------------------------------------------------------------ Catalog integrity
 
     @Test
@@ -223,6 +299,9 @@ class P13ProjectionProvidersTest {
         provided.add(ReportType.COMMERCE_PAYMENTS);
         provided.add(ReportType.COMMERCE_ACCESS_GRANTS);
         provided.add(ReportType.COMMERCE_REVENUE_SUMMARY);
+        provided.add(ReportType.COMMERCE_SUBSCRIPTIONS);
+        provided.add(ReportType.COMMERCE_COUPONS);
+        provided.add(ReportType.COMMERCE_REFUNDS);
         provided.add(ReportType.OPERATIONS_USER_ACTIVITY);
         provided.add(ReportType.OPERATIONS_AUDIT_ACTIVITY);
         provided.add(ReportType.OPERATIONS_COMMUNICATION_STATUS);

@@ -33,6 +33,32 @@ public interface ReportingCommerceCatalog {
             String status) {
     }
 
+    /**
+     * One subscription-plan row (§59).
+     *
+     * <p>Plan level only. The platform has no recurring subscription entity — it sells a time-boxed
+     * plan and records the resulting access in {@code access_grant} — so {@code §59} forbids inventing
+     * a customer-level billing history here.
+     */
+    record SubscriptionPlanRow(UUID planId, UUID accessPackageId, String code, String name, Integer durationDays,
+            BigDecimal price, String status, Instant createdOn) {
+    }
+
+    /** One coupon row (§61), with its redemption count derived from purchases. */
+    record CouponRow(UUID couponId, String code, String name, BigDecimal discountValue, Instant validFrom,
+            Instant validTo, String status, Instant createdOn, long redemptionCount) {
+    }
+
+    /**
+     * One refunded purchase (§62).
+     *
+     * <p>Derived from the authoritative refund <em>state</em> already frozen on {@code purchase} and
+     * {@code payment_record}. No refund entity exists, and none is invented.
+     */
+    record RefundRow(UUID purchaseId, UUID userId, BigDecimal amount, Instant purchaseDate, Instant refundedOn,
+            String purchasePaymentStatus, String paymentStatus) {
+    }
+
     /** Purchases in a window, optionally narrowed to one user, bounded by {@code limit}. */
     List<PurchaseRow> purchases(UUID userId, Instant from, Instant to, int limit);
 
@@ -41,4 +67,13 @@ public interface ReportingCommerceCatalog {
 
     /** Access grants started in the window, optionally narrowed to one user. */
     List<AccessGrantRow> accessGrants(UUID userId, Instant from, Instant to, int limit);
+
+    /** Subscription plans created in the window, bounded by {@code limit} (§59). */
+    List<SubscriptionPlanRow> subscriptionPlans(Instant from, Instant to, int limit);
+
+    /** Coupons created in the window, optionally filtered by lifecycle status, bounded by {@code limit} (§61). */
+    List<CouponRow> coupons(String status, Instant from, Instant to, int limit);
+
+    /** Purchases in refunded state, windowed by refund date, bounded by {@code limit} (§62). */
+    List<RefundRow> refunds(Instant from, Instant to, int limit);
 }

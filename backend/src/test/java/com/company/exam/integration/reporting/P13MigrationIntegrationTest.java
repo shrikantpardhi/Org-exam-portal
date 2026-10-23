@@ -82,4 +82,34 @@ class P13MigrationIntegrationTest extends AbstractIntegrationTest {
                 Integer.class);
         assertThat(student).isZero();
     }
+
+    @Test
+    void aStudentHoldsExactlyTheSelfServiceReportPermissionAndNothingWider() {
+        // GAP-142 / ADR-0030: student reporting is permission-based, not role-based, because P1 §9
+        // says not to encode business authorization as a role branch. Exactly one report permission
+        // is granted, so every other reporting capability stays out of reach.
+        Integer granted = jdbcTemplate.queryForObject(
+                "select count(*) from role_permission rp join role r on r.id = rp.role_id "
+                        + "join permission p on p.id = rp.permission_id "
+                        + "where r.code = 'STUDENT' and p.code like 'REPORT_%'",
+                Integer.class);
+        assertThat(granted).isEqualTo(1);
+
+        Integer selfService = jdbcTemplate.queryForObject(
+                "select count(*) from role_permission rp join role r on r.id = rp.role_id "
+                        + "join permission p on p.id = rp.permission_id "
+                        + "where r.code = 'STUDENT' and p.code = 'REPORT_STUDENT_READ'",
+                Integer.class);
+        assertThat(selfService).isEqualTo(1);
+
+        // The wider reporting capabilities remain ungranted, including history and generation.
+        Integer wider = jdbcTemplate.queryForObject(
+                "select count(*) from role_permission rp join role r on r.id = rp.role_id "
+                        + "join permission p on p.id = rp.permission_id "
+                        + "where r.code = 'STUDENT' and p.code in ('REPORT_ASSESSMENT_READ', "
+                        + "'REPORT_CONTENT_READ', 'REPORT_COMMERCE_READ', 'REPORT_OPERATIONS_READ', "
+                        + "'REPORT_EXECUTIVE_READ', 'REPORT_HISTORY_READ', 'REPORT_GENERATE')",
+                Integer.class);
+        assertThat(wider).isZero();
+    }
 }

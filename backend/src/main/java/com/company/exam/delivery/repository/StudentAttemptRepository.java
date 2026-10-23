@@ -212,6 +212,34 @@ public interface StudentAttemptRepository extends JpaRepository<StudentAttempt, 
             org.springframework.data.domain.Pageable pageable);
 
     /**
+     * A bounded page of FAILED attempts eligible for the retry sweep, oldest failure first
+     * ({@code §23}, GAP-157).
+     *
+     * <p>Two conditions, both required:
+     *
+     * <ul>
+     *   <li>{@code updatedOn <= coolDownBefore} — the attempt has been FAILED long enough that a retry
+     *       is not just re-running the same failure. {@code updated_on} is refreshed on every failure,
+     *       so this naturally spaces successive retries of one attempt.</li>
+     *   <li>{@code createdOn >= createdAfter} — retries are confined to a window measured from attempt
+     *       creation. This is the bound that keeps the sweep finite: the frozen schema stores no retry
+     *       counter, and without it an attempt that can never be prepared would be retried forever.
+     *       Past the window the attempt stays FAILED for an operator to examine.</li>
+     * </ul>
+     */
+    @Query("""
+            select a.id from StudentAttempt a
+             where a.snapshotStatus = :failed
+               and a.updatedOn <= :coolDownBefore
+               and a.createdOn >= :createdAfter
+             order by a.updatedOn asc
+            """)
+    List<UUID> findRetryCandidateIds(@Param("failed") SnapshotStatus failed,
+            @Param("coolDownBefore") Instant coolDownBefore,
+            @Param("createdAfter") Instant createdAfter,
+            Pageable pageable);
+
+    /**
      * A bounded page of IN_PROGRESS attempt ids, oldest first.
      *
      * <p>The expiry sweep works on this page rather than in SQL, because the deadline depends on the

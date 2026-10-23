@@ -18,7 +18,7 @@
 ## Current phase
 
 - **Phase:** P13 — Broader Reporting & Operational Reporting (complete) / **P12 release rehearsal (executed 2026-10-19)**
-- **State:** Reporting complete — catalog, validation, sync/async execution, CSV + PDF renderers, protected download and history; **all 23 of 23 report types are backed by a projection provider and enabled** (GAP-141 closed), and the student/staff/admin reporting UI is delivered (GAP-148 closed). Commerce Subscription Summary, Coupon Activity and Refund Activity are named by `22-P13 §55` but absent from the frozen catalog (GAP-141a); the student screen exists but is gated on a permission students do not hold (GAP-142). The P12 rehearsal closed **GAP-131** (backup/restore) and **GAP-132** (rollback) and verified **GAP-007/009/087/134** against the running stack. The release decision remains **NO-GO** on **GAP-130** (no performance gate measured).
+- **State:** Reporting complete — catalog, validation, sync/async execution, CSV + PDF renderers, protected download and history; **all 25 of 25 report types are backed by a projection provider and enabled** (GAP-141, GAP-141a closed), and the student/staff/admin reporting UI is delivered (GAP-148 closed). Commerce Subscription Summary, Coupon Activity and Refund Activity were added to the frozen catalog by **ADR-0029** (GAP-141a), and student reporting was resolved as **permission-based** by **ADR-0030** — `V28` grants `REPORT_STUDENT_READ` to `STUDENT`, so the student screen is now reachable (GAP-142). The version-created-date and asset-preview gaps are recorded as **by design** in **ADR-0031** (GAP-154, GAP-155). The P12 rehearsal closed **GAP-131** (backup/restore) and **GAP-132** (rollback) and verified **GAP-007/009/087/134** against the running stack. The release decision remains **NO-GO** on **GAP-130** (no performance gate measured).
 - **Testing notes:** [`docs/testing/p13/README.md`](testing/p13/README.md)
 - **Rehearsal record:** [`docs/testing/p12/rehearsal-2026-10-19.md`](testing/p12/rehearsal-2026-10-19.md)
 
@@ -165,7 +165,7 @@ P5 Assessment Delivery and Runtime Examination Engine:
 | P5-08 | Attempt creation (PENDING, bound to candidate) | Completed |
 | P5-09 | Race-safe snapshot claim | Completed |
 | P5-10 | Atomic snapshot preparation | Completed |
-| P5-11 | Snapshot retry and stale reclaim | Completed |
+| P5-11 | Snapshot retry and stale reclaim | Completed — stale PREPARING reclaim plus a bounded FAILED retry sweep in `SnapshotPreparationWorker`, gated by the `DELIVERY_SNAPSHOT_RETRY_SWEEP` business rule (off by default); retry now also clears the partial snapshot, without which the unique constraint made every retry fail (GAP-157) |
 | P5-12 | Snapshot integrity checks before READY | Completed |
 | P5-13 | Start Exam (zero snapshot inserts, race-safe) | Completed — and the SQL cost is now bounded: free start 9 statements, paid start 10 (ceiling 10, down from 11/13), p95 19.7 ms warm on the dev host (GAP-059 residual). Enforced by `StartAssessmentQueryBudgetIntegrationTest` |
 | P5-14 | Session create/activate | Completed — plus a scheduled derived-expiry sweep that moves stale ACTIVE sessions to EXPIRED (GAP-065 closed; `§90/§91`). Start now reaches the session insert without a redundant attempt re-read when it wins the transition race |
@@ -404,9 +404,9 @@ P13 Broader Reporting and Operational Reporting:
 | Task | Description | State |
 |---|---|---|
 | P13-01 | Reporting module skeleton | Completed |
-| P13-02 | Report registry (23 types, 6 categories, filter schemas) | Completed — all 23 backed by a provider and enabled (GAP-141) |
+| P13-02 | Report registry (25 types, 6 categories, filter schemas) | Completed — all 25 backed by a provider and enabled (GAP-141, GAP-141a via ADR-0029) |
 | P13-03 | Request and filter validation | Completed |
-| P13-04 | Authorization (per-type permission, student self-scoping) | Completed — student permissions deferred (GAP-142) |
+| P13-04 | Authorization (per-type permission, student self-scoping) | Completed — student reporting resolved as permission-based (ADR-0030, `V28`); self-scoping enforced in `ReportService.scopedFilters` and `ReportCriteria.scopedSubject` (GAP-142) |
 | P13-05 | Synchronous execution | Completed |
 | P13-06 | Asynchronous execution via `background_job` | Completed |
 | P13-07 | Job status | Completed |
