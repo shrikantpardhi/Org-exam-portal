@@ -1,0 +1,79 @@
+# ---------------------------------------------------------------------------
+# Prometheus configuration for the production-like load environment (GAP-083).
+#
+# This is deliberately NOT the local file at
+# infrastructure/monitoring/prometheus/prometheus.yml. That one scrapes the
+# backend and nothing else, which is why the 2026-10-22 run could not answer the
+# questions specs/16-P7 §106 actually asks: connection saturation, lock
+# contention, and worker bottlenecks. Those live in PostgreSQL and Redis, not in
+# the JVM, so this file adds the database and cache exporters.
+#
+# The alert rules are the same shared files the local stack uses; they are not
+# duplicated here.
+#
+# GAP-138 protection is unchanged: the actuator tree is not reachable from the
+# edge, and the scrape presents MONITORING_METRICS_TOKEN. Prometheus 2.x cannot
+# expand environment variables in this file -- there is no --config.expand-env
+# flag; that flag belongs to Loki, and the local stack passes it, which is why
+# its Prometheus container crash-loops (see docs/known-gaps.md GAP-083). The
+# compose entrypoint therefore renders __MONITORING_TOKEN__ into a /tmp copy at
+# start-up, so no secret is present here.
+# ---------------------------------------------------------------------------
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    platform: exam-platform
+    environment: production-like
+
+rule_files:
+  - /etc/prometheus/alerts/*.yml
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # The application tier. This is the only job the local stack has.
+  - job_name: exam-platform-backend
+    metrics_path: /actuator/prometheus
+    scheme: http
+    authorization:
+      type: Bearer
+      credentials: __MONITORING_TOKEN__
+    static_configs:
+      - targets: ["backend:8080"]
+        labels:
+          application: exam-platform-backend
+          component: api
+
+  # PostgreSQL: connection counts against max_connections, lock waits, WAL
+  # volume, cache hit ratio. Scraped direct rather than through PgBouncer
+  # because pg_stat_* views are per server session.
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+        labels:
+          application: exam-platform-postgres
+          component: database
+
+  # Redis: client count, evictions, rejected connections, memory headroom.
+  - job_name: redis
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+        labels:
+          application: exam-platform-redis
+          component: cache
+
+  # PgBouncer's own pool counters are the most direct evidence of whether the
+  # 5,000-user run is limited by the pooler rather than by PostgreSQL. Its stats
+  # console is reachable inside the network; it is not published.
+  - job_name: pgbouncer
+    static_configs:
+      - targets: ["pgbouncer-exporter:9127"]
+        labels:
+          application: exam-platform-pgbouncer
+          component: pooler
+    # The PgBouncer exporter is optional. When it is not running the target is
+    # simply down, which the verification script reports rather than fails on.
+    honor_labels: true

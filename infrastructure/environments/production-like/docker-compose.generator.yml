@@ -1,0 +1,79 @@
+# ---------------------------------------------------------------------------
+# Load generator for the production-like environment (GAP-083).
+#
+# This is a SEPARATE Compose project from docker-compose.yml on purpose. The
+# single most important property of a load result is that the generator does not
+# compete with the system it measures (load/README.md, "Requirements the
+# environment must meet"). The 2026-10-22 run broke that rule: k6, the backend,
+# PostgreSQL and Redis all shared one development host, so the measured latency
+# was partly the measurement.
+#
+# Run it as its own Compose project, joining the stack's edge network:
+#
+#   docker compose -f docker-compose.yml --profile data --profile edge \
+#       --profile app --profile obs up -d
+#   docker compose -f docker-compose.generator.yml --profile load up -d
+#
+# It is a distinct project (name exam-platform-prodlike-load) rather than an
+# override file, so `down` on the generator cannot tear down the stack and the
+# two have independent lifecycles. It attaches to the stack's edge network
+# externally.
+#
+# The generator is pinned to GENERATOR_CPUSET (default cores 14-19) and the
+# application stack to cores 0-13, so the two never share a core. See README.md
+# § "Host allocation".
+#
+# The generator talks ONLY to the edge. It has no route to PostgreSQL, Redis or
+# PgBouncer: it is not on data-net or app-net, and it holds no database
+# credential. That is deliberate — the harness must exercise the frozen HTTP
+# contract, never the tables (load/README.md, "The harness never writes to the
+# database").
+# ---------------------------------------------------------------------------
+
+name: exam-platform-prodlike-load
+
+services:
+  generator:
+    profiles: ["load"]
+    image: grafana/k6:0.54.0
+    # The harness is bind-mounted read-only: the image is unmodified and the
+    # credentials manifest stays in load/out/ (git-ignored) rather than being
+    # baked into an image layer.
+    volumes:
+      - ../../../load:/load:ro
+      - ../../../load/out:/load/out:rw
+    working_dir: /load
+    environment:
+      # The edge is the only reachable surface, and it is addressed by its
+      # service name on edge-net, never by a host port.
+      P7_BASE_URL: ${P7_BASE_URL:-http://nginx:80}
+      P7_PROFILE: ${P7_PROFILE:-start}
+      P7_USERS: ${P7_USERS:-5000}
+      P7_VUS: ${P7_VUS:-5000}
+      P7_DURATION_SECONDS: ${P7_DURATION_SECONDS:-60}
+      P7_OFFSET: ${P7_OFFSET:-0}
+      P7_SCHEDULE_ID: ${P7_SCHEDULE_ID:-}
+      P7_CREDENTIALS_FILE: ${P7_CREDENTIALS_FILE:-load/out/credentials.json}
+      P7_TIMEOUT: ${P7_TIMEOUT:-60s}
+      P7_ALLOW_MUTATION: ${P7_ALLOW_MUTATION:-true}
+    # A generator that is CPU-starved reports the starvation as platform
+    # latency. 6 dedicated cores is the floor for 5,000 VUs; see sizing.md.
+    cpuset: "${GENERATOR_CPUSET:-14-19}"
+    mem_limit: ${GENERATOR_MEM_LIMIT:-4096m}
+    # The generator must never restart into a half-finished run.
+    restart: "no"
+    ulimits:
+      # 5,000 VUs means thousands of concurrent sockets. The k6 image default is
+      # too low and produces false connection errors.
+      nofile:
+        soft: 65536
+        hard: 65536
+    networks: [edge-net]
+
+networks:
+  # Created by docker-compose.yml (project exam-platform-prodlike); this file
+  # only joins it. The name is pinned explicitly because an external network is
+  # looked up by its real Docker name, not by the Compose alias.
+  edge-net:
+    external: true
+    name: exam-platform-prodlike_edge-net

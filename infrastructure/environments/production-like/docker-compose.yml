@@ -1,0 +1,468 @@
+# ---------------------------------------------------------------------------
+# Production-like environment for the P7 / P12 5,000-user load re-run (GAP-083).
+#
+# This is NOT the local development stack (see ../../../docker-compose.yml). It
+# exists to satisfy specs/16-P7-Pilot-V1.5.md §12 ("scale validation uses a
+# production-like environment") and §13 (staging and load are a separate
+# environment from local and production).
+#
+# What is deliberately different from the local stack:
+#
+#   1. Host-tier separation. Services are grouped into four tiers (data, edge,
+#      app, observability) and each tier is pinned to dedicated CPU cores via
+#      `cpuset` with a hard memory ceiling via `mem_limit`. On a single physical
+#      host this is how "multiple VMs with dedicated cores and RAM" is emulated;
+#      see README.md § "Why CPU pinning instead of VMs" for what this does and
+#      does not guarantee.
+#   2. The load generator is a separate composition (docker-compose.generator.yml)
+#      pinned to its own cores, so it cannot compete with the stack it measures.
+#   3. Nothing but the edge is published. PostgreSQL, Redis, PgBouncer, the
+#      backend and the frontend have no host ports at all, so the only way in is
+#      through Nginx — which is the production shape.
+#   4. The connection tiers are sized for 5,000 users, not for a laptop. The
+#      local stack runs DB_POOL_MAX_SIZE=10 and PgBouncer max_client_conn=200,
+#      both of which are far too small to be a capacity claim (see sizing.md).
+#
+# The frozen architecture is unchanged: client -> nginx -> backend -> pgbouncer
+# -> postgres, with Redis as cache only. No application code is modified; every
+# difference is configuration supplied through the environment.
+#
+# Credentials are never defaulted. Copy .env.example to .env and fill it in;
+# Compose fails fast on a missing required value.
+# ---------------------------------------------------------------------------
+
+name: exam-platform-prodlike
+
+services:
+
+  # ============================================================== data tier
+  # Dedicated 4 cores / ~2.9 GB. PostgreSQL is the source of truth and the only
+  # tier that is never restarted during a measurement.
+
+  postgres:
+    profiles: ["data"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      TZ: UTC
+      PGTZ: UTC
+    # Sized for the 5,000-user workload: 2 GB shared_buffers is 25% of the
+    # container ceiling, which is the conventional ratio. max_connections is
+    # deliberately larger than the PgBouncer pool so a pooler restart cannot
+    # exhaust the server while clients reconnect.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=${POSTGRES_SHARED_BUFFERS:-512MB}
+      - -c
+      - effective_cache_size=${POSTGRES_EFFECTIVE_CACHE:-1536MB}
+      - -c
+      - work_mem=${POSTGRES_WORK_MEM:-8MB}
+      - -c
+      - maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-128MB}
+      - -c
+      - max_connections=${POSTGRES_MAX_CONNECTIONS:-300}
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=10
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - log_min_duration_statement=${POSTGRES_LOG_SLOW_MS:-500}
+    volumes:
+      - prodlike-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\" -h 127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    cpuset: "${DATA_CPUSET:-0-3}"
+    mem_limit: ${POSTGRES_MEM_LIMIT:-2048m}
+    restart: unless-stopped
+    networks: [data-net]
+
+  redis:
+    profiles: ["data"]
+    image: redis:7-alpine
+    # Cache only, so persistence stays disabled (specs/06). Sized so the whole
+    # working set of 5,000 sessions fits in memory with no eviction pressure.
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      - --appendonly
+      - "no"
+      - --save
+      - ""
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-384mb}
+      - --maxmemory-policy
+      - allkeys-lru
+      - --tcp-backlog
+      - "511"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+    cpuset: "${DATA_CPUSET:-0-3}"
+    mem_limit: ${REDIS_MEM_LIMIT:-448m}
+    restart: unless-stopped
+    networks: [data-net]
+
+  # Database/Redis metrics. The local stack has none, which is why P7 §106's
+  # "connection saturation" and "lock contention" curves could not be observed
+  # at 5,000 users. These supply them.
+  postgres-exporter:
+    profiles: ["data"]
+    image: prometheuscommunity/postgres-exporter:v0.16.0
+    environment:
+      # Direct to PostgreSQL, never through PgBouncer: the exporter reads
+      # pg_stat_* server views, which are per-server-session and would be
+      # meaningless through a transaction pooler.
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}?sslmode=disable"
+      PG_EXPORTER_DISABLE_SETTINGS_METRICS: "false"
+    cpuset: "${DATA_CPUSET:-0-3}"
+    mem_limit: ${EXPORTER_MEM_LIMIT:-128m}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [data-net]
+
+  redis-exporter:
+    profiles: ["data"]
+    image: oliver006/redis_exporter:v1.62.0
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    cpuset: "${DATA_CPUSET:-0-3}"
+    mem_limit: ${EXPORTER_MEM_LIMIT:-128m}
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [data-net]
+
+  # PgBouncer pool counters. This is the most direct evidence of whether a
+  # 5,000-user run is limited by the pooler rather than by PostgreSQL, which is
+  # exactly the ambiguity the 2026-10-22 run could not resolve.
+  pgbouncer-exporter:
+    profiles: ["data"]
+    image: prometheuscommunity/pgbouncer-exporter:v0.8.0
+    # This exporter takes flags, not environment variables: it has no
+    # PGBOUNCER_EXPORTER_* environment support, so passing them silently does
+    # nothing and the exporter falls back to localhost:6543. The listen address
+    # and connection string must therefore be command-line arguments.
+    #
+    # The exporter reads the PgBouncer admin console (SHOW POOLS/STATS), so it
+    # authenticates with the admin credential, which exists only inside
+    # PgBouncer and cannot reach PostgreSQL.
+    command:
+      - --pgBouncer.connectionString=postgres://${PGBOUNCER_ADMIN_USER:?PGBOUNCER_ADMIN_USER is required}:${PGBOUNCER_ADMIN_PASSWORD:?PGBOUNCER_ADMIN_PASSWORD is required}@pgbouncer:6432/pgbouncer?sslmode=disable
+      - --web.listen-address=:9127
+    cpuset: "${EDGE_CPUSET:-4-5}"
+    mem_limit: ${EXPORTER_MEM_LIMIT:-128m}
+    restart: unless-stopped
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    networks: [app-net]
+
+  # ============================================================== edge tier
+  # PgBouncer sits on both the app and data networks because it is the only
+  # component allowed to reach PostgreSQL for application traffic.
+
+  pgbouncer:
+    profiles: ["edge"]
+    build:
+      context: ../../../infrastructure/pgbouncer
+      dockerfile: ../docker/pgbouncer.Dockerfile
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      PGBOUNCER_LISTEN_PORT: "6432"
+      PGBOUNCER_ADMIN_USER: ${PGBOUNCER_ADMIN_USER:?PGBOUNCER_ADMIN_USER is required}
+      PGBOUNCER_ADMIN_PASSWORD: ${PGBOUNCER_ADMIN_PASSWORD:?PGBOUNCER_ADMIN_PASSWORD is required}
+      PGBOUNCER_MAX_PREPARED_STATEMENTS: ${PGBOUNCER_MAX_PREPARED_STATEMENTS:-100}
+      PGBOUNCER_POOL_MODE: ${PGBOUNCER_POOL_MODE:-transaction}
+      # The local stack leaves these at 200/20, which caps the entire platform
+      # at 200 concurrent database clients. 5,000 users need far more, so the
+      # tier is sized explicitly and the values are recorded in sizing.md.
+      PGBOUNCER_MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-2000}
+      PGBOUNCER_DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-100}
+      PGBOUNCER_MIN_POOL_SIZE: ${PGBOUNCER_MIN_POOL_SIZE:-20}
+      PGBOUNCER_RESERVE_POOL_SIZE: ${PGBOUNCER_RESERVE_POOL_SIZE:-25}
+      TZ: UTC
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z -w 2 127.0.0.1 6432"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+    cpuset: "${EDGE_CPUSET:-4-5}"
+    mem_limit: ${PGBOUNCER_MEM_LIMIT:-256m}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [data-net, app-net]
+
+  nginx:
+    profiles: ["edge"]
+    image: nginx:1.27-alpine
+    ports:
+      # The ONLY published port in the whole environment. The generator and any
+      # external client reach the platform exclusively through here.
+      - "${EDGE_HTTP_PORT:-8090}:80"
+    # The shared edge configuration stays the single source of truth; the
+    # entrypoint copies it and rewrites ONLY the host-sized capacity directives
+    # (worker_connections). See nginx/entrypoint.sh for why this is necessary:
+    # the committed 1024 is a development default and cannot serve 5,000 users.
+    entrypoint: ["/bin/sh", "/etc/nginx/load-env/entrypoint.sh"]
+    environment:
+      NGINX_WORKER_CONNECTIONS: ${NGINX_WORKER_CONNECTIONS:-16384}
+      NGINX_WORKER_RLIMIT_NOFILE: ${NGINX_WORKER_RLIMIT_NOFILE:-65536}
+    volumes:
+      - ../../../infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../../../infrastructure/nginx/certs:/etc/nginx/certs:ro
+      - ./nginx/entrypoint.sh:/etc/nginx/load-env/entrypoint.sh:ro
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/nginx-health | grep -q ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+    cpuset: "${EDGE_CPUSET:-4-5}"
+    mem_limit: ${NGINX_MEM_LIMIT:-256m}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_started
+    networks: [edge-net, app-net]
+
+  # =============================================================== app tier
+  # Dedicated 8 cores / ~2.5 GB. This is the tier the previous two tasks
+  # measured, so its sizing is driven by the bcrypt login cost (see sizing.md).
+
+  backend:
+    profiles: ["app"]
+    build:
+      context: ../../../backend
+    environment:
+      # `staging` is the production-like Spring profile and it is what routes
+      # application queries through PgBouncer (application-staging.yml).
+      SPRING_PROFILES_ACTIVE: staging
+      APP_ENVIRONMENT: staging
+      SERVER_PORT: "8080"
+      PGBOUNCER_HOST: pgbouncer
+      PGBOUNCER_PORT: "6432"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_ISSUER: ${JWT_ISSUER:-exam-platform}
+      TRUST_FORWARDED_HEADERS: "true"
+      MONITORING_METRICS_TOKEN: ${MONITORING_METRICS_TOKEN:?MONITORING_METRICS_TOKEN is required}
+      # Flyway goes direct to PostgreSQL by design (specs/09 §27), so it holds a
+      # real session for its migration lock while every application query stays
+      # pooled. This is why the backend joins data-net as well as app-net.
+      SPRING_FLYWAY_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}
+      SPRING_FLYWAY_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      SPRING_FLYWAY_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8090}
+      # Sized for 5,000 concurrent users. The local default of 10 is a laptop
+      # default and is the single largest reason the 2026-10-22 run measured the
+      # pool rather than the platform (sizing.md § "Why the pool size matters").
+      DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE:-40}
+      DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE:-10}
+      # Dataset construction runs the worker hard; the measurement run sets
+      # DELIVERY_WORKER_ENABLED=false so preparation cannot pollute the sample.
+      DELIVERY_WORKER_ENABLED: ${DELIVERY_WORKER_ENABLED:-true}
+      DELIVERY_WORKER_BATCH_SIZE: ${DELIVERY_WORKER_BATCH_SIZE:-50}
+      DELIVERY_WORKER_INTERVAL: ${DELIVERY_WORKER_INTERVAL:-PT30S}
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_ROOT: /app/data/uploads
+      TZ: UTC
+    volumes:
+      - prodlike-backend-data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/127.0.0.1/8080'"]
+      interval: 15s
+      timeout: 5s
+      retries: 25
+      start_period: 90s
+    cpuset: "${APP_CPUSET:-6-13}"
+    mem_limit: ${BACKEND_MEM_LIMIT:-2560m}
+    restart: unless-stopped
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [app-net, data-net, obs-net]
+
+  frontend:
+    profiles: ["app"]
+    build:
+      context: ../../../frontend
+      args:
+        # Inlined at build time; must be an origin a browser can reach.
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8090}
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+    cpuset: "${APP_CPUSET:-6-13}"
+    mem_limit: ${FRONTEND_MEM_LIMIT:-512m}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    networks: [app-net, edge-net]
+
+  # ====================================================== observability tier
+  # Dedicated 4 cores / ~1.2 GB. Prometheus joins data-net so it can scrape the
+  # exporters, and obs-net so it can scrape the backend actuator.
+
+  prometheus:
+    profiles: ["obs"]
+    image: prom/prometheus:v2.54.1
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../../infrastructure/monitoring/prometheus/alerts:/etc/prometheus/alerts:ro
+      - prodlike-prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_HOST_PORT:-9091}:9090"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        # Prometheus 2.x has NO --config.expand-env flag: that flag is Loki's,
+        # and the local stack passes it, which makes its Prometheus crash-loop
+        # (docs/known-gaps.md GAP-083). The scrape credential is rendered into a
+        # temporary config with sed instead, so the committed file still carries
+        # no secret and the rendered copy stays inside /tmp.
+        sed "s|__MONITORING_TOKEN__|$${MONITORING_METRICS_TOKEN}|g" \
+            /etc/prometheus/prometheus.yml > /tmp/prometheus.rendered.yml
+        exec /bin/prometheus \
+            --config.file=/tmp/prometheus.rendered.yml \
+            --storage.tsdb.path=/prometheus \
+            --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-30d} \
+            --web.enable-lifecycle
+    environment:
+      MONITORING_METRICS_TOKEN: ${MONITORING_METRICS_TOKEN:?MONITORING_METRICS_TOKEN is required}
+    cpuset: "${OBS_CPUSET:-20-21}"
+    mem_limit: ${PROMETHEUS_MEM_LIMIT:-768m}
+    restart: unless-stopped
+    networks: [obs-net, data-net, app-net]
+
+  grafana:
+    profiles: ["obs"]
+    image: grafana/grafana:11.2.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?GRAFANA_ADMIN_USER is required}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: http://localhost:${GRAFANA_HOST_PORT:-3011}
+    volumes:
+      - ../../../infrastructure/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../../infrastructure/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - prodlike-grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${GRAFANA_HOST_PORT:-3011}:3000"
+    cpuset: "${OBS_CPUSET:-20-21}"
+    mem_limit: ${GRAFANA_MEM_LIMIT:-384m}
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_started
+      loki:
+        condition: service_started
+    networks: [obs-net]
+
+  loki:
+    profiles: ["obs"]
+    image: grafana/loki:3.1.1
+    command: ["-config.file=/etc/loki/loki-config.yml"]
+    volumes:
+      - ../../../infrastructure/monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - prodlike-loki-data:/loki
+    ports:
+      - "127.0.0.1:${LOKI_HOST_PORT:-3110}:3100"
+    cpuset: "${OBS_CPUSET:-22-23}"
+    mem_limit: ${LOKI_MEM_LIMIT:-512m}
+    restart: unless-stopped
+    networks: [obs-net]
+
+  promtail:
+    profiles: ["obs"]
+    image: grafana/promtail:3.1.1
+    command: ["-config.file=/etc/promtail/promtail-config.yml"]
+    volumes:
+      - ../../../infrastructure/monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - prodlike-promtail-positions:/tmp/positions
+    cpuset: "${OBS_CPUSET:-22-23}"
+    mem_limit: ${PROMTAIL_MEM_LIMIT:-256m}
+    restart: unless-stopped
+    depends_on:
+      loki:
+        condition: service_started
+    networks: [obs-net]
+
+# ---------------------------------------------------------------------------
+# Four networks, one per tier boundary, so the topology is enforced rather than
+# merely documented:
+#
+#   edge-net  nginx <-> {frontend, backend}      (the only ingress)
+#   app-net   backend <-> pgbouncer              (the application data path)
+#   data-net  {pgbouncer, backend(flyway)} <-> {postgres, redis, exporters}
+#   obs-net   prometheus <-> {backend actuator, grafana, loki, promtail}
+#
+# A service can only reach what it shares a network with. `backend` therefore
+# spans three networks (app-net for the PgBouncer data path, data-net for its
+# direct Flyway datasource and for Redis, obs-net for the Prometheus scrape),
+# while `nginx` spans two. Redis sits on data-net only: the backend is the only
+# application component that talks to it, and it must never be reachable from
+# the edge.
+# ---------------------------------------------------------------------------
+networks:
+  edge-net:
+    driver: bridge
+  app-net:
+    driver: bridge
+  data-net:
+    driver: bridge
+  obs-net:
+    driver: bridge
+
+volumes:
+  prodlike-postgres-data:
+  prodlike-backend-data:
+  prodlike-prometheus-data:
+  prodlike-grafana-data:
+  prodlike-loki-data:
+  prodlike-promtail-positions:

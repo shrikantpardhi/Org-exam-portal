@@ -227,7 +227,7 @@ P7 Pilot Operations, Scale Validation, and Live Pilot (evidence phase):
 | Task | Description | State |
 |---|---|---|
 | P7-01 | Build load-test data | **Done** — `load/seed.mjs` builds 5,000 students, 100 published questions, 3 schedules and 15,003 prepared attempts through the frozen HTTP contract (2026-10-22). Cohort credentials come from the environment-gated `LoadCohortCli`, which hashes with the production encoder, audits each account and is idempotent (GAP-085 closed) |
-| P7-02 | Build test environment | Partial — single co-resident dev host only; not production-like (P7 §12/§13, P12 §56). Generator capacity itself is proven (GAP-084 closed) |
+| P7-02 | Build test environment | **Done** — a documented production-like environment exists at `infrastructure/environments/production-like/` with five CPU-pinned tiers, four networks, real Redis, sized PostgreSQL/PgBouncer and Prometheus scraping backend plus DB/Redis/PgBouncer exporters. `scripts/verify-production-like.sh` passes 31/31 and the generator drives 5,000 VUs (GAP-083). Limitation: single kernel, and this host has 8 GB of Docker memory against a ~10.2 GB budget (`sizing.md`) |
 | P7-03 | Validate release candidate | Partial — working-tree candidate; not immutably tagged (GAP-083) |
 | P7-04 | Run 100-user baseline | **Executed** — p95 155.1 ms, submit 100%, exam failure 0.00%, Δ snapshot 0. **Gate FAILS** (>100 ms) |
 | P7-05 | Run 500-user baseline | **Executed** — p95 352.6 ms, submit 100%, exam failure 0.00%, Δ snapshot 0. **FAILS** |
