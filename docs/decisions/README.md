@@ -25,3 +25,4 @@ process (`specs/09-P0-Foundation-V1.5.md §86`).
 | [0016](ADR-0016-p3-content-rendering-boundary-and-decisions.md) | P3 content rendering boundary and decisions | Accepted |
 | [0017](ADR-0017-p4-blueprint-and-assessment-decisions.md) | P4 blueprint and assessment decisions | Accepted |
 | [0018](ADR-0018-p5-delivery-runtime-decisions.md) | P5 delivery runtime decisions | Accepted |
+| [0028](ADR-0028-worker-indexes.md) | Composite indexes for worker candidate selection and the notification list | Accepted |

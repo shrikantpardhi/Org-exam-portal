@@ -382,7 +382,7 @@ P12 Production Hardening and Production Readiness:
 | P12-01 | Hardening freeze | Done — freeze declared; candidate not uniquely identifiable (no commit/tag, no image digest) |
 | P12-02 | Security regression | Executed — full suite green; security classes pass; config review recorded |
 | P12-03 | API regression | Executed — 55 controllers / 232 endpoints inventoried; all API tests pass |
-| P12-04 | Database performance | Partial — 105 indexes reviewed and matched to the frozen list; no plan/throughput measurement possible |
+| P12-04 | Database performance | Complete — 109 indexes: the 105 reviewed against the frozen list, plus 2 in `V26` added since, plus the two composites added under ADR-0028 (GAP-139). Real query plans are now captured with `EXPLAIN (ANALYZE, BUFFERS)` for both target queries, with and without the indexes; the notification list improves ~11x unconditionally, worker candidate selection by two orders of magnitude (~120-250x across runs) under a deep multi-type backlog. See `docs/testing/p12/worker-index-plans.md` |
 | P12-05 | Concurrent-user scale validation | **BLOCKED** — no load environment or tooling (GAP-130) |
 | P12-06 | Concurrency regression | Executed — start burst, response preconditions, recovery, callback idempotency all green |
 | P12-07 | Failure injection | Partial — in-test injection (cache, email, payment, job claim); real DB/pool/network/restart injection blocked |

@@ -137,26 +137,46 @@ required recording before changing. All three have since been fixed; the last tw
 
 ## 5. Database performance and index review (P12-04, §48/§49)
 
-- **105 index statements** across the 23 migrations, including the two partial/unique keys that carry
+- **109 index statements** across the 27 migrations: the 105 present when this review was performed,
+  plus 2 added later by `V26__create_answer_key_detail_option.sql`, plus the 2 composites added by
+  ADR-0028/`V27`. Includes the two partial/unique keys that carry
   business invariants (`uk_evaluation_current_attempt` — one current evaluation per attempt;
   `uk_email_template_code`; `uk_business_rule_code`; `uk_lookup_category_code`; the unique
   `payment_reference` anchor for callback idempotency).
-- **Every index matches the frozen schema list exactly.** Spot-checked against
+- **Every index matches the frozen schema list, plus the recorded amendment.** Spot-checked against
   `specs/04-Database-Schema-V1.5.md`: `notification` declares exactly `idx_notification_user_id` and
   `idx_notification_notification_status`; `background_job` declares exactly `idx_background_job_job_type`,
   `_initiated_by`, `_status`, `_queued_on`, `_reference`. The implementation adds no index the schema
-  does not freeze, and omits none it does.
+  does not freeze except the two that ADR-0028 amends in, and omits none it does.
 - Every foreign key and every hot filter/join column carries an index (verified across identity,
   academic, content, assessment, delivery, evaluation, analytics, commerce, communication,
   administration).
-- **Observation — GAP-139 (amendment candidate, not a defect):** the two highest-volume worker
-  queries are served by single-column indexes only:
-  - the background worker claim reads `job_type + status ORDER BY queued_on`, covered by three
+- **Index amendment — GAP-139, closed 2026-10-23 (ADR-0028, `V27`).** The review recorded that the two
+  highest-volume worker queries were served by single-column indexes only:
+  - the background worker candidate read `job_type + status ORDER BY queued_on`, covered by three
     separate single-column indexes;
-  - the notification centre reads `user_id + notification_status ORDER BY created_on`, covered by two.
+  - the notification centre read `user_id + notification_status ORDER BY created_on`, covered by two.
 
-  A composite index would serve each better at scale. These are **not** present in the frozen index
-  list, so adding them requires a schema amendment — deliberately *not* done during a freeze.
+  A composite index serves each better at scale, and the freeze rule correctly required an amendment
+  rather than an in-phase change. `ADR-0028` records the amendment, `V27` applies it, and measured
+  plans are in [`worker-index-plans.md`](worker-index-plans.md). Results, stated without
+  overclaiming:
+
+  - **notification list — unambiguous:** 0.994 ms / 230 buffers → 0.088 ms / 8 buffers (~11×), and
+    the `Sort` node disappears. This holds for any long-lived account, because the predicate and the
+    ordering both match the index.
+  - **worker candidate selection — conditional:** 21.337 ms / 1,576 buffers → 0.084 ms / 4 buffers
+    (two orders of magnitude; ~120–250× across runs) **when the queue is deep and shared between job
+    types**. With a shallow queue PostgreSQL
+    correctly prefers `idx_background_job_status` and the composite buys nothing, so this is backlog
+    insurance rather than a routine speed-up. The evidence file records two seed shapes that
+    produced misleading answers (a uniform interleave flatters the index; an interleaved backlog can
+    flip the planner's choice) because that distinction is easy to get wrong when measuring.
+
+  Note the original gap text described the worker *claim* as index-served. That was inaccurate: the
+  claim is `UPDATE … WHERE id = :id AND status = 'QUEUED'` and uses `pk_background_job`. What the
+  composite index improves is the candidate selection preceding it. The row in `known-gaps.md` is
+  corrected accordingly.
 - **Known in-memory paging (GAP-067):** `GET /attempts` filters/sorts/paginates in memory over the
   caller's attempts. Acceptable for one student's history, unsuitable for a large staff-scoped
   listing — a real database-paging concern for scale.
