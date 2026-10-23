@@ -2,9 +2,23 @@
 # Prometheus configuration (P0-11, P12 §106, §113).
 #
 # Scrapes the backend's Prometheus endpoint and evaluates the alert rules under
-# /etc/prometheus/alerts. The backend endpoint is reachable only inside the
-# Compose network; the edge returns 404 for /actuator/* so metrics are never
-# published to a public surface (GAP-138).
+# /etc/prometheus/alerts.
+#
+# GAP-138 — how the actuator surface is protected. Two independent layers, because
+# either alone is insufficient:
+#
+#   1. Network. The edge returns 404 for /actuator/*, so the tree is unreachable
+#      from the public listener. Only services on the Compose network can address
+#      backend:8080 directly.
+#   2. Authentication. Inside that network the actuator tree beyond health/info is
+#      no longer anonymous: the backend requires the MONITORING_SCOPE authority or
+#      the SYSTEM_HEALTH_VIEW permission. The scrape job presents the static token
+#      configured by MONITORING_METRICS_TOKEN, which is injected at start-up via
+#      --config.expand-env and never committed here.
+#
+# Health and info remain public so container healthchecks and the compose
+# depends_on conditions keep working; they expose component status only
+# (show-details: never), never configuration.
 #
 # Database/PgBouncer/Redis-level metrics need the corresponding exporters, which
 # are a documented follow-up (docs/known-gaps.md). The application-level alerts
@@ -29,6 +43,11 @@ scrape_configs:
   - job_name: exam-platform-backend
     metrics_path: /actuator/prometheus
     scheme: http
+    # GAP-138: the actuator surface requires a credential. This token is expanded from the
+    # container environment at start-up (--config.expand-env), so no secret lives in this file.
+    authorization:
+      type: Bearer
+      credentials: ${MONITORING_METRICS_TOKEN}
     static_configs:
       - targets: ["backend:8080"]
         labels:

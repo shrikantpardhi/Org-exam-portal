@@ -140,6 +140,20 @@ Health and docs once the backend is running:
 - OpenAPI UI: `http://localhost:8080/swagger-ui.html`
 - OpenAPI JSON: `http://localhost:8080/v3/api-docs`
 
+The OpenAPI UI and document are available in `local` and on the `staging` stack, but are **refused
+in production** (GAP-136): the `prod` profile disables springdoc and `SecurityConfig` returns 401 for
+those paths.
+
+Only `/actuator/health`, `/actuator/health/**` and `/actuator/info` are anonymous (GAP-138). The rest
+of the actuator tree — including `/actuator/prometheus` — requires either a bearer token matching
+`MONITORING_METRICS_TOKEN` (the Prometheus scrape job's credential) or an authenticated principal
+holding `SYSTEM_HEALTH_VIEW`. Without `MONITORING_METRICS_TOKEN` the surface fails closed rather than
+opening. To read metrics by hand:
+
+```bash
+curl -H "Authorization: Bearer $MONITORING_METRICS_TOKEN" http://localhost:8080/actuator/prometheus
+```
+
 ### Full integration stack (Docker)
 
 Runs the whole platform — PostgreSQL, Redis, PgBouncer, the backend, the frontend

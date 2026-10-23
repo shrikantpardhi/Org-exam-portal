@@ -14,8 +14,20 @@ spring:
       connection-timeout: 5000
       pool-name: exam-app-pool
 
+# API documentation is not published in production (GAP-136, specs/21-P12 §26). Both the
+# document endpoint and the UI are disabled so springdoc does not even build the model, and
+# SecurityConfig additionally refuses the paths if this is ever overridden.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
 app:
   environment: production
+  security:
+    exposure:
+      api-docs-enabled: false
 
 logging:
   level:

@@ -28,5 +28,18 @@ Then:
 directory except this file.
 
 A real deployment terminates TLS with a certificate issued by the organization's
-CA or a public CA, and sets `Strict-Transport-Security` accordingly (tracked
-as GAP-015 until the edge is exercised end to end).
+CA or a public CA, and sets `Strict-Transport-Security` accordingly. The TLS
+listener in `../nginx.conf` already carries the full header set — HSTS **and** the
+CSP, `X-Frame-Options`, `Referrer-Policy`, `X-Content-Type-Options`,
+`X-Permitted-Cross-Domain-Policies` and `Cross-Origin-Opener-Policy` — because
+Nginx does not inherit `add_header` into a server block that declares its own.
+Enabling the listener therefore does not drop the policies that the `http` block
+sets for the plaintext listener (GAP-137).
+
+The application independently emits the same headers, and emits HSTS when the
+request reaches it with `X-Forwarded-Proto: https`, which this edge always sets.
+
+Remaining work on the edge is verification rather than configuration: HTTPS
+enforcement (a plaintext-to-TLS redirect), HSTS activation against a real
+certificate, and CORS preflight behaviour (GAP-015), which cannot be proven until
+a certificate is mounted and the stack is exercised end to end.

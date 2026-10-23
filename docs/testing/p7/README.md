@@ -77,11 +77,14 @@ representative options, 1 schedule, prepared READY attempts, responses, answer k
 
 - Construction method: `scripts/p7/p7-dataset.runbook.md` (real frozen APIs; no SQL seeding).
 - Reproducibility: a recorded PRNG seed (§142) governs any randomized distribution.
-- **Blocker (GAP-085):** the frozen P1 onboarding assigns a non-usable credential and reset delivery
-  is not built (GAP-002), so a 5,000-user synthetic cohort cannot self-authenticate. Load
-  credentials require an out-of-band, version-controlled provisioning step.
-- **Blocker (GAP-084):** the reference dataset (5,000 attempts × 100 questions ≈ 500k snapshot
-  rows) and the concurrent load cannot be produced or driven from a single dev host.
+- **Resolved (GAP-085, 2026-10-22):** the frozen P1 onboarding assigns a non-usable credential and
+  reset delivery is not built (GAP-002), so a synthetic cohort cannot authenticate through the normal
+  flow. Credentials are now issued by an environment-gated provisioning CLI
+  (`LoadCohortCli`) that hashes with the production encoder, audits each account and is idempotent;
+  `load/seed.mjs` invokes it and is the only caller.
+- **Blocker (GAP-084) — resolved:** the reference dataset and the concurrent load were produced and
+  the 100 → 5,000 ramp executed 2026-10-22. The remaining blocker is a production-like environment
+  (GAP-083) and the latency gate itself (GAP-130).
 
 ## 5. Workload profiles (§25-§35)
 
@@ -160,10 +163,12 @@ sessions, and failure behaviour of the absent infrastructure are **not** proven.
 
 1. The frozen runtime path is **correct** at reduced scale for the start/autosave/submit/recover
    invariants; no data-integrity or duplicate-processing defect was found.
-2. The largest P7 risks are **environmental, not functional**: no production-like environment, no
-   load-generation capacity, no monitoring stack, and no way for a synthetic cohort to authenticate.
-3. A synthetic cohort cannot self-authenticate through the frozen contract; credential provisioning
-   is an unresolved operational dependency (GAP-085).
+2. The largest P7 risks are **environmental, not functional**: no production-like environment and,
+   historically, no load-generation capacity. Both capacity claims are now settled: generation is
+   proven (GAP-084 closed) and the latency gate was measured and missed (GAP-130).
+3. A synthetic cohort cannot self-authenticate through the standard onboarding flow, because the frozen
+   contract deliberately issues a non-usable credential. This is now solved by a dedicated,
+   environment-gated provisioning mechanism rather than an out-of-band database write (GAP-085 closed).
 4. Database reconciliation cannot be performed by the HTTP harness; it needs `psql` (or a driver),
    which the dev host lacks (GAP-086). `reconcile.sql` is provided for the operator.
 5. The harness itself is validated only at zero cohort; its profiles are unexercised at scale.
@@ -183,8 +188,8 @@ sessions, and failure behaviour of the absent infrastructure are **not** proven.
 | Gap | Description |
 |---|---|
 | GAP-083 | No production-like environment on the development host (no Docker/edge/PgBouncer/PostgreSQL server/Redis/monitoring); the scale suite and the immutable release candidate cannot be produced (extends GAP-007). |
-| GAP-084 | No load-generation capacity for 5,000 concurrent users (single dev host). |
-| GAP-085 | No frozen mechanism to provision credentials for a synthetic 5,000-user cohort (P1 onboarding assigns a non-usable credential; reset delivery not built — GAP-002). |
+| GAP-084 | **Closed** — load-generation capacity is proven; the 100 → 5,000 ramp executed 2026-10-22. The remaining constraint is environment fidelity (GAP-083) and the latency gate (GAP-130). |
+| GAP-085 | **Closed** — synthetic load-cohort credentials are issued by an environment-gated, audited, idempotent provisioning CLI (`LoadCohortCli`) that hashes with the production encoder and refuses to run in production. No HTTP endpoint was added. |
 | GAP-086 | The HTTP harness cannot perform database reconciliation; requires `psql`/a driver absent from the dev host. |
 | GAP-087 | Prometheus/Grafana/Loki dashboards and alerts are not built, so §58-§61 cannot be validated (extends GAP-009/025). |
 | GAP-088 | Backup/restore, blue-green/rollback and dry-run validation are not performed (extends GAP-007). |

@@ -233,6 +233,31 @@ for blocked in /actuator/health /actuator/prometheus /v3/api-docs; do
     fi
 done
 
+# ------------------------------------------------------------------ response headers
+# GAP-137: the edge must emit the header policy on every response, error responses included.
+# Checked against the health route because it is the one backend path the edge proxies and it
+# returns a success status the assertions can rely on.
+edge_headers="$(curl -s -D - -o /dev/null --max-time 10 "${EDGE_URL}/health" | tr -d '\r' || true)"
+
+for required_header in \
+    "content-security-policy:" \
+    "x-content-type-options: nosniff" \
+    "x-frame-options: DENY" \
+    "referrer-policy: strict-origin-when-cross-origin"
+do
+    if printf '%s' "$edge_headers" | grep -qi "^${required_header}"; then
+        pass "edge emits ${required_header%%:*}"
+    else
+        fail "edge did not emit ${required_header%%:*}"
+    fi
+done
+
+if printf '%s' "$edge_headers" | grep -qi "^strict-transport-security:"; then
+    fail "edge emitted HSTS over plaintext HTTP; it belongs on the TLS listener only"
+else
+    pass "edge omits HSTS over plaintext HTTP (it is added on the TLS listener)"
+fi
+
 # ------------------------------------------------------------------ correlation
 
 supplied_id="verify-stack-$(date +%s)"

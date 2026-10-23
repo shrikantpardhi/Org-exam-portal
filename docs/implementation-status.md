@@ -226,7 +226,7 @@ P7 Pilot Operations, Scale Validation, and Live Pilot (evidence phase):
 
 | Task | Description | State |
 |---|---|---|
-| P7-01 | Build load-test data | **Done** — `load/seed.mjs` builds 5,000 students, 100 published questions, 3 schedules and 15,003 prepared attempts through the frozen HTTP contract (2026-10-22) |
+| P7-01 | Build load-test data | **Done** — `load/seed.mjs` builds 5,000 students, 100 published questions, 3 schedules and 15,003 prepared attempts through the frozen HTTP contract (2026-10-22). Cohort credentials come from the environment-gated `LoadCohortCli`, which hashes with the production encoder, audits each account and is idempotent (GAP-085 closed) |
 | P7-02 | Build test environment | Partial — single co-resident dev host only; not production-like (P7 §12/§13, P12 §56). Generator capacity itself is proven (GAP-084 closed) |
 | P7-03 | Validate release candidate | Partial — working-tree candidate; not immutably tagged (GAP-083) |
 | P7-04 | Run 100-user baseline | **Executed** — p95 155.1 ms, submit 100%, exam failure 0.00%, Δ snapshot 0. **Gate FAILS** (>100 ms) |
@@ -392,7 +392,7 @@ P12 Production Hardening and Production Readiness:
 | P12-11 | Rollback rehearsal | **Executed** — 12/12 checks, 2 s redeploy, data unchanged (GAP-132 closed) |
 | P12-12 | Monitoring and alert validation | **Executed** — target UP, 9 rules load, 2 datasources and 3 dashboards provisioned, Loki ingesting (GAP-009/087/134 verified) |
 | P12-13 | UX regression | Partial — frontend lint/test/build green; no manual/visual pass possible |
-| P12-14 | Production configuration review | Executed — review complete with findings GAP-136/137/138 |
+| P12-14 | Production configuration review | Executed — review complete; its three findings are now fixed (GAP-136/137/138 closed) |
 | P12-15 | Dress rehearsal | **BLOCKED** — requires staging (GAP-135) |
 | P12-16 | Release evidence package | Complete — `docs/testing/p12/README.md`, with BLOCKED gates recorded |
 | P12-17 | Production smoke test | **BLOCKED** — requires a deployed candidate (GAP-135) |
@@ -465,10 +465,11 @@ P13 Broader Reporting and Operational Reporting:
   gate (GAP-078); per-question outcomes are not persisted or exposed (GAP-079); evaluation caching
   and a database-ordered rank projection are deferred (GAP-081, GAP-082).
 - P7: the staged scale runs (ramp, bursts, soak, spike, failure injection, monitoring, backup and
-  the live pilot) are blocked on the production-like environment and load capacity (GAP-083, GAP-084,
-  GAP-087, GAP-088); a synthetic cohort cannot self-authenticate (GAP-085); the HTTP harness cannot
-  perform database reconciliation without `psql` (GAP-086). Only a local reduced-scale pilot smoke
-  was executed.
+  the live pilot) are blocked on the production-like environment and load capacity (GAP-083, GAP-087,
+  GAP-088); the load-generation capacity and the 5,000-user ramp are proven (GAP-084 closed, GAP-130
+  measured and missed); synthetic cohort credentials are now issued by an environment-gated, audited,
+  idempotent mechanism (GAP-085 closed); the HTTP harness cannot perform database reconciliation without
+  `psql` (GAP-086). Only a local reduced-scale pilot smoke was executed.
 - P8: question/topic correctness re-derives per-question outcomes from the P6 evaluator because P6
   does not persist them (GAP-090); incremental question/topic refresh is scoped to the affected
   assessment versions (GAP-091); the analytics dashboard frontend and trend buckets are deferred
@@ -547,14 +548,18 @@ P13 Broader Reporting and Operational Reporting:
 ## Known gaps
 
 - The consolidated register of open gaps, deferred items, and by-design limitations for P0 to P13
-  is [`docs/known-gaps.md`](known-gaps.md) (152 tracked items). GAP-001 is closed by P11; **GAP-062
+  is [`docs/known-gaps.md`](known-gaps.md) (158 tracked items). GAP-001 is closed by P11; **GAP-062
   (attempt deadline enforcement and expiry auto-submit) is closed** by the P5 hardening change;
   **GAP-073 (attempt completion state) is closed** by the Delivery-owned attempt completion
   contract, which advances the attempt to `EVALUATED` with `total_score` after a successful
   evaluation;
   GAP-126/127 were raised and closed by the re-verification; **GAP-131** (backup/restore) and
   **GAP-132** (rollback) are closed by the 2026-10-19 rehearsal; **GAP-007/009/087/134** were
-  verified against the running stack on 2026-10-19; **GAP-130** (no performance evidence) remains
+  verified against the running stack on 2026-10-19; **GAP-136** (public API docs), **GAP-137** (no
+  explicit security headers) and **GAP-138** (anonymous actuator metrics) are closed by the 2026-10-23
+  P12 hardening change — docs are refused in production, the header policy is emitted by the
+  application and configured at the edge, and the actuator tree beyond health/info requires the
+  monitoring scope or \SYSTEM_HEALTH_VIEW\; **GAP-130** (no performance evidence) remains
   the outstanding P12 release blocker; **GAP-141** (unbacked report types) and **GAP-148** (no
   reporting UI) are closed — all 23 catalog types generate and the student/staff/admin screens are
   built; **GAP-141a** records the three commerce report types that `22-P13 §55` names but the frozen

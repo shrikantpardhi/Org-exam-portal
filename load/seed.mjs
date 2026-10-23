@@ -11,9 +11,10 @@
  * <ul>
  *   <li><b>Credential provisioning.</b> {@code POST /users} deliberately assigns a non-usable
  *       credential (§56/§58) and reset delivery is not built (GAP-002), so a synthetic cohort cannot
- *       self-authenticate. The script therefore sets a load-test credential directly, using the
- *       platform's own {@code {noop}} delegating-encoder prefix. This is confined to a disposable
- *       local stack and is NOT a production provisioning path — see GAP-085.</li>
+ *       self-authenticate. The script therefore invokes the platform's own load-cohort provisioning CLI
+ *       ({@code LoadCohortCli}), which hashes with the real password encoder, assigns STUDENT, audits each
+ *       account, is idempotent by email, and refuses to run in production. That replaced an earlier raw-SQL
+ *       path that wrote {@code {noop}} plaintext directly to PostgreSQL — see GAP-085.</li>
  *   <li><b>Nothing else.</b> Every other step uses the real API.</li>
  * </ul>
  *
@@ -25,7 +26,6 @@
  *   node load/seed.mjs --students=100  --questions=20 --label=smoke
  */
 
-import { readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
@@ -61,17 +61,20 @@ const cfg = {
    * yield 10,000 starts, which covers 100+500+1,000+2,500+5,000.
    */
   schedules: Number(args.schedules ?? process.env.P7_SCHEDULES ?? 2),
-  // Applying credentials requires an explicit opt-in so a read-only run cannot mutate the DB.
-  applySql: (args["apply-sql"] ?? process.env.P7_APPLY_SQL ?? "false") === "true",
-  psqlContainer: args["psql-container"] ?? process.env.P7_PSQL_CONTAINER ?? "exam-platform-postgres-1",
-  psqlUser: args["psql-user"] ?? process.env.P7_PSQL_USER ?? "exam_app",
-  psqlDb: args["psql-db"] ?? process.env.P7_PSQL_DB ?? "exam_platform",
+  /**
+   * Whether to provision credentials.
+   *
+   * <p>Credential provisioning is a real, audited, environment-gated operation, so it needs an explicit
+   * opt-in; a read-only run must never create accounts. The flag keeps its historical name so existing
+   * runbooks and scripts keep working, but it no longer means "apply a SQL file": it now selects the
+   * in-application provisioning CLI (GAP-085).
+   */
+  provision: (args["apply-sql"] ?? args.provision ?? process.env.P7_APPLY_SQL ?? "false") === "true",
+  /** Compose service whose image carries the provisioning CLI. */
+  backendContainer: args["backend-container"] ?? process.env.P7_BACKEND_CONTAINER ?? "exam-platform-backend-1",
+  /** The Spring profile the CLI boots with; must never be a production profile. */
+  provisionProfile: args["provision-profile"] ?? process.env.P7_PROVISION_PROFILE ?? "staging",
 };
-
-const ORG_ID = "11111111-1111-1111-1111-111111111111";
-const STUDENT_ROLE_ID = "11111111-1111-1111-1111-111111111104";
-const ADMIN_ROLE_ID = "11111111-1111-1111-1111-111111111101";
-const REVIEWER_ROLE_ID = "11111111-1111-1111-1111-111111111102";
 
 // --------------------------------------------------------------------------- http
 
@@ -84,6 +87,14 @@ class HttpError extends Error {
 }
 
 let adminToken = null;
+
+/**
+ * Generated per-student credentials (email -> credential), populated by {@link provisionCredentials}.
+ *
+ * <p>Each account gets its own random credential, so there is no longer a single shared student password.
+ * The values live only in memory and in the git-ignored manifest under {@code load/out/}.
+ */
+let studentCredentials = new Map();
 
 async function request(method, url, { token, body, form } = {}) {
   const headers = {};
@@ -173,87 +184,87 @@ async function authorToken() {
 }
 
 /**
- * Provisions a user with a known load-test credential.
+ * Provisions the synthetic cohort through the application's own provisioning CLI (GAP-085).
  *
- * <p>`POST /users` is used first so the row is created by the platform with its normal audit trail and
- * role assignment. The credential is then set with one narrow UPDATE because the frozen onboarding
- * policy assigns a non-usable secret and no endpoint accepts a password (§56/§58, GAP-002/085).
- * `{noop}` is a prefix the platform's own delegating encoder understands, so no hashing happens here.
- */
-/**
- * Applies a SQL file by piping it into psql inside the database container.
+ * <p><b>This replaced raw SQL.</b> The harness used to pipe {@code INSERT} statements into PostgreSQL with a
+ * {@code {noop}} plaintext password. That bypassed hashing, wrote to tables the application owns, produced
+ * no audit trail and was not environment-gated. The application now exposes
+ * {@code LoadCohortCli}, which hashes with the real encoder, assigns the STUDENT role, audits each account,
+ * is idempotent by email, and refuses to run when {@code app.environment} is production.
  *
- * <p>Used only for credential provisioning, which has no endpoint. Wrapped so a failure aborts the seed
- * instead of leaving a half-provisioned cohort.
+ * <p>The CLI boots a non-web Spring context inside the backend container, so this is the only call in the
+ * harness that does not go through the frozen HTTP contract — and it is no longer a database write, it is an
+ * application operation.
+ *
+ * @param {Array<{email: string, firstName: string, lastName: string}>} members accounts to provision
+ * @returns {Map<string, string>} email -> generated credential
  */
-function applySql(sqlPath) {
-  const result = execFileSync(
-    "docker",
-    [
-      "exec",
-      "-i",
-      cfg.psqlContainer,
-      "psql",
-      "-U",
-      cfg.psqlUser,
-      "-d",
-      cfg.psqlDb,
-      "-v",
-      "ON_ERROR_STOP=1",
-      "-f",
-      "-",
-    ],
-    { input: readFileSync(sqlPath), encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] },
-  );
-  if (result.trim().length > 0) {
-    console.log(`[seed] psql: ${result.trim().split("\n").slice(-3).join(" | ")}`);
+function provisionCredentials(members) {
+  // The jar is a Spring Boot executable archive: application classes live under BOOT-INF/classes and are
+  // only visible to the Boot loader, so `-cp app.jar <mainClass>` fails with ClassNotFoundException.
+  // PropertiesLauncher is the supported entry point for booting an alternate main class from such a jar.
+  const args = [
+    "exec",
+    "-i",
+    cfg.backendContainer,
+    "java",
+    "-Dloader.main=com.company.exam.identity.loadcohort.LoadCohortCli",
+    "-cp",
+    "/app/app.jar",
+    "org.springframework.boot.loader.launch.PropertiesLauncher",
+    `--spring.profiles.active=${cfg.provisionProfile}`,
+  ];
+
+  let stdout;
+  try {
+    stdout = execFileSync("docker", args, {
+      input: JSON.stringify(members),
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+  } catch (error) {
+    const detail = (error.stderr || error.stdout || "").toString().trim();
+    throw new Error(
+      `credential provisioning failed (exit ${error.status}): ${detail || error.message}\n` +
+        "The mechanism is environment-gated: it refuses to run when app.environment is production.",
+    );
   }
+
+  // The CLI prefixes its result with a marker, because Spring's structured logging also writes JSON to
+  // stdout — including shutdown lines that arrive *after* the result. Selecting "the last JSON line"
+  // would read a log record instead of the payload.
+  const MARKER = "LOAD_COHORT_RESULT ";
+  const line = stdout
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.includes(MARKER))
+    .map((l) => l.slice(l.indexOf(MARKER) + MARKER.length))
+    .pop();
+  if (!line) {
+    throw new Error(`credential provisioning returned no result: ${stdout.trim().slice(0, 600)}`);
+  }
+
+  const parsed = JSON.parse(line);
+  if (parsed.error) {
+    throw new Error(`credential provisioning refused: ${parsed.error}`);
+  }
+
+  const credentials = new Map();
+  for (const outcome of parsed.members ?? []) {
+    if (outcome.credential) {
+      credentials.set(outcome.email, outcome.credential);
+    }
+  }
+  console.log(
+    `[seed] provisioned credentials: created=${parsed.created} updated=${parsed.updated} skipped=${parsed.skipped}`,
+  );
+  if (parsed.skipped > 0) {
+    console.warn(`[seed] ${parsed.skipped} account(s) were skipped and have no credential`);
+  }
+  return credentials;
 }
 
-function provisionSql(students) {
-  const values = students
-    .map(
-      (s, i) =>
-        `('${s.id}', '${ORG_ID}', 'Load', 'Student${i}', '${s.email}', NULL, '{noop}${cfg.studentPassword}', 'ACTIVE', '${s.id}', now(), '${s.id}', now())`,
-    )
-    .join(",\n");
-  const roles = students
-    .map((s) => `(gen_random_uuid(), '${s.id}', '${STUDENT_ROLE_ID}', 'ACTIVE', '${s.id}', now(), '${s.id}', now())`)
-    .join(",\n");
-  return `
-INSERT INTO "user" (id, organization_id, first_name, last_name, email, mobile, password, status,
-                    created_by, created_on, updated_by, updated_on)
-VALUES ${values}
-ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password, status = 'ACTIVE';
-
-INSERT INTO user_role (id, user_id, role_id, status, created_by, created_on, updated_by, updated_on)
-VALUES ${roles}
-ON CONFLICT (user_id, role_id) DO UPDATE SET status = 'ACTIVE';
-`;
-}
-
-/**
- * SQL that provisions the two corpus identities (author + reviewer).
- *
- * <p>Kept separate from the student cohort so the reviewer credential is never handed to the load
- * generator. The author is the admin; the reviewer is a distinct account, because the platform refuses
- * self-review.
- */
-function reviewerSql() {
-  const id = "bbbbbbbb-0000-4000-8000-000000000001";
-  const email = cfg.reviewerEmail;
-  return `
-INSERT INTO "user" (id, organization_id, first_name, last_name, email, mobile, password, status,
-                    created_by, created_on, updated_by, updated_on)
-VALUES ('${id}', '${ORG_ID}', 'Load', 'Reviewer', '${email}', NULL, '{noop}${cfg.reviewerPassword}', 'ACTIVE',
-        '${id}', now(), '${id}', now())
-ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password, status = 'ACTIVE';
-
-INSERT INTO user_role (id, user_id, role_id, status, created_by, created_on, updated_by, updated_on)
-VALUES (gen_random_uuid(), '${id}', '${REVIEWER_ROLE_ID}', 'ACTIVE', '${id}', now(), '${id}', now())
-ON CONFLICT (user_id, role_id) DO UPDATE SET status = 'ACTIVE';
-`;
-}
 
 // --------------------------------------------------------------------------- corpus
 
@@ -622,30 +633,45 @@ async function main() {
 
   // ------------------------------------------------------------------ 1. identities
   //
-  // The cohort and the reviewer are written as SQL and applied through the configured psql path,
-  // because `POST /users` intentionally cannot accept a password (§56/§58) and reset delivery is not
-  // built (GAP-002). This is the one place the seed touches the database directly; everything after
-  // it goes through the frozen HTTP contract so business invariants are enforced by the platform.
+  // The cohort and the corpus identities are provisioned by the application's own environment-gated CLI
+  // (GAP-085), not by raw SQL. `POST /users` intentionally cannot accept a password (§56/§58) and reset
+  // delivery is not built (GAP-002), so the platform provides a controlled provisioning path for synthetic
+  // cohorts instead. It hashes with the real encoder, assigns STUDENT, audits each account, is idempotent
+  // by email, and refuses to run when app.environment is production.
   const students = Array.from({ length: cfg.students }, (_, i) => {
     const n = String(i + 1).padStart(5, "0");
     return {
       id: `aaaaaaaa-0000-4000-8000-${String(i + 1).padStart(12, "0")}`,
       email: `load.student${n}@example.test`,
+      firstName: "Load",
+      lastName: `Student${n}`,
     };
   });
 
-  const sqlPath = path.join(cfg.outDir, "provision.sql");
-  const sql = `${reviewerSql()}\n${provisionSql(students)}\n`;
-  await writeFile(sqlPath, sql, "utf8");
-  console.log(`[seed] wrote ${sqlPath} (${students.length} students + reviewer)`);
-
-  if (cfg.applySql) {
-    applySql(sqlPath);
-    console.log("[seed] credentials provisioned");
-  } else {
-    console.log("[seed] --apply-sql not set; apply the file above, then re-run with --apply-sql");
+  if (!cfg.provision) {
+    console.log("[seed] --apply-sql/--provision not set; showing the cohort that would be provisioned");
+    console.log(`[seed] would provision ${students.length} students + admin + reviewer`);
     return;
   }
+
+  // The corpus needs two distinct identities: the platform refuses self-review (12-P3 §112).
+  const credentials = provisionCredentials([
+    { email: cfg.adminEmail, firstName: "Load", lastName: "Admin" },
+    { email: cfg.reviewerEmail, firstName: "Load", lastName: "Reviewer" },
+    ...students,
+  ]);
+  for (const member of [cfg.adminEmail, cfg.reviewerEmail]) {
+    if (!credentials.has(member)) {
+      throw new Error(`provisioning returned no credential for ${member}; refusing to continue`);
+    }
+  }
+
+  // Credentials are generated per account, so the caller is given the values rather than a shared default.
+  cfg.adminPassword = credentials.get(cfg.adminEmail);
+  cfg.reviewerPassword = credentials.get(cfg.reviewerEmail);
+  cfg.studentPassword = credentials.get(students[0].email);
+  studentCredentials = new Map(students.map((s) => [s.email, credentials.get(s.email)]));
+  console.log("[seed] credentials provisioned");
 
   // ------------------------------------------------------------------ 2. authenticate
   adminToken = await login(cfg.adminEmail, cfg.adminPassword);
@@ -682,6 +708,15 @@ async function main() {
     baseUrl: cfg.baseUrl,
     students: students.length,
     studentEmails: students.map((s) => s.email),
+    /**
+     * Per-student generated credentials. Provisioning issues a distinct random credential per account, so
+     * there is no single shared password any more; readers that need one account use {@code studentEmails[0]}
+     * with {@code studentCredentials[studentEmails[0]]}.
+     *
+     * <p>This file is git-ignored ({@code load/out/}) and is the only place the plaintext values exist.
+     */
+    studentCredentials: Object.fromEntries(studentCredentials),
+    /** Retained for older readers; equals the first student's credential. */
     studentPassword: cfg.studentPassword,
     questions: corpus.length,
     examId: academic.exam.id,
@@ -696,7 +731,8 @@ async function main() {
     scheduleId: schedules[0].id,
     scheduleIds: schedules.map((s) => s.id),
     preparations,
-    provisionSqlPath: sqlPath,
+    /** How the cohort obtained its credentials; no file is written any more (GAP-085). */
+    provisioning: "LoadCohortCli (environment-gated, hashed, audited, idempotent)",
   };
   await writeFile(path.join(cfg.outDir, "manifest.json"), JSON.stringify(manifest, null, 2), "utf8");
   console.log(`[seed] manifest written to ${path.join(cfg.outDir, "manifest.json")}`);

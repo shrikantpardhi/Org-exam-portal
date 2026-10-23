@@ -15,6 +15,18 @@ spring:
 
 app:
   environment: staging
+  security:
+    exposure:
+      # Staging keeps the API documentation and Swagger UI. It is not a public surface, and the
+      # `staging` profile is what the local Docker stack runs, so disabling the docs here would
+      # remove a developer affordance the hardening constraints require us to preserve.
+      #
+      # This is safe because the gate is not this flag: SecurityExposurePolicy also refuses
+      # production whenever an active `prod`/`production` profile is present, which is the case
+      # that actually matters. Note that APP_ENVIRONMENT overrides this value in the container
+      # environment, so a process running the prod profile with APP_ENVIRONMENT=staging arrives
+      # here while still being refused by the policy.
+      api-docs-enabled: true
 
 logging:
   level:

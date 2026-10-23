@@ -168,6 +168,11 @@ services:
       JWT_ISSUER: ${JWT_ISSUER:-exam-platform}
       # Nginx is the single trusted edge in front of the application.
       TRUST_FORWARDED_HEADERS: "true"
+      # Monitoring scope for /actuator/** (GAP-138). Prometheus cannot log in, so it authenticates
+      # with this static token and receives the MONITORING_SCOPE authority — the privilege to read
+      # metrics and nothing else. The actuator tree is no longer anonymous: without this token a
+      # caller needs a normal principal holding SYSTEM_HEALTH_VIEW.
+      MONITORING_METRICS_TOKEN: ${MONITORING_METRICS_TOKEN:-local-monitoring-token-change-me}
       # Flyway deliberately does NOT route through PgBouncer (specs/09-... section 27:
       # "Flyway does not depend on PgBouncer"). It gets its own direct PostgreSQL
       # datasource, so migrations hold a real session for their lock while every
@@ -235,10 +240,6 @@ services:
   prometheus:
     profiles: ["observability"]
     image: prom/prometheus:v2.54.1
-    command:
-      - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.path=/prometheus
-      - --storage.tsdb.retention.time=15d
     volumes:
       - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./infrastructure/monitoring/prometheus/alerts:/etc/prometheus/alerts:ro
@@ -249,6 +250,15 @@ services:
       backend:
         condition: service_started
     restart: unless-stopped
+    # The scrape credential is injected into the config at start-up rather than committed in
+    # prometheus.yml, so the file carries no secret (specs/21-P12 §28). Prometheus resolves
+    # ${MONITORING_METRICS_TOKEN} through its own --config.expand-env support.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - exec /bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus --storage.tsdb.retention.time=15d --config.expand-env
+    environment:
+      MONITORING_METRICS_TOKEN: ${MONITORING_METRICS_TOKEN:-local-monitoring-token-change-me}
     networks: [exam-net]
 
   grafana:

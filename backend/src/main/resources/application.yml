@@ -78,6 +78,17 @@ app:
       expiry-sweep-initial-delay: ${SESSION_EXPIRY_SWEEP_INITIAL_DELAY:PT1M}
     # Trust X-Forwarded-For only behind the trusted edge; default false (specs/10-P1 §46).
     trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
+    # P12 hardening (GAP-136, GAP-138). Both gates are advisory here and authoritative in
+    # SecurityExposurePolicy, which refuses production regardless of these values.
+    exposure:
+      # API documentation is a development aid, never a production affordance. The policy
+      # additionally refuses it whenever production is detected by environment or active profile.
+      api-docs-enabled: ${APP_SECURITY_API_DOCS_ENABLED:true}
+    monitoring:
+      # Static bearer token the Prometheus scrape job presents on /actuator/**. Empty by default,
+      # which fails closed: the metrics endpoint then requires a normal authenticated principal.
+      # No production value belongs in source control (specs/21-P12 §28).
+      metrics-token: ${MONITORING_METRICS_TOKEN:}
     cors:
       allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
   cache:

@@ -75,15 +75,22 @@ with the manifest rebuilt in between; no data is mutated by hand between steps.
 count defaults to `USERS`. `P7_VUS` exists only to cap the burst profiles, where iteration count governs
 the workload.
 
-## Credential provisioning — the one direct write
+## Credential provisioning
 
-`POST /api/v1/users` deliberately assigns a non-usable credential (P1 §56/§58) and password-reset delivery
-is not built (GAP-002), so a synthetic cohort cannot self-authenticate. `seed.mjs --apply-sql` writes
-`out/provision.sql` and applies it, creating the cohort with a known credential using the platform's own
-`{noop}` delegating-encoder prefix.
+`POST /api/v1/users` deliberately assigns a non-usable credential (P1 §56/§58) because accounts are meant
+to be activated by password reset, and reset delivery is not built (GAP-002). A synthetic cohort has no
+mailbox, so it could never authenticate through the normal onboarding flow.
 
-This is **not** a production provisioning path. It is confined to a disposable environment and is recorded
-as **GAP-085**. Without `--apply-sql` the script only writes the file.
+`seed.mjs --apply-sql` therefore invokes the application's own provisioning CLI
+(`com.company.exam.identity.loadcohort.LoadCohortCli`) inside the backend container. It creates accounts
+through the platform's entities, assigns `STUDENT`, hashes each credential with the production
+`PasswordEncoder`, audits every account, and is idempotent by email. It **refuses to run when
+`app.environment` is production** and is disabled unless `app.load-cohort.enabled=true`. It adds no HTTP
+endpoint: the CLI boots a non-web context and exits.
+
+Credentials are generated per account, so `out/manifest.json` carries `studentCredentials`
+(email → credential) rather than one shared password. `out/` is git-ignored, so no credential is ever
+committed. Without `--apply-sql` the script reports what it would provision and stops.
 
 ## Requirements the environment must meet
 

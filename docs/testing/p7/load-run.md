@@ -65,15 +65,33 @@ $env:NODE_ENV = $null
 node load/seed.mjs --students=5000 --questions=100 --label=reference --apply-sql=true
 ```
 
-**Why `--apply-sql`:** `POST /api/v1/users` deliberately assigns a non-usable credential (P1 §56/§58)
-and password-reset delivery is not built (GAP-002), so a synthetic cohort cannot self-authenticate. The
-seed writes `load/out/provision.sql` and applies it, creating the cohort with a known credential using
-the platform's own `{noop}` delegating-encoder prefix. This is the **only** direct database write in the
-harness and it is confined to a disposable environment. It is not a production provisioning path — that
-is tracked as **GAP-085**. Without `--apply-sql` the script writes the file and stops.
+**Why provisioning is a separate step:** `POST /api/v1/users` deliberately assigns a non-usable
+credential (P1 §56/§58) because the account is meant to be activated by password reset, and reset
+delivery is not built (GAP-002). A synthetic student has no mailbox, so the cohort could never
+authenticate through the normal onboarding flow.
 
-The seed also creates a **separate reviewer** account. The platform refuses to let a user approve a
-version they submitted (P3 §112), so the corpus lifecycle needs two identities.
+The seed therefore invokes the application's own load-cohort provisioning CLI
+(`com.company.exam.identity.loadcohort.LoadCohortCli`), which runs inside the backend container. It
+creates the accounts through the platform's own entities, assigns `STUDENT`, hashes each credential with
+the production `PasswordEncoder`, writes a `LOAD_COHORT_CREATE` audit entry per account, and is
+idempotent by email — re-running re-issues credentials instead of duplicating users.
+
+Two safeguards make this safe:
+
+* **Environment gate.** The mechanism refuses to run when `app.environment` is `production`. It is also
+  off unless `app.load-cohort.enabled=true`, so a deployment that never opts in has no provisioning code
+  path. Both switches are required.
+* **No endpoint.** There is no HTTP surface for this. The CLI boots a non-web Spring context and exits,
+  so nothing new ships to production and the frozen onboarding contract is untouched.
+
+Credentials are generated per account, so the manifest carries `studentCredentials` (email → credential)
+rather than a single shared password. `load/out/` is git-ignored: no credential is ever committed.
+
+Without `--apply-sql` the script reports what it would provision and stops, so a read-only run cannot
+mutate the database.
+
+The seed also creates **two corpus identities**: an admin author and a **separate reviewer**. The platform
+refuses to let a user approve a version they submitted (P3 §112), so the lifecycle needs both.
 
 ### 3.2 Create assessment + prepare snapshots
 

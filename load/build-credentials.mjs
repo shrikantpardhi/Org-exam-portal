@@ -84,9 +84,27 @@ const rows = psql(
     " ORDER BY a.assessment_schedule_id, u.email;",
 );
 
+// Provisioning issues a distinct random credential per account, so the password is looked up per email
+// rather than read from a single shared manifest field. `studentPassword` remains as a fallback for older
+// manifests, where every student really did share one credential.
+const perStudent = manifest.studentCredentials ?? {};
+
 const credentials = [];
+const missing = [];
 for (const [scheduleId, email] of rows) {
-  credentials.push({ email, password: manifest.studentPassword, scheduleId });
+  const password = perStudent[email] ?? manifest.studentPassword;
+  if (!password) {
+    missing.push(email);
+    continue;
+  }
+  credentials.push({ email, password, scheduleId });
+}
+if (missing.length > 0) {
+  // Failing loudly matters here: a credential manifest with holes makes the ramp silently skip VUs, and a
+  // short ramp looks like a passing ramp.
+  console.error(`missing credentials for ${missing.length} student(s), e.g. ${missing[0]}`);
+  console.error("re-run load/seed.mjs with --apply-sql, then rebuild this manifest");
+  process.exitCode = 1;
 }
 
 const selected = credentials.slice(0, limit);

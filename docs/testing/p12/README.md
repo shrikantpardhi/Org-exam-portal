@@ -94,21 +94,45 @@ re-run — the frontend lint/test/build evidence below was captured **after** th
 - Bounded resource limits: header size 16 KB, multipart 25 MB/30 MB, Redis connect/read timeouts 2 s,
   graceful shutdown 20 s.
 - Actuator exposes only `health,info,prometheus,metrics`; `health` shows components but
-  `show-details: never`, so no infrastructure configuration leaks.
+  `show-details: never`, so no infrastructure configuration leaks. Since GAP-138, only `health` and
+  `info` are anonymous — the rest requires the monitoring scope or `SYSTEM_HEALTH_VIEW`.
+- Explicit `Content-Security-Policy`, `Strict-Transport-Security` (TLS requests only),
+  `Referrer-Policy`, `X-Frame-Options` and `X-Content-Type-Options` are emitted on every response
+  (GAP-137), and API documentation is refused in production (GAP-136).
 - Trusted-proxy header handling is opt-in (`false` by default).
 
-**Findings (recorded as gaps, not fixed — this is a freeze phase):**
+**Findings from the freeze-phase audit, and their disposition:**
 
-1. **GAP-136 — API documentation is publicly reachable.** `/v3/api-docs/**`, `/swagger-ui/**` and
-   `/swagger-ui.html` are in the public allow-list and springdoc is enabled with no per-profile
-   switch. In production this is an information-disclosure surface (every endpoint and schema).
-2. **GAP-137 — No explicit HTTP security headers.** No `Content-Security-Policy`, `Strict-Transport-
-   Security`, or `Referrer-Policy` is configured; only Spring Security's defaults apply
-   (`X-Content-Type-Options`, `X-Frame-Options`). The edge/proxy that would add them is not built
-   (GAP-007).
-3. **GAP-138 — `/actuator/prometheus` is publicly reachable.** Metrics are unauthenticated; they
-   should sit on the monitoring network, not the public allow-list.
-4. **GAP-130 — performance gates unmeasured** (see above).
+The audit recorded the first three items as gaps rather than fixing them, because the freeze phase
+required recording before changing. All three have since been fixed; the last two remain open.
+
+1. **GAP-136 — API documentation was publicly reachable. FIXED 2026-10-23.** `/v3/api-docs/**`,
+   `/swagger-ui/**` and `/swagger-ui.html` were in the public allow-list and springdoc was enabled
+   with no per-profile switch, so production disclosed every endpoint and schema to an
+   unauthenticated caller. Now: `application-prod.yml` disables both springdoc surfaces, the paths
+   are gated by `SecurityExposurePolicy` rather than being public, and the policy refuses production
+   on **either** signal (`app.environment` or an active `prod`/`production` profile) so the
+   `docker-compose` `APP_ENVIRONMENT=staging` override cannot re-open them. Swagger UI still works
+   in `local` and on the `staging` stack. Evidence: `ApiDocsProductionGateIntegrationTest`,
+   `ApiDocsExposureIntegrationTest`.
+2. **GAP-137 — No explicit HTTP security headers. FIXED 2026-10-23.** No
+   `Content-Security-Policy`, `Strict-Transport-Security`, or `Referrer-Policy` was configured;
+   only Spring Security's defaults applied. Now both layers carry the policy: `SecurityConfig`
+   emits CSP, HSTS, Referrer-Policy, `X-Frame-Options: DENY` and `X-Content-Type-Options: nosniff`,
+   with the CSP chosen by `SecurityExposurePolicy` (maximally restrictive in production, the
+   same-origin policy Swagger UI needs elsewhere) and HSTS emitted only when the request arrived
+   over TLS directly or via `X-Forwarded-Proto`; `infrastructure/nginx/nginx.conf` carries the same
+   policy for the edge, and its TLS listener repeats the full set rather than only HSTS. Evidence:
+   `SecurityHeadersIntegrationTest`.
+3. **GAP-138 — `/actuator/prometheus` was publicly reachable. FIXED 2026-10-23.** Metrics were
+   unauthenticated. Now only `/actuator/health`, `/actuator/health/**` and `/actuator/info` are
+   public (healthchecks and edge probes depend on them, and `show-details: never` is what keeps
+   them safe). Everything else requires either the `MONITORING_SCOPE` authority — granted when the
+   scrape job presents its static token — or the existing `SYSTEM_HEALTH_VIEW` permission, so a
+   logged-in user without that permission is still denied. With no token configured the surface
+   fails closed rather than open. Evidence: `ActuatorAuthorizationIntegrationTest`,
+   `ActuatorWithoutMonitoringTokenIntegrationTest`.
+4. **GAP-130 — performance gates measured and missed** (see above; unchanged by these fixes).
 5. **Rate limiting remains absent** (GAP-011/105/115) — §96 rate-limit regression cannot be validated.
 
 ## 5. Database performance and index review (P12-04, §48/§49)
