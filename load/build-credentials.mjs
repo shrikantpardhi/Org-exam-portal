@@ -91,7 +91,23 @@ const perStudent = manifest.studentCredentials ?? {};
 
 const credentials = [];
 const missing = [];
+/**
+ * The ramp population is the synthetic students and nothing else.
+ *
+ * <p>The cohort CLI also provisions the corpus author and reviewer, and because it assigns every member
+ * {@code STUDENT} they receive prepared attempts like any student — so the query above returns them too.
+ * They are not part of the exam population, and they have no entry in {@code studentCredentials}, so the
+ * {@code studentPassword} fallback gave them another account's credential. At offset 0 they were the first
+ * two entries, which made exactly two logins fail with BAD_CREDENTIALS before any student ran.
+ *
+ * <p>Filtering on the authoritative student list fixes both the wrong password and the population count:
+ * the gate is about 5,000 students, not 5,000 students plus staff.
+ */
+const knownStudents = new Set(Object.keys(perStudent));
 for (const [scheduleId, email] of rows) {
+  if (knownStudents.size > 0 && !knownStudents.has(email)) {
+    continue;
+  }
   const password = perStudent[email] ?? manifest.studentPassword;
   if (!password) {
     missing.push(email);

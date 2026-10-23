@@ -228,21 +228,21 @@ P7 Pilot Operations, Scale Validation, and Live Pilot (evidence phase):
 |---|---|---|
 | P7-01 | Build load-test data | **Done** — `load/seed.mjs` builds 5,000 students, 100 published questions, 3 schedules and 15,003 prepared attempts through the frozen HTTP contract (2026-10-22). Cohort credentials come from the environment-gated `LoadCohortCli`, which hashes with the production encoder, audits each account and is idempotent (GAP-085 closed) |
 | P7-02 | Build test environment | **Done** — a documented production-like environment exists at `infrastructure/environments/production-like/` with five CPU-pinned tiers, four networks, real Redis, sized PostgreSQL/PgBouncer and Prometheus scraping backend plus DB/Redis/PgBouncer exporters. `scripts/verify-production-like.sh` passes 31/31 and the generator drives 5,000 VUs (GAP-083). Limitation: single kernel, and this host has 8 GB of Docker memory against a ~10.2 GB budget (`sizing.md`) |
-| P7-03 | Validate release candidate | Partial — working-tree candidate; not immutably tagged (GAP-083) |
-| P7-04 | Run 100-user baseline | **Executed** — p95 155.1 ms, submit 100%, exam failure 0.00%, Δ snapshot 0. **Gate FAILS** (>100 ms) |
-| P7-05 | Run 500-user baseline | **Executed** — p95 352.6 ms, submit 100%, exam failure 0.00%, Δ snapshot 0. **FAILS** |
-| P7-06 | Run 1,000-user test | **Executed** — p95 475.5 ms, submit 100%, exam failure 0.00%, Δ snapshot 0. **FAILS** |
-| P7-07 | Run 2,000-user test | Not run — the ramp followed the spec's 2,500 step instead of a 2,000 step |
-| P7-08 | Run 3,000-user test | Not run — the ramp followed the spec's 2,500 step instead of a 3,000 step |
-| P7-09 | Run 4,000-user test | Not run — the ramp followed the spec's 2,500 step instead of a 4,000 step |
-| P7-10 | Run 5,000-user test | **Executed** — p95 430.3 ms, submit 100%, exam failure 0.00%, Δ snapshot 0. **Gate FAILS** (GAP-130); evidence `docs/testing/p7/load-2026-10-22.md` |
-| P7-11 | Run autosave burst | Partial — profile implemented and exercised inside profile F; no standalone burst at target scale |
+| P7-02 | Build test environment | **Done** — a documented production-like environment exists at `infrastructure/environments/production-like/` with five CPU-pinned tiers (data 0–3, edge 4–7, app 8–15, generator 16–21, obs 22–23) and a verified 31/31 readiness run (GAP-083 closed; commit `f07acfd`). **Limitation (GAP-160):** the edge publishes `listen 80` with no `backlog=`, so ≥500 concurrent first connections overflow the listen queue and are refused; the 5,000-user population is currently unmeasurable |
+| P7-03 | Validate release candidate | **Done** — `v1.5.0-rc2` is an immutably tagged candidate at `f07acfd` (GAP-156 + GAP-059 + GAP-083), deploying images `backend@sha256:cb17c03d…` and `frontend@sha256:6b5a05ed…`. GAP-083 closed |
+| P7-04 | Run 100-user baseline | **Executed on rc2** — `attempt.start` p95 1203.4 ms, `attempt.questions` 1069.6 ms, `response.save` 47.5 ms, submit 100%, exam failure 0.02%, Δ snapshot 0. **Gate FAILS** (GAP-130) |
+| P7-05 | Run 500-user baseline | **Executed on rc2** — `attempt.start` 2523.6 ms, `attempt.questions` 2107.7 ms, submit 100%, Δ snapshot 0. **FAILS** |
+| P7-06 | Run 1,000-user test | **Executed on rc2** — `attempt.start` 2325.5 ms, `attempt.questions` 1592.5 ms, submit 100%, Δ snapshot 0. **FAILS**; `http_req_failed` 1.23% (GAP-160) |
+| P7-07 | Run 2,000-user test | Not run — the rc2 ramp followed the task's 2,500 step (see the §33 deviation recorded in `docs/testing/p7/load-2026-10-23-rc2.md`) |
+| P7-08 | Run 3,000-user test | Not run — the rc2 ramp followed the task's 2,500 step |
+| P7-09 | Run 4,000-user test | Not run — the rc2 ramp followed the task's 2,500 step |
+| P7-10 | Run 5,000-user test | **Executed on rc2, but NOT a valid population measurement** — `attempt.start` p95 1921.8 ms, `attempt.questions` 1312.2 ms; only 214 of 5,000 students started because 4,786 first connections were refused (GAP-160). Integrity gates all pass. **Gate FAILS** (GAP-130); evidence `docs/testing/p7/load-2026-10-23-rc2.md` |
 | P7-12 | Run submission burst | Partial — profile implemented; `attempt.submit` p95 16 ms at 5,000 users inside profile F |
 | P7-13 | Run recovery burst | Partial — profile implemented; `session.recover` p95 62 ms at 5,000 users inside profile F |
 | P7-14 | Run soak test | Not run |
 | P7-15 | Run failure injection | Not run — no Redis/edge/worker/store failure exercised |
 | P7-16 | Verify data integrity | **Passed at scale** — zero `AttemptQuestion`/`AttemptQuestionOption` inserts across all five ramp steps; 100% submission success (reduced-scale `PilotSmokeIntegrationTest` also passes) |
-| P7-17 | Verify security | Partial — functional P6 security suite; not under concurrency |
+| P7-16 | Verify data integrity | **Passed at scale on rc2** — zero `AttemptQuestion`/`AttemptQuestionOption` inserts across all five ramp steps, 100% submission success, 0% exam failure at 5,000, 0 cross-user exposure, and 993/993 submitted attempts evaluated with one current evaluation and one result each (`scripts/p7/reconcile.sql`, GAP-161 fixed during this run) |
 | P7-18 | Validate dashboards and alerts | Partial — observability stack runs (Prometheus/Grafana/Loki); not validated under ramp load |
 | P7-19 | Full dress rehearsal | Blocked |
 | P7-20 | Live pilot | Not started |

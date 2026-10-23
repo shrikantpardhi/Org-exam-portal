@@ -4,10 +4,10 @@ import com.company.exam.common.audit.CurrentAuditorProvider;
 import com.company.exam.common.job.BackgroundJob;
 import com.company.exam.common.job.BackgroundJobRepository;
 import com.company.exam.common.job.BackgroundJobStatus;
+import com.company.exam.common.job.JobStateService;
 import com.company.exam.delivery.application.EvaluationHandoffService;
 import com.company.exam.evaluation.service.EvaluationService;
 import com.company.exam.infrastructure.worker.WorkerExecutionTemplate;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -44,6 +44,7 @@ public class EvaluationWorker {
     private static final String ANSWER_KEY_REQUIRED = "ANSWER_KEY_REQUIRED";
 
     private final BackgroundJobRepository jobRepository;
+    private final JobStateService jobStateService;
     private final EvaluationService evaluationService;
     private final WorkerExecutionTemplate workerTemplate;
     private final ObjectMapper objectMapper;
@@ -51,9 +52,10 @@ public class EvaluationWorker {
     @Value("${app.evaluation.worker.batch-size:50}")
     private int batchSize = 50;
 
-    public EvaluationWorker(BackgroundJobRepository jobRepository, EvaluationService evaluationService,
-            WorkerExecutionTemplate workerTemplate, ObjectMapper objectMapper) {
+    public EvaluationWorker(BackgroundJobRepository jobRepository, JobStateService jobStateService,
+            EvaluationService evaluationService, WorkerExecutionTemplate workerTemplate, ObjectMapper objectMapper) {
         this.jobRepository = jobRepository;
+        this.jobStateService = jobStateService;
         this.evaluationService = evaluationService;
         this.workerTemplate = workerTemplate;
         this.objectMapper = objectMapper;
@@ -65,8 +67,12 @@ public class EvaluationWorker {
         List<BackgroundJob> jobs = jobRepository.findByJobTypeAndStatusOrderByQueuedOnAsc(
                 EvaluationHandoffService.JOB_TYPE, BackgroundJobStatus.QUEUED, PageRequest.of(0, batchSize));
         for (BackgroundJob job : jobs) {
-            if (jobRepository.claim(job.getId(), BackgroundJobStatus.QUEUED, BackgroundJobStatus.RUNNING,
-                    Instant.now()) != 1) {
+            // claim() is an @Modifying query and a scheduled method has no transaction of its own, so
+            // calling the repository directly throws TransactionRequiredException on every tick and no
+            // EVALUATION job is ever claimed. JobStateService.claim is the transactional wrapper every
+            // other worker uses (ReportWorker, AnalyticsWorker, the communication workers); this worker
+            // was the only one bypassing it.
+            if (!jobStateService.claim(job.getId())) {
                 continue;
             }
             process(job);
@@ -77,19 +83,17 @@ public class EvaluationWorker {
         UUID attemptId = job.getReferenceId();
         String answerKeyId = answerKeyIdOf(job);
         if (attemptId == null || answerKeyId == null) {
-            jobRepository.markFailed(job.getId(), BackgroundJobStatus.FAILED, Instant.now(), ANSWER_KEY_REQUIRED,
+            jobStateService.fail(job.getId(), ANSWER_KEY_REQUIRED,
                     "No explicit answerKeyId was supplied; evaluation requires an explicit answer key");
             return;
         }
         try {
             workerTemplate.execute("EVALUATION", () -> evaluationService.evaluate(attemptId,
                     UUID.fromString(answerKeyId), CurrentAuditorProvider.SYSTEM_ACTOR_ID));
-            jobRepository.markCompleted(job.getId(), BackgroundJobStatus.COMPLETED, Instant.now(),
-                    attemptId.toString());
+            jobStateService.complete(job.getId(), attemptId.toString());
         } catch (RuntimeException failure) {
             log.warn("Evaluation job {} failed: {}", job.getId(), failure.getMessage());
-            jobRepository.markFailed(job.getId(), BackgroundJobStatus.FAILED, Instant.now(), "EVALUATION_FAILED",
-                    safeMessage(failure));
+            jobStateService.fail(job.getId(), "EVALUATION_FAILED", safeMessage(failure));
         }
     }
 

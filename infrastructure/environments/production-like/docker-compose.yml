@@ -302,6 +302,14 @@ services:
       DELIVERY_WORKER_ENABLED: ${DELIVERY_WORKER_ENABLED:-true}
       DELIVERY_WORKER_BATCH_SIZE: ${DELIVERY_WORKER_BATCH_SIZE:-50}
       DELIVERY_WORKER_INTERVAL: ${DELIVERY_WORKER_INTERVAL:-PT30S}
+      # The evaluation worker ships disabled (application.yml default false) because the P5 handoff
+      # historically carried no answer key (GAP-071). GAP-071 is closed and the handoff now carries an
+      # explicit answerKeyId, but the default was never revisited, so every submit-triggered EVALUATION
+      # job sits in QUEUED forever unless this is set. Without it the §94 reconciliation gate can never
+      # pass: 993 attempts were SUBMITTED with 992 jobs queued and 0 evaluations in the 2026-10-23 run.
+      EVALUATION_WORKER_ENABLED: ${EVALUATION_WORKER_ENABLED:-true}
+      EVALUATION_WORKER_BATCH_SIZE: ${EVALUATION_WORKER_BATCH_SIZE:-50}
+      EVALUATION_WORKER_INTERVAL: ${EVALUATION_WORKER_INTERVAL:-PT10S}
       STORAGE_PROVIDER: local
       STORAGE_LOCAL_ROOT: /app/data/uploads
       TZ: UTC

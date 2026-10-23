@@ -12,6 +12,7 @@ import com.company.exam.common.audit.CurrentAuditorProvider;
 import com.company.exam.common.job.BackgroundJob;
 import com.company.exam.common.job.BackgroundJobRepository;
 import com.company.exam.common.job.BackgroundJobStatus;
+import com.company.exam.common.job.JobStateService;
 import com.company.exam.evaluation.service.EvaluationService;
 import com.company.exam.infrastructure.worker.WorkerExecutionTemplate;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -33,6 +34,9 @@ class EvaluationWorkerTest {
     private BackgroundJobRepository jobRepository;
 
     @Mock
+    private JobStateService jobStateService;
+
+    @Mock
     private EvaluationService evaluationService;
 
     // A real template so the claimed task actually runs and reaches the evaluation service.
@@ -45,7 +49,8 @@ class EvaluationWorkerTest {
 
     @BeforeEach
     void setUp() {
-        worker = new EvaluationWorker(jobRepository, evaluationService, workerTemplate, objectMapper);
+        worker = new EvaluationWorker(jobRepository, jobStateService, evaluationService, workerTemplate,
+                objectMapper);
     }
 
     @Test
@@ -58,16 +63,21 @@ class EvaluationWorkerTest {
 
         when(jobRepository.findByJobTypeAndStatusOrderByQueuedOnAsc(any(), eq(BackgroundJobStatus.QUEUED), any()))
                 .thenReturn(List.of(job));
-        when(jobRepository.claim(eq(jobId), eq(BackgroundJobStatus.QUEUED), eq(BackgroundJobStatus.RUNNING), any()))
-                .thenReturn(1);
+        when(jobStateService.claim(jobId)).thenReturn(true);
 
         worker.evaluateQueuedAttempts();
 
         verify(evaluationService).evaluate(attemptId, answerKeyId, CurrentAuditorProvider.SYSTEM_ACTOR_ID);
-        verify(jobRepository).markCompleted(eq(jobId), eq(BackgroundJobStatus.COMPLETED), any(Instant.class),
-                eq(attemptId.toString()));
+        // Completion must go through the transactional wrapper as well.
+        verify(jobStateService).complete(jobId, attemptId.toString());
+        verify(jobRepository, never()).markCompleted(any(UUID.class), any(BackgroundJobStatus.class),
+                any(Instant.class), anyString());
         verify(jobRepository, never()).markFailed(any(UUID.class), any(BackgroundJobStatus.class), any(Instant.class),
                 anyString(), anyString());
+        // A direct repository claim has no transaction and throws TransactionRequiredException on every
+        // tick, which is how 992 EVALUATION jobs sat QUEUED for the whole 2026-10-23 ramp.
+        verify(jobRepository, never()).claim(any(UUID.class), any(BackgroundJobStatus.class),
+                any(BackgroundJobStatus.class), any(Instant.class));
     }
 
     @Test
@@ -78,14 +88,32 @@ class EvaluationWorkerTest {
 
         when(jobRepository.findByJobTypeAndStatusOrderByQueuedOnAsc(any(), eq(BackgroundJobStatus.QUEUED), any()))
                 .thenReturn(List.of(job));
-        when(jobRepository.claim(eq(jobId), eq(BackgroundJobStatus.QUEUED), eq(BackgroundJobStatus.RUNNING), any()))
-                .thenReturn(1);
+        when(jobStateService.claim(jobId)).thenReturn(true);
 
         worker.evaluateQueuedAttempts();
 
         verify(evaluationService, never()).evaluate(any(UUID.class), any(UUID.class), any(UUID.class));
-        verify(jobRepository).markFailed(eq(jobId), eq(BackgroundJobStatus.FAILED), any(Instant.class),
-                eq("ANSWER_KEY_REQUIRED"), anyString());
+        verify(jobStateService).fail(eq(jobId), eq("ANSWER_KEY_REQUIRED"), anyString());
+        verify(jobRepository, never()).claim(any(UUID.class), any(BackgroundJobStatus.class),
+                any(BackgroundJobStatus.class), any(Instant.class));
+    }
+
+    @Test
+    void skipsAJobAnotherWorkerAlreadyClaimed() {
+        UUID jobId = UUID.randomUUID();
+        UUID attemptId = UUID.randomUUID();
+        UUID answerKeyId = UUID.randomUUID();
+        BackgroundJob job = job(jobId, attemptId,
+                "{\"attemptId\":\"" + attemptId + "\",\"answerKeyId\":\"" + answerKeyId + "\"}");
+
+        when(jobRepository.findByJobTypeAndStatusOrderByQueuedOnAsc(any(), eq(BackgroundJobStatus.QUEUED), any()))
+                .thenReturn(List.of(job));
+        when(jobStateService.claim(jobId)).thenReturn(false);
+
+        worker.evaluateQueuedAttempts();
+
+        verify(evaluationService, never()).evaluate(any(UUID.class), any(UUID.class), any(UUID.class));
+        verify(jobStateService, never()).complete(any(UUID.class), anyString());
     }
 
     private static BackgroundJob job(UUID id, UUID attemptId, String parameters) {

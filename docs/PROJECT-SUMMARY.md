@@ -69,14 +69,31 @@ module reads another module's repository.
 
 The P12 release gates are not all met. The outstanding trigger:
 
-- **GAP-130** — the performance gate has now been **measured, and it fails**. The 100 → 500 → 1,000 →
-  2,000 → 3,000 → 4,000 → 5,000 ramp ran on 2026-10-22. Integrity passed at every step (zero snapshot inserts, 100%
-  submission success, 0.00% exam failure), but **p95 latency was 155.1 / 352.6 / 475.5 / 483.1 /
-  430.3 ms against the < 100 ms target** — it fails even at 100 users. The cause is identified: a
-  per-question N+1 in `attempt.questions` issues ~400 queries and 400 LaTeX renders per 100-question
-  read while the underlying SQL takes 0.08 ms (**GAP-156**), plus a slow `attempt.start` path. A missed
-  gate is still a missed gate: this stays NO-GO until the endpoints are fixed and the ramp is re-run on
-  production-like infrastructure. Evidence: `docs/testing/p7/load-2026-10-22.md`.
+- **GAP-130** — the performance gate has been measured three times and **still fails**, now on the
+  immutably tagged candidate `v1.5.0-rc2`. The rc2 ramp (`100 / 500 / 1,000 / 2,500 / 5,000`) ran on
+  2026-10-23 on the production-like environment. Every integrity gate passed — zero snapshot inserts at
+  every step, 100% submission success, 0% exam failure at 5,000 users, 0 cross-user exposure, and
+  993/993 submitted attempts evaluated with exactly one current evaluation and one result each. The
+  latency gate fails at **every** step on two endpoints: `attempt.start` 1203.4 / 2523.6 / 2325.5 /
+  2062.0 / 1921.8 ms and `attempt.questions` 1069.6 / 2107.7 / 1592.5 / 1431.8 / 1312.2 ms against the
+  < 100 ms target. Both are flat around 1–2.5 s and do not degrade with load, which is a fixed
+  per-request cost, not contention; the connection pool is idle throughout (`pool_maxwait_s` = 0 at
+  every step, PG never above 15 of 300 backends). `response.save` (48.4 ms), `attempt.submit`
+  (41.8 ms) and `session.recover` (44.6 ms) are inside the gate at 5,000 users. **The GAP-156 and
+  GAP-059 fixes did not move the start path into the gate.** The 5,000-user numbers are additionally
+  not a valid population measurement: **GAP-160** (the edge has no `listen ... backlog=`) refused 4,786
+  first connections, so only 214 of 5,000 students actually started. Evidence:
+  `docs/testing/p7/load-2026-10-23-rc2.md`.
+
+Three harness defects and one platform defect were found and fixed during this run, and each was a
+reason the gate could not have passed before: **GAP-159** (`load/seed.mjs` could not grant the roles a
+fresh database needs, so there was no administrator, and it never published an answer key), **GAP-161**
+(`EvaluationWorker` threw `TransactionRequiredException` on every tick because it bypassed
+`JobStateService`, and `EVALUATION_WORKER_ENABLED` defaulted to false — 992 jobs sat QUEUED and 0
+results existed; after the fix 992/992 completed with 0 failures), plus the unquoted-UUID bug that made
+`scripts/p7/reconcile.sql` fail on every invocation. Two further defects are recorded as open:
+**GAP-162** (the `start_burst_zero_new_rows` gate does not exclude `snapshot_status = 'FAILED'`) and
+**GAP-163** (the harness reports a global p95 across all endpoints, which masks per-endpoint breaches).
 
 Also open: **GAP-135** (dress rehearsal, production smoke test, post-release monitoring),
 **GAP-088** (the live pilot), **GAP-008/010** (the CI workflows exist but have not run, and branch
@@ -94,7 +111,61 @@ Gates that *were* closed by the 2026-10-19 rehearsal: **GAP-131** (logical backu
 integrity checks) and **GAP-132** (rollback, 12/12 checks). PITR is deliberately **not** claimed
 (`scripts/backup/pitr.md`).
 
-## 5. The most recent change — a production-like load environment exists (GAP-083)
+## 5. The most recent change — the rc2 P7 gate is re-run and still fails on the start path (GAP-130, GAP-159–GAP-163)
+
+*(2026-10-23.)*
+
+The P7 performance gate was re-run on an **immutably tagged** candidate, which is what the previous two
+attempts lacked (GAP-083).
+
+**Candidate.** `v1.5.0-rc2` → `f07acfd`, carrying `27fa543` (GAP-156 batching), `9cd38ac` (GAP-059
+start-path trim) and `f07acfd` (GAP-083 environment). Deployed images: backend
+`sha256:cb17c03dca41dc48253123762b3e1fe53c9437abcd99d2e6db63574116c8cd6c`, frontend
+`sha256:6b5a05edd607b79ba53f35be956ca540e42a3d9fae154aba00ea0352b72ca439`.
+
+**Result.** Integrity passes completely; latency fails by an order of magnitude on `attempt.start` and
+`attempt.questions`, at every step, from the smallest. Full detail and the reproduction commands are in
+`docs/testing/p7/load-2026-10-23-rc2.md`.
+
+**What was fixed to make the run meaningful.** Four defects, all of which would have silently
+invalidated the evidence:
+
+1. **GAP-159** — `load/seed.mjs` could not produce a working environment from an empty database. The
+   provisioner only ever grants `STUDENT` and `ADMIN_ROLE_ASSIGN` is deliberately ungranted (GAP-116),
+   so a fresh database has **no administrator**; the harness step that used to insert the role was
+   removed in `e4c008e`, leaving every ADMIN call at `403`. The seed also never published an **answer
+   key**, so submitted attempts were stored and never evaluated. Fixed by restoring an idempotent
+   `grantCorpusRoles()` and adding `load/publish-answer-key.mjs`, which resolves `correct_option_id`
+   from `question_option.is_correct` (rule 19) and refuses to publish a partial key. The credential
+   builder also used to fall back to `studentPassword` for the corpus author and reviewer, who are
+   `STUDENT` members with prepared attempts — they received another account's password and were the
+   first two logins. The ramp cohort is now restricted to the student list.
+2. **GAP-161** — the evaluation worker never ran. `EVALUATION_WORKER_ENABLED` defaults to `false`
+   (a leftover from GAP-071, closed but never revisited) and `EvaluationWorker` called
+   `jobRepository.claim(...)` directly from a `@Scheduled` method, so every tick threw
+   `TransactionRequiredException`. 992 jobs were queued with 0 evaluations. Routed all state
+   transitions through `JobStateService` (which exists for exactly this and which every other worker
+   already used), set the flag, and added a test that pins the transactional route. Verified: 992/992
+   jobs completed, 0 failures.
+3. **`scripts/p7/reconcile.sql`** used bare `:schedule_id` for UUIDs, so psql substituted them unquoted
+   and **every run failed** with `trailing junk after numeric literal`. All UUID substitutions are now
+   quoted. The reconciliation gate had never actually executed.
+
+**What is newly open.** **GAP-160** — the edge publishes `listen 80` with no `backlog=`, so 500+ VUs
+opening their first connection in the same second overflow the listen queue and are refused (4,786 at
+5,000 users, all in the first second; only 214 of 5,000 students started). The 5,000-user measurement
+is therefore **not a valid population measurement**, and this must be fixed before the gate can be
+assessed at 5,000. **GAP-162** — `start_burst_zero_new_rows` does not exclude
+`snapshot_status = 'FAILED'`, so preparation failures are reported as Start-Exam snapshot writes (it
+flagged exactly the two attempts whose preparation died during a backend restart; no started attempt
+was missing questions). **GAP-163** — `load/k6/summary.js` derives `applicableLatency` from the
+untagged `http_req_duration`, mixing all eight endpoints; the resulting global p95 (48.6 ms at 100
+users) is dominated by the 99% of requests that are fast and **masks** the per-endpoint breach, and
+k6's `stopOnGateFailure` evaluates the same global figure so the ramp never stopped on it.
+
+**Release decision unchanged: NO-GO.**
+
+## 5a. The most recent change — a production-like load environment exists (GAP-083)
 
 *(2026-10-23.)*
 

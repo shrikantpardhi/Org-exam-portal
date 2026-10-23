@@ -72,6 +72,14 @@ const cfg = {
   provision: (args["apply-sql"] ?? args.provision ?? process.env.P7_APPLY_SQL ?? "false") === "true",
   /** Compose service whose image carries the provisioning CLI. */
   backendContainer: args["backend-container"] ?? process.env.P7_BACKEND_CONTAINER ?? "exam-platform-backend-1",
+  /**
+   * Database container, used ONLY to grant the two corpus roles.
+   *
+   * <p>See {@code grantCorpusRoles} for why this cannot go through the API or the provisioning CLI.
+   */
+  psqlContainer: args["psql-container"] ?? process.env.P7_PSQL_CONTAINER ?? "exam-platform-postgres-1",
+  psqlUser: args["psql-user"] ?? process.env.P7_PSQL_USER ?? "exam_app",
+  psqlDb: args["psql-db"] ?? process.env.P7_PSQL_DB ?? "exam_platform",
   /** The Spring profile the CLI boots with; must never be a production profile. */
   provisionProfile: args["provision-profile"] ?? process.env.P7_PROVISION_PROFILE ?? "staging",
 };
@@ -265,6 +273,80 @@ function provisionCredentials(members) {
   return credentials;
 }
 
+
+/**
+ * Grants the corpus identities their roles.
+ *
+ * <p>The cohort CLI assigns {@code STUDENT} to every member it provisions and cannot assign anything
+ * else: {@code CohortMember} has no role field, and the API route that would grant {@code ADMIN}
+ * requires {@code ADMIN_ROLE_ASSIGN}, which V3 deliberately does not grant to any role
+ * ({@code ADR-0014}, {@code specs/10-P1 §63/§65}, GAP-116). A fresh database therefore holds no
+ * administrator at all, {@code GET /languages} answers 403, and no corpus can be authored.
+ *
+ * <p>Before commit {@code e4c008e} this file granted both roles with direct {@code INSERT}s into
+ * {@code user_role}; that step was dropped when credential provisioning moved to the CLI (GAP-085), so
+ * the harness silently stopped working against a clean database — it only ever passed where an
+ * administrator had been granted by hand. This restores the grant while leaving credentials with the
+ * CLI, so the GAP-085 guarantees (real encoder, audit entry, environment gate, idempotent by email) are
+ * preserved.
+ *
+ * <p>This is the explicit operational step ADR-0014 describes for delegating {@code ADMIN}. It writes
+ * only {@code user_role} rows for the two synthetic identities, only when provisioning was requested,
+ * and it re-reads the result so a failed grant aborts the seed instead of surfacing later as a 403.
+ */
+function grantCorpusRoles() {
+  const sql = `
+INSERT INTO user_role (id, user_id, role_id, status, created_by, created_on, updated_by, updated_on)
+SELECT gen_random_uuid(), u.id, r.id, 'ACTIVE', u.id, now(), u.id, now()
+FROM public."user" u JOIN role r ON r.code = 'ADMIN'
+WHERE u.email = '${cfg.adminEmail}'
+ON CONFLICT (user_id, role_id) DO UPDATE SET status = 'ACTIVE';
+
+INSERT INTO user_role (id, user_id, role_id, status, created_by, created_on, updated_by, updated_on)
+SELECT gen_random_uuid(), u.id, r.id, 'ACTIVE', u.id, now(), u.id, now()
+FROM public."user" u JOIN role r ON r.code = 'REVIEWER'
+WHERE u.email = '${cfg.reviewerEmail}'
+ON CONFLICT (user_id, role_id) DO UPDATE SET status = 'ACTIVE';
+
+SELECT u.email || '=' || string_agg(r.code, ',' ORDER BY r.code)
+FROM public."user" u
+LEFT JOIN user_role ur ON ur.user_id = u.id AND ur.status = 'ACTIVE'
+LEFT JOIN role r ON r.id = ur.role_id
+WHERE u.email IN ('${cfg.adminEmail}', '${cfg.reviewerEmail}')
+GROUP BY u.email ORDER BY u.email;
+`;
+
+  let out;
+  try {
+    out = execFileSync(
+      "docker",
+      [
+        "exec", "-i", cfg.psqlContainer,
+        "psql", "-U", cfg.psqlUser, "-d", cfg.psqlDb,
+        "-v", "ON_ERROR_STOP=1", "-t", "-A", "-f", "-",
+      ],
+      { input: sql, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] },
+    );
+  } catch (error) {
+    const detail = (error.stderr || error.stdout || "").toString().trim();
+    throw new Error(`granting the corpus roles failed: ${detail || error.message}`);
+  }
+
+  const granted = out
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.includes("="))
+    .map((l) => l.split("="));
+
+  const admin = granted.find(([email]) => email === cfg.adminEmail);
+  if (!admin || !(admin[1] ?? "").split(",").includes("ADMIN")) {
+    throw new Error(
+      `the corpus author did not receive ADMIN (got ${JSON.stringify(granted)}). ` +
+        "Without it GET /languages is 403 and no corpus can be authored.",
+    );
+  }
+  console.log(`[seed] corpus roles granted: ${granted.map((g) => g.join("=")).join(" ")}`);
+}
 
 // --------------------------------------------------------------------------- corpus
 
@@ -673,6 +755,10 @@ async function main() {
   studentCredentials = new Map(students.map((s) => [s.email, credentials.get(s.email)]));
   console.log("[seed] credentials provisioned");
 
+  // Grant the roles the CLI cannot. Must happen before the first ADMIN request, and only after
+  // provisioning, because the rows it updates do not exist until then.
+  grantCorpusRoles();
+
   // ------------------------------------------------------------------ 2. authenticate
   adminToken = await login(cfg.adminEmail, cfg.adminPassword);
   reviewerToken = await login(cfg.reviewerEmail, cfg.reviewerPassword);
@@ -716,6 +802,21 @@ async function main() {
      * <p>This file is git-ignored ({@code load/out/}) and is the only place the plaintext values exist.
      */
     studentCredentials: Object.fromEntries(studentCredentials),
+    /**
+     * Credentials for the two corpus identities, kept separate from the students.
+     *
+     * <p>The corpus author needs ADMIN to publish content and answer keys, so downstream tooling
+     * ({@code load/publish-answer-key.mjs}) has to authenticate as it. Writing them here — to the
+     * git-ignored manifest — is the only durable place, because {@code cfg.adminPassword} is otherwise
+     * re-read from the CLI on every seed and never persisted.
+     *
+     * <p>Deliberately NOT merged into {@code studentCredentials}: the ramp population must stay exactly
+     * the synthetic students, and the reviewer credential must never reach the load generator.
+     */
+    corpusCredentials: {
+      [cfg.adminEmail]: cfg.adminPassword,
+      [cfg.reviewerEmail]: cfg.reviewerPassword,
+    },
     /** Retained for older readers; equals the first student's credential. */
     studentPassword: cfg.studentPassword,
     questions: corpus.length,

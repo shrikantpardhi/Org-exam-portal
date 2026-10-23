@@ -21,18 +21,18 @@ SELECT 'counts' AS gate,
           JOIN user_role ur ON ur.user_id = u.id
           JOIN role r ON r.id = ur.role_id
          WHERE r.code = 'STUDENT' AND u.status = 'ACTIVE' AND ur.status = 'ACTIVE') AS eligible,
-       (SELECT count(*) FROM student_attempt WHERE assessment_schedule_id = :schedule_id) AS prepared,
-       (SELECT count(*) FROM student_attempt WHERE assessment_schedule_id = :schedule_id
+       (SELECT count(*) FROM student_attempt WHERE assessment_schedule_id = :'schedule_id') AS prepared,
+       (SELECT count(*) FROM student_attempt WHERE assessment_schedule_id = :'schedule_id'
           AND attempt_status IN ('IN_PROGRESS','SUBMITTED','EVALUATED')) AS started,
-       (SELECT count(*) FROM student_attempt WHERE assessment_schedule_id = :schedule_id
+       (SELECT count(*) FROM student_attempt WHERE assessment_schedule_id = :'schedule_id'
           AND attempt_status IN ('SUBMITTED','EVALUATED')) AS submitted,
        (SELECT count(DISTINCT e.attempt_id) FROM evaluation e
           JOIN student_attempt a ON a.id = e.attempt_id
-         WHERE a.assessment_schedule_id = :schedule_id AND e.superseded_by_id IS NULL) AS evaluated,
+         WHERE a.assessment_schedule_id = :'schedule_id' AND e.superseded_by_id IS NULL) AS evaluated,
        (SELECT count(*) FROM result r
           JOIN evaluation e ON e.id = r.evaluation_id
           JOIN student_attempt a ON a.id = e.attempt_id
-         WHERE a.assessment_schedule_id = :schedule_id AND r.result_status = 'PUBLISHED') AS published;
+         WHERE a.assessment_schedule_id = :'schedule_id' AND r.result_status = 'PUBLISHED') AS published;
 
 -- 2. Start-burst snapshot gate (§27, §50). Start Exam must insert ZERO snapshot rows, so every
 --    prepared attempt has exactly the expected question count and every question the expected
@@ -41,7 +41,7 @@ SELECT 'start_burst_zero_new_rows' AS gate,
        count(*) AS bad,
        CASE WHEN count(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS verdict
   FROM student_attempt a
- WHERE a.assessment_schedule_id = :schedule_id
+ WHERE a.assessment_schedule_id = :'schedule_id'
    AND (SELECT count(*) FROM attempt_question q WHERE q.attempt_id = a.id) <> :expected_questions;
 
 SELECT 'snapshot_option_cardinality' AS gate,
@@ -49,7 +49,7 @@ SELECT 'snapshot_option_cardinality' AS gate,
        CASE WHEN count(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS verdict
   FROM attempt_question q
   JOIN student_attempt a ON a.id = q.attempt_id
- WHERE a.assessment_schedule_id = :schedule_id
+ WHERE a.assessment_schedule_id = :'schedule_id'
    AND (SELECT count(*) FROM attempt_question_option o WHERE o.attempt_question_id = q.id) <> :expected_options;
 
 -- 3. Snapshot integrity (§50): distinct display order and exact QuestionVersion membership.
@@ -67,7 +67,7 @@ SELECT 'snapshot_question_not_in_assessment' AS gate, count(*) AS bad,
        CASE WHEN count(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS verdict
   FROM attempt_question q
   JOIN student_attempt a ON a.id = q.attempt_id
- WHERE a.assessment_schedule_id = :schedule_id
+ WHERE a.assessment_schedule_id = :'schedule_id'
    AND NOT EXISTS (SELECT 1 FROM assessment_question aq
                     WHERE aq.assessment_version_id = a.assessment_version_id
                       AND aq.question_version_id = q.question_version_id);
@@ -128,7 +128,7 @@ SELECT 'result_outliers' AS gate, count(*) AS bad,
 SELECT 'submitted_without_result' AS gate, count(*) AS bad,
        CASE WHEN count(*) = 0 THEN 'PASS' ELSE 'REVIEW' END AS verdict
   FROM student_attempt a
- WHERE a.assessment_schedule_id = :schedule_id
+ WHERE a.assessment_schedule_id = :'schedule_id'
    AND a.attempt_status IN ('SUBMITTED','EVALUATED')
    AND NOT EXISTS (SELECT 1 FROM evaluation e
                     JOIN result r ON r.evaluation_id = e.id
