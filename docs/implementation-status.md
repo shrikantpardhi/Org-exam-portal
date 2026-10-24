@@ -506,10 +506,15 @@ P13 Broader Reporting and Operational Reporting:
   no endpoint either: the free-assessment rule is derived from the existing package→collection→
   assessment mapping.
 - **Container stack (GAP-007 — closed 2026-10-19):** the full stack runs and
-  `scripts/verify-stack.sh` passes 15/15 assertions (every service healthy, the backend reachable
-  through the Nginx edge with its database check UP, PgBouncer confirmed in the backend's path, the
-  API auth boundary holding, the actuator tree hidden, the request id forwarded). Running it found
-  and fixed **five real defects** (see the rehearsal record §5).
+  `scripts/verify-stack.sh` passes **31/31 assertions, exit 0** as of 2026-10-24 (every service
+  healthy, the backend reachable through the Nginx edge with its database check UP, PgBouncer
+  confirmed in the backend's path, the API auth boundary holding, the actuator tree hidden, the
+  request id forwarded, the response-header policy emitted, CORS answering a trusted cross-origin
+  preflight while refusing an untrusted one, the bundle carrying a relative API base, and a real
+  headless browser loading the page and reaching the API). Running it found and fixed **five real
+  defects** (see the rehearsal record §5). The five header assertions added 2026-10-23 for GAP-137
+  had never been executed until the 2026-10-24 run, which is also when the browser-connectivity
+  defects GAP-164/GAP-165 were found and fixed by `scripts/smoke-frontend.sh`.
 - **Rehearsal (GAP-131/132 — closed 2026-10-19):** a logical backup (195,392 bytes, 1 s) restored
   into an isolated database in 1 s with **6/6 integrity checks passing**, and a rollback rehearsal
   with **12/12 checks passing** (2 s redeploy, data unchanged).
@@ -560,7 +565,11 @@ P13 Broader Reporting and Operational Reporting:
   explicit security headers) and **GAP-138** (anonymous actuator metrics) are closed by the 2026-10-23
   P12 hardening change — docs are refused in production, the header policy is emitted by the
   application and configured at the edge, and the actuator tree beyond health/info requires the
-  monitoring scope or \SYSTEM_HEALTH_VIEW\; **GAP-130** (no performance evidence) remains
+  monitoring scope or \SYSTEM_HEALTH_VIEW\; the GAP-137 header assertions and the GAP-015 CORS
+  preflight were then executed against a running stack on 2026-10-24 (31/31, exit 0), which also
+  found and closed **GAP-164** (the bundle inlined an absolute API origin, so the UI only worked at
+  the one host it was built with) and **GAP-165** (Nginx stripped the port from `Host`, so Spring
+  treated same-origin calls from the edge UI as cross-origin and answered 403); **GAP-130** (no performance evidence) remains
   the outstanding P12 release blocker; **GAP-141** (unbacked report types) and **GAP-148** (no
   reporting UI) are closed — all 23 catalog types generate and the student/staff/admin screens are
   built; **GAP-141a** records the three commerce report types that `22-P13 §55` names but the frozen

@@ -12,6 +12,10 @@ vi.mock("@/lib/api-client", () => ({
   setUnauthorizedHandler: vi.fn(),
   REQUEST_ID_HEADER: "X-Request-Id",
   API_VERSION_PREFIX: "/api/v1",
+  // Mirrors the real helper for a same-origin (relative) base: the path alone, resolved by the
+  // browser against the page origin. Kept relative here so the test also proves the rendered
+  // link does not embed a build-time absolute origin (GAP-164).
+  apiUrl: (path: string) => `/api/v1${path}`,
 }));
 
 import { apiGet, apiPost } from "@/lib/api-client";
@@ -239,7 +243,10 @@ describe("reporting workspace", () => {
     expect(row).toBeInTheDocument();
     const tableRow = row.closest("tr") as HTMLElement;
     expect(within(tableRow).getByText("Completed")).toBeInTheDocument();
-    expect(within(tableRow).getByRole("link", { name: "Download" })).toBeInTheDocument();
+    const link = within(tableRow).getByRole("link", { name: "Download" });
+    // Same-origin link: no baked absolute origin, so it works at any host the edge serves (GAP-164).
+    expect(link.getAttribute("href")).toBe("/api/v1/reports/jobs/job-history-1/download");
+    expect(link.getAttribute("href")).not.toMatch(/^https?:\/\//);
     expect(mockedGet).toHaveBeenCalledWith("/reports/history", { limit: 50 });
   });
 

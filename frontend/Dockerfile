@@ -17,8 +17,12 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# NEXT_PUBLIC_* values are inlined at build time; the API base URL is the public edge.
-ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:8081
+# NEXT_PUBLIC_* values are inlined at build time. The default is deliberately the RELATIVE base,
+# not an absolute origin: the Nginx edge serves both the UI and /api/, so the browser resolves the
+# API against whatever origin served the page. An absolute origin baked in here would work only for
+# the exact host it was built with; every other host (127.0.0.1, a LAN address, a hostname) would
+# make the call cross-origin and the edge's `connect-src 'self'` policy would block it (GAP-164).
+ARG NEXT_PUBLIC_API_BASE_URL=/api/v1
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 

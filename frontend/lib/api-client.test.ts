@@ -69,7 +69,16 @@ describe("api client", () => {
     expect(captured?.headers.get("Authorization")).toBeUndefined();
   });
 
-  it("targets the /api/v1 base path by default", () => {
+  it("defaults to a same-origin relative base path", () => {
+    // The regression this guards (GAP-164): the built bundle must not hard-code an absolute
+    // origin, or the app only works for the one host it was built with.
+    const client = createApiClient({});
+
+    expect(client.defaults.baseURL).toBe("/api/v1");
+    expect(client.defaults.baseURL).not.toMatch(/^https?:\/\//);
+  });
+
+  it("honours an explicit base URL override", () => {
     const client = createApiClient({ baseURL: "http://api.test/api/v1" });
 
     expect(client.defaults.baseURL).toBe("http://api.test/api/v1");

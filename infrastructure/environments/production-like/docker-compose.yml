@@ -336,8 +336,10 @@ services:
     build:
       context: ../../../frontend
       args:
-        # Inlined at build time; must be an origin a browser can reach.
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8090}
+        # Inlined at build time. A RELATIVE base keeps the UI and the API on the single edge origin,
+        # so the browser resolves /api/ against whatever host served the page. Baking an absolute
+        # origin here would tie the image to one hostname (GAP-164).
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
     environment:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"

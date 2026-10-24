@@ -221,9 +221,11 @@ services:
     build:
       context: ./frontend
       args:
-        # Inlined into the browser bundle at build time, so it must be the edge
-        # URL a browser can reach, not a container service name.
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8081}
+        # Inlined into the browser bundle at build time. A RELATIVE base is correct for this stack:
+        # the edge serves the UI and /api/ from one origin, so the browser resolves the API against
+        # whatever host it loaded the page from. An absolute origin here would bake one hostname into
+        # the image and break every other one against the edge CSP (GAP-164).
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
     environment:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"

@@ -49,8 +49,11 @@ while [ $# -gt 0 ]; do
     shift
 done
 
+# A failure must fail the run. Without the counter the script printed FAIL but still exited 0,
+# which is how a broken assertion could sit in the output unread.
+FAILURES=0
 pass() { printf '  \033[32mPASS\033[0m %s\n' "$1"; }
-fail() { printf '  \033[31mFAIL\033[0m %s\n' "$1"; }
+fail() { printf '  \033[31mFAIL\033[0m %s\n' "$1"; FAILURES=$((FAILURES + 1)); }
 info() { printf '\033[36m==>\033[0m %s\n' "$1"; }
 
 dc() { docker compose "${PROFILE_ARGS[@]}" "$@"; }
@@ -258,6 +261,106 @@ else
     pass "edge omits HSTS over plaintext HTTP (it is added on the TLS listener)"
 fi
 
+# ------------------------------------------------------------------ frontend can reach the API
+# GAP-164: the browser must be able to call the API through the same edge that served the page.
+# These assertions are what would have caught the "Unable to reach the server" report before a user
+# saw it. `curl /api/v1/...` alone proves routing but NOT that a browser succeeds, because the
+# browser additionally enforces the inlined bundle value, CORS, and CSP.
+
+# 1. The bundle must carry a RELATIVE base. An absolute origin is inlined at build time and works
+#    only for the one host the image was built with.
+frontend_container="$(dc ps -q frontend)"
+if [ -n "$frontend_container" ]; then
+    bundle_base="$(docker exec "$frontend_container" sh -c \
+        "grep -rho 'NEXT_PUBLIC_API_BASE_URL:\"[^\"]*\"' /app/.next/static/chunks/ 2>/dev/null | sort -u | head -n1" \
+        2>/dev/null || true)"
+    case "$bundle_base" in
+        *'/api/v1"'*)
+            pass "browser bundle uses a relative API base (${bundle_base})" ;;
+        *'http://'*|*'https://'*)
+            fail "browser bundle inlines an absolute API origin (${bundle_base}); it will break at any other host (GAP-164)" ;;
+        *)
+            fail "could not confirm the API base in the browser bundle (found: ${bundle_base:-none})" ;;
+    esac
+else
+    fail "frontend container is not running, so the browser bundle cannot be verified"
+fi
+
+# 2. CORS preflight must be answered for a genuine cross-origin browser. A preflight from the
+#    edge's OWN origin is correctly treated as same-origin by Spring and emits no CORS headers, so
+#    testing with ${EDGE_URL} proves nothing. A separate frontend origin (the `npm run dev` one) is
+#    the real cross-origin case that must work; an unlisted origin must still be refused.
+cors_origin="${CORS_TEST_ORIGIN:-http://localhost:3000}"
+preflight_headers="$(curl -s -D - -o /dev/null --max-time 10 \
+    -X OPTIONS \
+    -H "Origin: ${cors_origin}" \
+    -H "Access-Control-Request-Method: GET" \
+    -H "Access-Control-Request-Headers: authorization" \
+    "${EDGE_URL}/api/v1/me" | tr -d '\r' || true)"
+if printf '%s' "$preflight_headers" | grep -qi "^access-control-allow-origin: ${cors_origin}"; then
+    pass "CORS preflight is answered for a cross-origin frontend (${cors_origin})"
+else
+    fail "CORS preflight returned no Access-Control-Allow-Origin for ${cors_origin} (GAP-015/GAP-165)"
+fi
+
+# The allow-list must still reject an origin it does not trust; a permissive answer here would
+# mean CORS had been weakened rather than configured.
+untrusted_preflight="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
+    -X OPTIONS \
+    -H "Origin: http://untrusted.example.test" \
+    -H "Access-Control-Request-Method: GET" \
+    "${EDGE_URL}/api/v1/me" || true)"
+if [ "$untrusted_preflight" = "403" ]; then
+    pass "CORS refuses an untrusted origin (HTTP 403)"
+else
+    fail "an untrusted origin was not refused by CORS (HTTP ${untrusted_preflight})"
+fi
+
+# 3. The CSP served to the frontend must allow the API connection. `connect-src 'self'` in the
+#    frontend server block is correct for a relative base; an explicit origin list is also accepted.
+frontend_headers="$(curl -s -D - -o /dev/null --max-time 10 "${EDGE_URL}/" | tr -d '\r' || true)"
+frontend_csp="$(printf '%s' "$frontend_headers" | grep -i '^content-security-policy:' || true)"
+if printf '%s' "$frontend_csp" | grep -qi "connect-src 'self'"; then
+    pass "frontend CSP allows same-origin API calls (connect-src 'self')"
+elif printf '%s' "$frontend_csp" | grep -qi 'connect-src'; then
+    pass "frontend CSP declares an explicit connect-src"
+else
+    fail "frontend CSP has no connect-src, so the browser will block API calls"
+fi
+
+# 4. A real browser must reach the API. Everything above can pass while the rendered page still
+#    fails, for example when a script is blocked or hydration throws.
+if [ "${VERIFY_SKIP_SMOKE:-0}" = "1" ]; then
+    pass "browser smoke test skipped (VERIFY_SKIP_SMOKE=1)"
+elif [ -x "${ROOT_DIR}/scripts/smoke-frontend.sh" ] || [ -f "${ROOT_DIR}/scripts/smoke-frontend.sh" ]; then
+    if EDGE_URL="${EDGE_URL}" bash "${ROOT_DIR}/scripts/smoke-frontend.sh" >/tmp/smoke-frontend.log 2>&1; then
+        pass "browser smoke test reached the API from a real page"
+    else
+        fail "browser smoke test failed (see /tmp/smoke-frontend.log)"
+        tail -n 12 /tmp/smoke-frontend.log 2>/dev/null | sed 's/^/      /' || true
+    fi
+else
+    fail "scripts/smoke-frontend.sh is missing, so no browser-level check ran"
+fi
+
+# 5. The frontend container's own published port must NOT be mistaken for the entry point. It
+#    serves no /api/ route, so a user who opens :3000 gets Next's HTML 404 and the login form
+#    reports a misleading "Invalid username or password" for a valid account. Assert the
+#    distinction explicitly so the documented "use :8081" instruction cannot silently rot.
+direct_frontend_port="${FRONTEND_HOST_PORT:-3000}"
+if curl -s -o /dev/null --max-time 5 "http://localhost:${direct_frontend_port}/" 2>/dev/null; then
+    direct_status="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
+        -X POST -H 'Content-Type: application/json' -d '{}' \
+        "http://localhost:${direct_frontend_port}/api/v1/auth/login" || true)"
+    if [ "$direct_status" = "404" ]; then
+        pass "frontend port ${direct_frontend_port} serves no API (documented: use the edge)"
+    else
+        fail "frontend port ${direct_frontend_port}/api returned ${direct_status}; expected 404 so the edge stays the single entry point"
+    fi
+else
+    pass "frontend port ${direct_frontend_port} is not published; the edge is the only entry point"
+fi
+
 # ------------------------------------------------------------------ correlation
 
 supplied_id="verify-stack-$(date +%s)"
@@ -272,6 +375,13 @@ fi
 # ------------------------------------------------------------------ summary
 
 echo
+if [ "$FAILURES" -ne 0 ]; then
+    echo "${FAILURES} assertion(s) FAILED."
+    echo "  edge            ${EDGE_URL}"
+    echo "  API             ${EDGE_URL}/api/v1/..."
+    exit 1
+fi
+
 echo "All edge assertions passed."
 echo "  edge            ${EDGE_URL}"
 echo "  API             ${EDGE_URL}/api/v1/..."

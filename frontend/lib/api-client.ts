@@ -12,12 +12,12 @@
 import axios, { isAxiosError, type AxiosAdapter, type AxiosInstance } from "axios";
 
 import { getAccessToken } from "@/lib/auth/token-storage";
-import { env } from "@/lib/env";
+import { API_VERSION_PREFIX, env, resolveApiBaseUrl } from "@/lib/env";
 import { normalizeApiError, type ApiClientError } from "@/lib/errors";
 import type { ApiEnvelope, ApiResult } from "@/types/api";
 
 export const REQUEST_ID_HEADER = "X-Request-Id";
-export const API_VERSION_PREFIX = "/api/v1";
+export { API_VERSION_PREFIX };
 
 /** Supplies the current bearer token, or null when unauthenticated. */
 export type TokenProvider = () => string | null;
@@ -38,9 +38,31 @@ function newRequestId(): string {
   return `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
+/**
+ * An absolute URL for a protected artifact the browser navigates to directly.
+ *
+ * <p>A relative base is resolved against the current page origin. That keeps downloads same-origin
+ * under the edge, so the artifact link works from any hostname the deployment is reached at.
+ */
+export function apiUrl(path: string): string {
+  const base = resolveBaseUrl();
+  if (/^https?:\/\//i.test(base)) {
+    return `${base}${path}`;
+  }
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}${base}${path}`;
+  }
+  return `${base}${path}`;
+}
+
+/** The Axios base URL, always including the version prefix exactly once. */
+function resolveBaseUrl(): string {
+  return resolveApiBaseUrl(env.NEXT_PUBLIC_API_BASE_URL);
+}
+
 export function createApiClient(options: ApiClientOptions = {}): AxiosInstance {
   const instance = axios.create({
-    baseURL: options.baseURL ?? `${env.NEXT_PUBLIC_API_BASE_URL}${API_VERSION_PREFIX}`,
+    baseURL: options.baseURL ?? resolveBaseUrl(),
     timeout: 15_000,
     headers: { Accept: "application/json" },
     ...(options.adapter ? { adapter: options.adapter } : {}),

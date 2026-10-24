@@ -22,8 +22,7 @@ import {
   type ReportRequestInput,
   type ReportRequestOutcome,
 } from "@/features/reporting/schemas/reporting";
-import { API_VERSION_PREFIX, apiClient, apiGet, apiPost } from "@/lib/api-client";
-import { env } from "@/lib/env";
+import { apiClient, apiGet, apiPost, apiUrl } from "@/lib/api-client";
 
 /** The report catalog the caller is permitted to request ({@code §11}). */
 export async function getReportCatalog(): Promise<ReportCatalogEntry[]> {
@@ -60,12 +59,13 @@ export async function getReportHistory(limit = 50): Promise<ReportHistoryEntry[]
 /**
  * The absolute, protected download URL for a completed job ({@code §22}).
  *
- * <p>The path itself is frozen; only the origin is added so the link works from the browser. The
- * endpoint authorizes the request independently of generation, so this URL grants no access on its
- * own.
+ * <p>The path itself is frozen; only the origin is added so the link works from the browser. It is
+ * resolved against the page origin rather than a build-time constant, so the link stays same-origin
+ * under the edge no matter which hostname the deployment is reached at. The endpoint authorizes the
+ * request independently of generation, so this URL grants no access on its own.
  */
 export function reportDownloadUrl(jobId: string): string {
-  return `${env.NEXT_PUBLIC_API_BASE_URL}${API_VERSION_PREFIX}/reports/jobs/${jobId}/download`;
+  return apiUrl(`/reports/jobs/${jobId}/download`);
 }
 
 /**
