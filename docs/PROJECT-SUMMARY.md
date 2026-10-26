@@ -40,7 +40,7 @@ module reads another module's repository.
 | Controllers / endpoint mappings | 63 / 251 |
 | Backend tests | **603 tests, 0 failures, 2 skipped** |
 | Frontend tests | **521 tests, 0 failures (93 files)** |
-| Tracked gaps | 195 rows, 11 open (see `docs/known-gaps.md` for the register) |
+| Tracked gaps | 197 rows, 12 open (see `docs/known-gaps.md` for the register) |
 | Container stack | Local stack runs and is verified end to end. `scripts/verify-stack.sh` now passes **31/31 assertions, exit 0** (2026-10-24), including the five header assertions added 2026-10-23 for GAP-137, which had **never been run** until now (`specs/21-P12 §26`). The run also proves the browser path: the bundle carries a relative API base, the frontend CSP allows same-origin connectivity, CORS answers a trusted cross-origin preflight and refuses an untrusted one, and a headless browser loads the page and reaches the API. A separate production-like environment (`infrastructure/environments/production-like/`) passes **31/31** via `scripts/verify-production-like.sh` as of 2026-10-23 |
 | Observability | In the production-like environment Prometheus scrapes 5 targets (backend, postgres, redis, pgbouncer, itself) all UP, with 2 datasources and 3 dashboards provisioned. **The local stack's Prometheus crash-loops** on `--config.expand-env`, a flag Prometheus does not have (GAP-158) |
 | Load harness | `load/` (k6) — six profiles, seed, ramp runner; 100 → 5,000 ramp executed 2026-10-22; cohort credentials come from the environment-gated `LoadCohortCli` (GAP-085) |
@@ -478,9 +478,34 @@ its own `<main>`), and found three distinct defects:
 Also migrated the four most palette-heavy pages reached during the sweep (`/analytics`, `/blueprints`,
 `/blueprints/[id]`, `/admin/communication`) from `slate-*`/`bg-white` literals to semantic tokens.
 
-**Verified:** frontend `lint` 0 errors / 0 warnings, `type-check` clean, **521/521 tests (93 files)**.
-Live: `/api/v1/reports/catalog` and `/reports/history` both **200** for the organization administrator;
-`ADMIN` holds all eight `REPORT_*` permissions in `role_permission`.
+### Two defects found while proving Reports works end to end
+
+Both were invisible to the test suite because the tests do not use the mounted volume or the real
+history query path:
+
+1. **Every report generation failed in the deployed stack** (GAP-195). `backend-data` is a Docker
+   *named* volume; because the image had no `/app/data` path, the daemon created it owned by `root`
+   while the container runs as uid 1001. `ReportArtifactStore.write` could not create its directory,
+   so `POST /api/v1/reports` returned 500 for every report type — and uploads under
+   `STORAGE_LOCAL_ROOT=/app/data/uploads` would have failed the same way. Fixed in the Dockerfile by
+   creating both directories owned by `exam` before the volume is declared.
+2. **Report history is always empty for the report types the screen offers** (GAP-196).
+   `ReportService.history` reads only `background_job` rows, but synchronous reports write an audit
+   entry and no job row, and every executive/ops type is `SYNC`. Left **open** and reported: making
+   sync runs appear in history changes what `background_job` means and needs a spec decision first
+   (rule 20). The UI degrades honestly with "No report history yet."
+
+### Palette migration completed
+
+The sweep that started on four pages was finished: **every** `slate/gray/zinc` palette literal in
+`frontend/app`, `frontend/features` and `frontend/components` (roughly 1,100 occurrences across
+~160 files) now uses the semantic tokens. This closes the bulk of **GAP-189**. Verified: 0 remaining
+matches, lint 0, type-check 0, 521/521 tests, production build compiled.
+
+**Verified:** frontend `lint` 0 errors / 0 warnings, `type-check` clean, **521/521 tests (93 files)**,
+production build compiled. Live: `/api/v1/reports/catalog` **200** with 26 report types;
+`POST /api/v1/reports` now returns a real 4-row `EXECUTIVE_KPI_SUMMARY` (5,010 active users) where it
+previously returned 500; `ADMIN` holds all eight `REPORT_*` permissions.
 
 ## 5. The most recent change — final verification (Step 8)
 

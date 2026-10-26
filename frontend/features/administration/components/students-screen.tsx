@@ -25,7 +25,7 @@ export function StudentsScreen() {
 
   if (!canViewRoles) {
     return (
-      <p role="alert" className="text-sm text-red-600">
+      <p role="alert" className="text-sm text-destructive">
         Viewing students requires the role-visibility permission, because the STUDENT role must be
         resolved before the user list can be filtered.
       </p>
@@ -38,7 +38,7 @@ export function StudentsScreen() {
 
   if (rolesQuery.isError) {
     return (
-      <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <div role="alert" className="rounded-lg border border-destructive bg-destructive-subtle p-4 text-sm text-destructive">
         {describeAdminError(rolesQuery.error, "The role catalog could not be loaded.")}
       </div>
     );

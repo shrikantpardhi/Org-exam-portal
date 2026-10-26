@@ -31,7 +31,7 @@ export function AcademicHierarchy() {
   }
   if (exams.isError) {
     return (
-      <p role="alert" className="text-sm text-red-600">
+      <p role="alert" className="text-sm text-destructive">
         {exams.error.message}
       </p>
     );
@@ -87,7 +87,7 @@ function BranchList<T>({
   }
   if (query.isError) {
     return (
-      <p role="alert" className="text-sm text-red-600">
+      <p role="alert" className="text-sm text-destructive">
         {query.error.message}
       </p>
     );

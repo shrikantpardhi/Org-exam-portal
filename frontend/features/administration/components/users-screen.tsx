@@ -73,14 +73,14 @@ export function UsersScreen() {
       header: "Actions",
       render: (user) => (
         <div className="flex items-center gap-3">
-          <Link href={"/admin/users/" + user.id} className="font-medium text-blue-600 hover:underline">
+          <Link href={"/admin/users/" + user.id} className="font-medium text-info hover:underline">
             View
           </Link>
           {canArchive && user.status !== "ARCHIVED" ? (
             <button
               type="button"
               onClick={() => setTarget(user)}
-              className="rounded text-sm font-medium text-red-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+              className="rounded text-sm font-medium text-destructive underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
             >
               Archive
             </button>
@@ -188,7 +188,7 @@ export function UsersScreen() {
         onCancel={() => setTarget(null)}
       />
       {archive.isError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {describeAdminError(archive.error, "The user could not be archived.")}
         </p>
       ) : null}

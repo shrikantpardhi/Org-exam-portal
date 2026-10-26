@@ -7,8 +7,8 @@ import type { ReactNode } from "react";
  * ({@code specs/18-P9-Commerce-V1.5.md §75-§89}).
  */
 const BUTTON_CLASS =
-  "mt-2 rounded border border-red-300 bg-surface px-3 py-1 text-sm font-medium text-red-700 " +
-  "hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 " +
+  "mt-2 rounded border border-destructive bg-surface px-3 py-1 text-sm font-medium text-destructive " +
+  "hover:bg-destructive-subtle focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 " +
   "focus-visible:outline-red-600";
 
 export function CommerceLoading({ label = "Loading commerce data…" }: { label?: string }) {
@@ -32,7 +32,7 @@ export function CommerceEmpty({ message, hint }: { message: string; hint?: React
 
 export function CommerceError({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+    <div role="alert" className="rounded-lg border border-destructive bg-destructive-subtle p-4 text-sm text-destructive">
       <p>{message}</p>
       {onRetry ? (
         <button type="button" onClick={onRetry} className={BUTTON_CLASS}>
@@ -48,7 +48,7 @@ export function LifecycleBadge({ status }: { status: string }) {
   const key = (status ?? "").toUpperCase();
   const style =
     key === "ACTIVE"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      ? "border-success bg-success-subtle text-success"
       : "border-border bg-muted text-muted-foreground";
   return (
     <span data-status={key || "UNKNOWN"} className={`rounded-full border px-2 py-0.5 text-xs font-medium ${style}`}>

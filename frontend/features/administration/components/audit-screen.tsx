@@ -100,7 +100,7 @@ export function AuditScreen() {
             setSelected(entry);
             setDrawerOpen(true);
           }}
-          className="rounded text-sm font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          className="rounded text-sm font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
           View
         </button>
@@ -174,7 +174,7 @@ export function AuditScreen() {
       </FilterBar>
 
       {formError ? (
-        <p role="alert" className="text-sm text-red-600">{formError}</p>
+        <p role="alert" className="text-sm text-destructive">{formError}</p>
       ) : null}
 
       <DataTable

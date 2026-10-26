@@ -69,11 +69,11 @@ export function AssessmentValidationPanel({
 
       {result ? (
         result.valid ? (
-          <p role="status" className="text-sm text-green-700">
+          <p role="status" className="text-sm text-success">
             Assessment is valid and ready to publish.
           </p>
         ) : (
-          <ul role="alert" className="space-y-1 text-sm text-red-600">
+          <ul role="alert" className="space-y-1 text-sm text-destructive">
             {result.errors.map((issue, index) => (
               <li key={index}>
                 <span className="font-mono text-xs">{issue.code}</span> — {issue.message}
@@ -84,7 +84,7 @@ export function AssessmentValidationPanel({
       ) : null}
 
       {error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}

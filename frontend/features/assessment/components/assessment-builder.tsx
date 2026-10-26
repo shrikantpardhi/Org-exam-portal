@@ -161,7 +161,7 @@ export function AssessmentBuilder({
 
   if (version.isError) {
     return (
-      <p role="alert" className="text-sm text-red-600">
+      <p role="alert" className="text-sm text-destructive">
         The assessment version could not be loaded.
       </p>
     );
@@ -205,14 +205,14 @@ export function AssessmentBuilder({
       </section>
 
       {published ? (
-        <p role="status" className="rounded border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+        <p role="status" className="rounded border border-warning bg-warning-subtle p-4 text-sm text-amber-900">
           This version is published and immutable. Authoring controls are disabled; create a new version
           to change it (§23).
         </p>
       ) : null}
 
       {blueprintVersion.isError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           The bound blueprint version could not be loaded, so section assignment is unavailable.
         </p>
       ) : null}
@@ -300,12 +300,12 @@ export function AssessmentBuilder({
       />
 
       {message ? (
-        <p role="status" className="text-sm text-green-700">
+        <p role="status" className="text-sm text-success">
           {message}
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}

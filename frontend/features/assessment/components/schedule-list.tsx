@@ -190,7 +190,7 @@ export function ScheduleList() {
 
       {schedules.isPending ? <p role="status">Loading schedules…</p> : null}
       {schedules.isError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           Schedules could not be loaded.
         </p>
       ) : null}
@@ -227,12 +227,12 @@ export function ScheduleList() {
       ) : null}
 
       {message ? (
-        <p role="status" className="text-sm text-green-700">
+        <p role="status" className="text-sm text-success">
           {message}
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}

@@ -20,7 +20,7 @@ export function DashboardScreen() {
  ? describeAdminError(status.error, "Platform status could not be loaded.")
  : describeAdminError(system.error, "System information could not be loaded.");
     return (
-      <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <div role="alert" className="rounded-lg border border-destructive bg-destructive-subtle p-4 text-sm text-destructive">
         {message}
         <button
  type="button"

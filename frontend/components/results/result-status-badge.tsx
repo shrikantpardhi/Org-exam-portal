@@ -14,8 +14,8 @@ const LABELS: Record<string, string> = {
 };
 
 const STYLES: Record<string, string> = {
-  PUBLISHED: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  READY_FOR_PUBLICATION: "border-amber-200 bg-amber-50 text-amber-800",
+  PUBLISHED: "border-success bg-success-subtle text-success",
+  READY_FOR_PUBLICATION: "border-warning bg-warning-subtle text-warning",
   CALCULATED: "border-border bg-muted text-muted-foreground",
   SUPERSEDED: "border-border bg-muted text-muted-foreground",
 };

@@ -110,7 +110,7 @@ export function AdminForm<S extends ZodTypeAny>({
             />
           )}
           {errors[field.name] ? (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-sm text-destructive">
               {String(errors[field.name]?.message)}
             </p>
           ) : null}
@@ -118,7 +118,7 @@ export function AdminForm<S extends ZodTypeAny>({
       ))}
 
       {serverError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {serverError}
         </p>
       ) : null}

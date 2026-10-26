@@ -25,7 +25,7 @@ export function AccessGrantCard({ grant }: { grant: AccessGrant }) {
           data-active={grant.active}
           className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
             grant.active
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              ? "border-success bg-success-subtle text-success"
               : "border-border bg-muted text-muted-foreground"
           }`}
         >

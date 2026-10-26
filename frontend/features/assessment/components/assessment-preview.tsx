@@ -25,7 +25,7 @@ export function AssessmentPreview({
 
   if (preview.isError) {
     return (
-      <p role="alert" className="text-sm text-red-600">
+      <p role="alert" className="text-sm text-destructive">
         The preview could not be loaded.
       </p>
     );

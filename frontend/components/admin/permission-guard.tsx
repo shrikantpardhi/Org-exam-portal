@@ -32,7 +32,7 @@ export function PermissionGuard({
   if (!can(permission)) {
     return (
       fallback ?? (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div role="alert" className="rounded-lg border border-destructive bg-destructive-subtle p-4 text-sm text-destructive">
           You do not have access to this section.
         </div>
       )

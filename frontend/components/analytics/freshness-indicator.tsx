@@ -17,9 +17,9 @@ const LABELS: Record<string, string> = {
 };
 
 const STYLES: Record<string, string> = {
-  CURRENT: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  STALE: "border-amber-200 bg-amber-50 text-amber-800",
-  REFRESHING: "border-blue-200 bg-blue-50 text-blue-700",
+  CURRENT: "border-success bg-success-subtle text-success",
+  STALE: "border-warning bg-warning-subtle text-warning",
+  REFRESHING: "border-info bg-info-subtle text-info",
   EMPTY: "border-border bg-muted text-muted-foreground",
 };
 

@@ -111,7 +111,7 @@ export function ReportCatalog({
                       disabled
                         ? "border-dashed border-input bg-muted text-muted-foreground"
                         : selected
-                          ? "border-blue-500 bg-blue-50"
+                          ? "border-blue-500 bg-info-subtle"
                           : "border-border bg-surface"
                     }`}
                   >
@@ -158,7 +158,7 @@ export function ReportCatalog({
                           type="button"
                           aria-pressed={selected}
                           onClick={() => onSelect(entry)}
-                          className="rounded border border-input bg-surface px-3 py-1 text-sm font-medium hover:border-blue-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                          className="rounded border border-input bg-surface px-3 py-1 text-sm font-medium hover:border-info focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                         >
                           {selected ? "Selected" : "Select"}
                         </button>

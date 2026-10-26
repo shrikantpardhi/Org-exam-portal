@@ -24,9 +24,9 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  GENERATED: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  PENDING: "border-amber-200 bg-amber-50 text-amber-800",
-  FAILED: "border-red-200 bg-red-50 text-red-700",
+  GENERATED: "border-success bg-success-subtle text-success",
+  PENDING: "border-warning bg-warning-subtle text-warning",
+  FAILED: "border-destructive bg-destructive-subtle text-destructive",
 };
 
 export function ScorecardView({

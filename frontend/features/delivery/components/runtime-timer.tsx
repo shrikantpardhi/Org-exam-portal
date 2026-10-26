@@ -33,15 +33,15 @@ export function RuntimeTimer({
 
   const tone =
     expired || level === "critical"
-      ? "font-mono text-lg text-red-600"
+      ? "font-mono text-lg text-destructive"
       : level === "warning"
-        ? "font-mono text-lg text-amber-600"
+        ? "font-mono text-lg text-warning"
         : "font-mono text-lg text-foreground";
 
   return (
     <div className="flex items-center gap-2">
       {level === "warning" || level === "critical" ? (
-        <span role="status" aria-live="polite" className="text-xs font-medium text-amber-700">
+        <span role="status" aria-live="polite" className="text-xs font-medium text-warning">
           {level === "critical" ? "Less than a minute" : "Time is running short"}
         </span>
       ) : null}

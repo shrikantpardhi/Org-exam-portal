@@ -39,7 +39,7 @@ export function ReviewQueue() {
         </p>
       ) : null}
       {questions.isError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           The review queue could not be loaded.
         </p>
       ) : null}

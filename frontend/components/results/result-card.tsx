@@ -86,7 +86,7 @@ export function ResultCard({ result, heading, href }: ResultCardProps) {
         <footer className="mt-4 text-sm">
           <Link
             href={href}
-            className="rounded font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            className="rounded font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           >
             View result
           </Link>

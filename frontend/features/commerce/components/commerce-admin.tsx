@@ -108,7 +108,7 @@ export function CommerceAdmin() {
                         <button
                           type="button"
                           onClick={() => setSelectedPackageId(pkg.id)}
-                          className="rounded text-sm font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                          className="rounded text-sm font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                         >
                           Manage collections
                         </button>
@@ -118,7 +118,7 @@ export function CommerceAdmin() {
                             onClick={() => {
                               archivePackage.mutate(pkg.id);
                             }}
-                            className="rounded text-sm font-medium text-red-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+                            className="rounded text-sm font-medium text-destructive underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
                           >
                             Archive
                           </button>
@@ -175,7 +175,7 @@ export function CommerceAdmin() {
                     onClick={() => {
                       removeCollection.mutate(mapping.assessmentCollectionId);
                     }}
-                    className="rounded text-sm font-medium text-red-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+                    className="rounded text-sm font-medium text-destructive underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
                   >
                     Remove mapping
                   </button>

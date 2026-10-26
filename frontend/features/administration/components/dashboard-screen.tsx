@@ -25,14 +25,14 @@ export function DashboardScreen() {
 
   if (query.isError) {
     return (
-      <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <div role="alert" className="rounded-lg border border-destructive bg-destructive-subtle p-4 text-sm text-destructive">
         <p>{describeAdminError(query.error, "The dashboard could not be loaded.")}</p>
         <button
           type="button"
           onClick={() => {
             void query.refetch();
           }}
-          className="mt-2 rounded border border-red-300 bg-surface px-3 py-1 text-sm font-medium text-red-700"
+          className="mt-2 rounded border border-destructive bg-surface px-3 py-1 text-sm font-medium text-destructive"
         >
           Try again
         </button>

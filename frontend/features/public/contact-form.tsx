@@ -61,7 +61,7 @@ export function ContactForm() {
 
   if (state.phase === "success") {
     return (
-      <p role="status" className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+      <p role="status" className="rounded-md border border-green-200 bg-success-subtle p-4 text-sm text-success">
         Thanks — we&apos;ll be in touch.
       </p>
     );
@@ -110,7 +110,7 @@ export function ContactForm() {
         />
       </div>
       {state.phase === "error" ? (
-        <p role="alert" className="text-sm text-red-600">{state.message}</p>
+        <p role="alert" className="text-sm text-destructive">{state.message}</p>
       ) : null}
       <Button type="submit" disabled={state.phase === "submitting"}>
         {state.phase === "submitting" ? "Sending…" : "Send message"}

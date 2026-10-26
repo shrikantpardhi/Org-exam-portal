@@ -104,11 +104,11 @@ export function TopicAnalysis({
                   </td>
                   <td className="py-2 text-xs">
                     {topic.weakArea ? (
-                      <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-medium text-amber-800">
+                      <span className="rounded-full border border-warning bg-warning-subtle px-2 py-0.5 font-medium text-warning">
                         Weak area
                       </span>
                     ) : topic.robustSample ? (
-                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">
+                      <span className="rounded-full border border-success bg-success-subtle px-2 py-0.5 font-medium text-success">
                         Reliable sample
                       </span>
                     ) : (

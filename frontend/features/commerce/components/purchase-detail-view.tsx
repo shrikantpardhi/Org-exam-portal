@@ -111,7 +111,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
       />
 
       {paymentQuery.isError && !isNotFound(paymentQuery.error) ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {describeCommerceError(paymentQuery.error, "The payment detail could not be loaded.")}
         </p>
       ) : null}
@@ -146,14 +146,14 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
         </button>
         <Link
           href="/student/purchases"
-          className="rounded px-4 py-2 text-sm font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          className="rounded px-4 py-2 text-sm font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
           All purchases
         </Link>
       </div>
 
       {purchase.paymentStatus === "SUCCESS" ? (
-        <div role="status" className="space-y-1 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+        <div role="status" className="space-y-1 rounded-lg border border-success bg-success-subtle p-4 text-sm text-success">
           <p className="font-medium">Payment confirmed. Your access has been applied by the server.</p>
           <Link href="/student/access" className="underline">
             View my access

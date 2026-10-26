@@ -198,7 +198,7 @@ export function PreviousExamEditor({
                         disabled={disabled}
                         aria-label={`Remove previous exam ${examName(row.examId)}`}
                         onClick={() => void handleRemove(row)}
-                        className="text-red-600"
+                        className="text-destructive"
                       >
                         Remove
                       </Button>
@@ -268,7 +268,7 @@ export function PreviousExamEditor({
       </Button>
 
       {error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}

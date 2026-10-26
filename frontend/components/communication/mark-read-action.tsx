@@ -18,7 +18,7 @@ export function MarkReadAction({
       onClick={() => onMarkRead(notificationId)}
       disabled={pending}
       aria-label={`Mark "${title}" as read`}
-      className="rounded text-sm font-medium text-blue-700 underline disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+      className="rounded text-sm font-medium text-info underline disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
     >
       {pending ? "Marking…" : "Mark read"}
     </button>

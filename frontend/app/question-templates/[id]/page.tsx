@@ -28,7 +28,7 @@ export default function QuestionTemplatePage() {
           </p>
         ) : null}
         {template.isError ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             The template could not be loaded.
           </p>
         ) : null}

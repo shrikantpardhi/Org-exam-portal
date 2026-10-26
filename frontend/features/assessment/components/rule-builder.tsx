@@ -500,12 +500,12 @@ export function RuleBuilder({
       </div>
 
       {message ? (
-        <p role="status" className="text-sm text-green-700">
+        <p role="status" className="text-sm text-success">
           {message}
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}

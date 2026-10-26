@@ -68,7 +68,7 @@ export function LookupsScreen() {
                 setEditing(lookup);
                 setMessage(null);
               }}
-              className="rounded text-sm font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              className="rounded text-sm font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
             >
               Edit
             </button>
@@ -77,7 +77,7 @@ export function LookupsScreen() {
             <button
               type="button"
               onClick={() => setTarget(lookup)}
-              className="rounded text-sm font-medium text-red-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+              className="rounded text-sm font-medium text-destructive underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
             >
               Delete
             </button>
@@ -199,19 +199,19 @@ export function LookupsScreen() {
         </section>
       ) : null}
 
-      {message ? <p role="status" className="text-sm text-emerald-700">{message}</p> : null}
+      {message ? <p role="status" className="text-sm text-success">{message}</p> : null}
       {create.isError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {describeAdminError(create.error, "The lookup could not be created.")}
         </p>
       ) : null}
       {update.isError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {describeAdminError(update.error, "The lookup could not be saved.")}
         </p>
       ) : null}
       {remove.isError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {describeAdminError(remove.error, "The lookup could not be deleted.")}
         </p>
       ) : null}

@@ -39,14 +39,14 @@ export function SettingsScreen() {
 
   if (query.isError) {
     return (
-      <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <div role="alert" className="rounded-lg border border-destructive bg-destructive-subtle p-4 text-sm text-destructive">
         <p>{describeAdminError(query.error, "Settings could not be loaded.")}</p>
         <button
           type="button"
           onClick={() => {
             void query.refetch();
           }}
-          className="mt-2 rounded border border-red-300 bg-surface px-3 py-1 text-sm font-medium text-red-700"
+          className="mt-2 rounded border border-destructive bg-surface px-3 py-1 text-sm font-medium text-destructive"
         >
           Try again
         </button>
@@ -143,7 +143,7 @@ export function SettingsScreen() {
           className="w-full rounded-md border border-input px-3 py-2 font-mono text-sm"
         />
         {jsonErrors[descriptor.key] ? (
-          <p role="alert" className="text-sm text-red-600">{jsonErrors[descriptor.key]}</p>
+          <p role="alert" className="text-sm text-destructive">{jsonErrors[descriptor.key]}</p>
         ) : null}
       </div>
     );
@@ -201,9 +201,9 @@ export function SettingsScreen() {
         <p className="text-xs text-muted-foreground">You can view settings but not change them.</p>
       )}
 
-      {message ? <p role="status" className="text-sm text-emerald-700">{message}</p> : null}
+      {message ? <p role="status" className="text-sm text-success">{message}</p> : null}
       {update.isError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {describeAdminError(update.error, "The settings could not be saved.")}
         </p>
       ) : null}

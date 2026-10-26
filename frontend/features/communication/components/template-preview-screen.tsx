@@ -46,7 +46,7 @@ export function TemplatePreviewScreen({ templateId }: { templateId: string }) {
       <TemplatePreview template={query.data} />
       <Link
         href={`/admin/communication/templates/${query.data.id}`}
-        className="rounded text-sm font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+        className="rounded text-sm font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
       >
         Back to template
       </Link>

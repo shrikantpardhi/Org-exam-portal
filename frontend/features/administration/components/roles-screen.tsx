@@ -92,7 +92,7 @@ export function RolesScreen() {
               setSelectedRoleId(role.id);
               setMessage(null);
             }}
-            className="rounded text-sm font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            className="rounded text-sm font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           >
             Manage permissions
           </button>
@@ -135,7 +135,7 @@ export function RolesScreen() {
             <p role="status" className="text-sm text-muted-foreground">Loading role permissions…</p>
           ) : null}
           {rolePermissionsQuery.isError ? (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-sm text-destructive">
               {describeAdminError(rolePermissionsQuery.error, "Role permissions could not be loaded.")}
             </p>
           ) : null}
@@ -143,7 +143,7 @@ export function RolesScreen() {
             <p role="status" className="text-sm text-muted-foreground">Loading permission catalogue…</p>
           ) : null}
           {permissionsQuery.isError ? (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-sm text-destructive">
               {describeAdminError(permissionsQuery.error, "The permission catalogue could not be loaded.")}
             </p>
           ) : null}
@@ -201,10 +201,10 @@ export function RolesScreen() {
           </div>
 
           {message ? (
-            <p role="status" className="text-sm text-emerald-700">{message}</p>
+            <p role="status" className="text-sm text-success">{message}</p>
           ) : null}
           {replace.isError ? (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-sm text-destructive">
               {describeAdminError(replace.error, "The role permissions could not be saved.")}
             </p>
           ) : null}

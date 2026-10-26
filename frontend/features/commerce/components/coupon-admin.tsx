@@ -68,7 +68,7 @@ export function CouponAdmin() {
           }}
         />
         {message ? (
-          <p role="status" className="text-sm text-emerald-700">
+          <p role="status" className="text-sm text-success">
             {message}
           </p>
         ) : null}
@@ -114,7 +114,7 @@ export function CouponAdmin() {
                           onClick={() => {
                             archive.mutate(coupon.id);
                           }}
-                          className="rounded text-sm font-medium text-red-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+                          className="rounded text-sm font-medium text-destructive underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
                         >
                           Archive
                         </button>

@@ -42,7 +42,7 @@ export function LanguagesManager() {
         </p>
       ) : null}
       {languages.isError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {(languages.error as ApiClientError).message}
         </p>
       ) : null}
@@ -71,7 +71,7 @@ export function LanguagesManager() {
                   <td className="py-2">
                     <button
                       type="button"
-                      className="text-red-600 underline"
+                      className="text-destructive underline"
                       onClick={() => void archiveLanguage.mutateAsync(language.id)}
                     >
                       Archive

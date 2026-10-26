@@ -106,7 +106,7 @@ function VersionTextEditor({
       <h2 className="text-lg font-semibold">{copy.heading}</h2>
 
       {published ? (
-        <p role="note" className="text-sm text-amber-700">
+        <p role="note" className="text-sm text-warning">
           This version is published, so its {kind} cannot be changed. Create a new version to author a
           different {kind}.
         </p>
@@ -130,7 +130,7 @@ function VersionTextEditor({
       </div>
 
       {error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}

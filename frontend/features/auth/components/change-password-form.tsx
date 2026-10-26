@@ -92,7 +92,7 @@ export function ChangePasswordForm() {
               className="w-full rounded-md border border-input px-3 py-2 text-sm"
             />
           </div>
-          {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
+          {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
           <Button type="submit" disabled={submitting} className="w-full">
             {submitting ? "Changing…" : "Change password"}
           </Button>

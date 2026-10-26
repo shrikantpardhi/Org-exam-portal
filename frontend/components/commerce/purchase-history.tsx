@@ -53,7 +53,7 @@ export function PurchaseHistory({ purchases }: { purchases: Purchase[] }) {
               <td className="py-2">
                 <Link
                   href={`/student/purchases/${purchase.id}`}
-                  className="rounded font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                  className="rounded font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                 >
                   View
                 </Link>

@@ -125,7 +125,7 @@ export function QuestionEditor() {
             ))}
           </select>
           {errors.templateId ? (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-sm text-destructive">
               {errors.templateId}
             </p>
           ) : null}
@@ -152,7 +152,7 @@ export function QuestionEditor() {
             ))}
           </select>
           {errors.languageId ? (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-sm text-destructive">
               {errors.languageId}
             </p>
           ) : null}
@@ -174,7 +174,7 @@ export function QuestionEditor() {
 
         <MathTextField label="Content" value={content} onChange={setContent} rows={5} />
         {errors.content ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {errors.content}
           </p>
         ) : null}
@@ -270,7 +270,7 @@ export function QuestionEditor() {
       </p>
 
       {serverError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {serverError}
         </p>
       ) : null}

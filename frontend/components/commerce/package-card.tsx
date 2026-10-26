@@ -19,7 +19,7 @@ export function PackageCard({ pkg, href }: { pkg: AccessPackage; href?: string }
       {href ? (
         <Link
           href={href}
-          className="mt-4 inline-block rounded text-sm font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          className="mt-4 inline-block rounded text-sm font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
           View package
         </Link>

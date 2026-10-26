@@ -187,7 +187,7 @@ export function QuestionWorkspace({ questionId }: { questionId: string }) {
 </div>
             ) : null}
             {selected.published ? (
-              <p role="note" className="text-sm text-amber-700">
+              <p role="note" className="text-sm text-warning">
                 This version is published, so its options are immutable. Create a new version to
                 change them.
               </p>
@@ -230,7 +230,7 @@ export function QuestionWorkspace({ questionId }: { questionId: string }) {
             textareaRef={contentField}
           />
           {selected.published ? (
-            <p role="note" className="text-sm text-amber-700">
+            <p role="note" className="text-sm text-warning">
               Version {selected.version} is published and immutable. Use “Create a new version” in the
               history above to author replacement content.
             </p>
@@ -244,7 +244,7 @@ export function QuestionWorkspace({ questionId }: { questionId: string }) {
       ) : null}
 
       {question.isError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           The question could not be loaded.
         </p>
       ) : null}
@@ -263,7 +263,7 @@ export function QuestionWorkspace({ questionId }: { questionId: string }) {
       <PreviousExamEditor questionId={questionId} />
 
       {error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}

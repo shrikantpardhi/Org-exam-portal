@@ -23,7 +23,7 @@ export function RankBadge({ rank }: { rank: number | null }) {
       aria-label={`Rank ${rank}`}
       className={`rounded-full border px-2 py-0.5 text-xs font-semibold tabular-nums ${
         leader
-          ? "border-blue-200 bg-blue-50 text-blue-700"
+          ? "border-info bg-info-subtle text-info"
           : "border-border bg-surface text-foreground"
       }`}
     >

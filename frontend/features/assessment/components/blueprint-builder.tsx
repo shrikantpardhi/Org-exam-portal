@@ -94,7 +94,7 @@ export function BlueprintBuilder({
 
   if (version.isError) {
     return (
-      <p role="alert" className="text-sm text-red-600">
+      <p role="alert" className="text-sm text-destructive">
         The blueprint version could not be loaded.
       </p>
     );
@@ -127,7 +127,7 @@ export function BlueprintBuilder({
       </section>
 
       {published ? (
-        <p role="status" className="rounded border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+        <p role="status" className="rounded border border-warning bg-warning-subtle p-4 text-sm text-amber-900">
           This blueprint version is published and immutable. Saving creates a new version from this
           configuration so the published one is never edited in place (§22).
         </p>
@@ -145,11 +145,11 @@ export function BlueprintBuilder({
           Validation summary
         </h2>
         {gaps.valid ? (
-          <p role="status" className="text-sm text-green-700">
+          <p role="status" className="text-sm text-success">
             The configuration is complete. The server still validates the saved version before publication.
           </p>
         ) : (
-          <ul role="alert" className="list-inside list-disc space-y-1 text-sm text-red-600">
+          <ul role="alert" className="list-inside list-disc space-y-1 text-sm text-destructive">
             {gaps.missing.map((item) => (
               <li key={item}>{item}</li>
             ))}
@@ -171,12 +171,12 @@ export function BlueprintBuilder({
       </div>
 
       {message ? (
-        <p role="status" className="text-sm text-green-700">
+        <p role="status" className="text-sm text-success">
           {message}
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}

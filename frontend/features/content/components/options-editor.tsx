@@ -184,7 +184,7 @@ export function OptionsEditor({
                 disabled={disabled}
                 aria-label={`Remove option ${index + 1}`}
                 onClick={() => remove(index)}
-                className="text-red-600"
+                className="text-destructive"
               >
                 Remove
               </Button>
@@ -194,7 +194,7 @@ export function OptionsEditor({
       </ol>
 
       {problems.length > 0 ? (
-        <ul aria-label="Option problems" className="space-y-1 text-sm text-amber-700">
+        <ul aria-label="Option problems" className="space-y-1 text-sm text-warning">
           {problems.map((problem) => (
             <li key={problem}>{problem}</li>
           ))}

@@ -70,28 +70,28 @@ export function CreateUserForm() {
           <label htmlFor="firstName" className="text-sm font-medium">First name</label>
           <input id="firstName" {...register("firstName")} className={inputClass} />
           {errors.firstName ? (
-            <p role="alert" className="text-sm text-red-600">{errors.firstName.message}</p>
+            <p role="alert" className="text-sm text-destructive">{errors.firstName.message}</p>
           ) : null}
         </div>
         <div className="space-y-1">
           <label htmlFor="lastName" className="text-sm font-medium">Last name</label>
           <input id="lastName" {...register("lastName")} className={inputClass} />
           {errors.lastName ? (
-            <p role="alert" className="text-sm text-red-600">{errors.lastName.message}</p>
+            <p role="alert" className="text-sm text-destructive">{errors.lastName.message}</p>
           ) : null}
         </div>
         <div className="space-y-1">
           <label htmlFor="email" className="text-sm font-medium">Email</label>
           <input id="email" type="email" {...register("email")} className={inputClass} />
           {errors.email ? (
-            <p role="alert" className="text-sm text-red-600">{errors.email.message}</p>
+            <p role="alert" className="text-sm text-destructive">{errors.email.message}</p>
           ) : null}
         </div>
         <div className="space-y-1">
           <label htmlFor="mobile" className="text-sm font-medium">Mobile (optional)</label>
           <input id="mobile" {...register("mobile")} className={inputClass} />
           {errors.mobile ? (
-            <p role="alert" className="text-sm text-red-600">{errors.mobile.message}</p>
+            <p role="alert" className="text-sm text-destructive">{errors.mobile.message}</p>
           ) : null}
         </div>
       </div>
@@ -101,9 +101,9 @@ export function CreateUserForm() {
         selected={selectedRoles}
         onChange={(next) => setValue("roles", next)}
       />
-      {roleError ? <p role="alert" className="text-sm text-red-600">{roleError}</p> : null}
+      {roleError ? <p role="alert" className="text-sm text-destructive">{roleError}</p> : null}
 
-      {serverError ? <p role="alert" className="text-sm text-red-600">{serverError}</p> : null}
+      {serverError ? <p role="alert" className="text-sm text-destructive">{serverError}</p> : null}
 
       <div className="flex items-center gap-2">
         <button

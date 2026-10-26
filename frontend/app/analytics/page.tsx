@@ -28,7 +28,7 @@ export default function AnalyticsPage() {
       <nav aria-label="Analytics views" className="grid gap-4 sm:grid-cols-2">
         <Link
           href="/analytics/student"
-          className="rounded-lg border border-border bg-surface p-4 shadow-sm hover:border-blue-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          className="rounded-lg border border-border bg-surface p-4 shadow-sm hover:border-info focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
           <h2 className="text-base font-semibold">My analytics</h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -39,7 +39,7 @@ export default function AnalyticsPage() {
         {status === "authenticated" && isStaff ? (
           <Link
             href="/analytics/organization"
-            className="rounded-lg border border-border bg-surface p-4 shadow-sm hover:border-blue-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            className="rounded-lg border border-border bg-surface p-4 shadow-sm hover:border-info focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           >
             <h2 className="text-base font-semibold">Organization analytics</h2>
             <p className="mt-1 text-sm text-muted-foreground">

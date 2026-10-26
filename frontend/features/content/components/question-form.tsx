@@ -144,7 +144,7 @@ export function QuestionForm() {
       </div>
 
       {serverError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {serverError}
         </p>
       ) : null}
@@ -162,7 +162,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
       <span className="text-sm font-medium">{label}</span>
       {children}
       {error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}

@@ -11,8 +11,8 @@ import type { ReactNode } from "react";
  * that ambiguity ({@code §39, §87}).
  */
 const BUTTON_CLASS =
-  "mt-2 rounded border border-red-300 bg-surface px-3 py-1 text-sm font-medium text-red-700 " +
-  "hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 " +
+  "mt-2 rounded border border-destructive bg-surface px-3 py-1 text-sm font-medium text-destructive " +
+  "hover:bg-destructive-subtle focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 " +
   "focus-visible:outline-red-600";
 
 export function ResultsLoading({ label = "Loading results…" }: { label?: string }) {
@@ -36,7 +36,7 @@ export function ResultsEmpty({ message, hint }: { message: string; hint?: ReactN
 
 export function ResultsError({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+    <div role="alert" className="rounded-lg border border-destructive bg-destructive-subtle p-4 text-sm text-destructive">
       <p>{message}</p>
       {onRetry ? (
         <button type="button" onClick={onRetry} className={BUTTON_CLASS}>

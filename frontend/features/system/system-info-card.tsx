@@ -36,7 +36,7 @@ export function SystemInfoCard() {
         )}
 
         {isError && (
-          <div role="alert" className="space-y-1 text-sm text-red-600">
+          <div role="alert" className="space-y-1 text-sm text-destructive">
             <p className="font-medium">{error.message}</p>
             {error.requestId ? (
               <p className="text-muted-foreground">Reference: {error.requestId}</p>

@@ -45,7 +45,7 @@ export function OrganizationsScreen() {
       render: (org) => (
         <Link
  href={"/platform/organizations/" + org.id}
- className="font-medium text-blue-600 hover:underline"
+ className="font-medium text-info hover:underline"
         >
           View
         </Link>

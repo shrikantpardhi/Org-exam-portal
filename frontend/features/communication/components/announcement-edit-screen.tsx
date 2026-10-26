@@ -74,14 +74,14 @@ export function AnnouncementEditScreen({ announcementId }: { announcementId: str
       <nav aria-label="Announcement actions" className="flex flex-wrap gap-4 text-sm">
         <Link
           href="/admin/communication/announcements"
-          className="rounded font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          className="rounded font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
           All announcements
         </Link>
       </nav>
 
       {!can("ANNOUNCEMENT_WRITE") ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           You do not have permission to edit announcements.
         </p>
       ) : null}
@@ -109,7 +109,7 @@ export function AnnouncementEditScreen({ announcementId }: { announcementId: str
       />
 
       {message ? (
-        <p role="status" className="text-sm text-emerald-700">
+        <p role="status" className="text-sm text-success">
           {message}
         </p>
       ) : null}
@@ -126,7 +126,7 @@ export function AnnouncementEditScreen({ announcementId }: { announcementId: str
             fan-out. It does not send notifications synchronously.
           </p>
           {publish.isSuccess ? (
-            <p role="status" className="text-sm text-emerald-700">
+            <p role="status" className="text-sm text-success">
               Announcement published. Fan-out job:{" "}
               <code title={publish.data.fanoutJobId ?? undefined}>
                 {shortId(publish.data.fanoutJobId)}
@@ -161,7 +161,7 @@ export function AnnouncementEditScreen({ announcementId }: { announcementId: str
           onClick={() => {
             archive.mutate(announcement.id);
           }}
-          className="rounded border border-red-300 bg-surface px-4 py-2 text-sm font-medium text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+          className="rounded border border-destructive bg-surface px-4 py-2 text-sm font-medium text-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
         >
           Archive announcement
         </button>

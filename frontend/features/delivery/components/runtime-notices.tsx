@@ -14,7 +14,7 @@ import { unansweredCount, type PaletteCounts } from "@/features/delivery/lib/pal
 /** The non-blocking offline indicator (§78, §130). */
 export function OfflineIndicator({ pending, failed }: { pending: number; failed: number }) {
   return (
-    <div role="status" aria-live="polite" className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+    <div role="status" aria-live="polite" className="rounded border border-warning bg-warning-subtle p-3 text-sm text-amber-900">
       <p className="font-medium">You are offline.</p>
       <p>
         Your answers are kept on this device and will be sent when the connection returns. Do not close
@@ -61,7 +61,7 @@ export function SaveIndicator({
       role="status"
       aria-live="polite"
       className={
-        failed > 0 && !offline ? "text-sm text-red-700" : "text-sm text-muted-foreground"
+        failed > 0 && !offline ? "text-sm text-destructive" : "text-sm text-muted-foreground"
       }
     >
       {text}
@@ -75,7 +75,7 @@ export function SaveIndicator({
  */
 export function SessionRecoveryBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
-    <div role="status" aria-live="polite" className="rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
+    <div role="status" aria-live="polite" className="rounded border border-info bg-info-subtle p-3 text-sm text-blue-900">
       <p className="font-medium">Your session was recovered.</p>
       <p>Your saved answers and the timer have been restored from the server.</p>
       <Button variant="ghost" size="sm" className="mt-1" onClick={onDismiss}>
@@ -88,7 +88,7 @@ export function SessionRecoveryBanner({ onDismiss }: { onDismiss: () => void }) 
 /** Read-only notice for a second tab that did not win the single-owner lock (§77, §123). */
 export function SecondTabNotice() {
   return (
-    <div role="alert" className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-900">
+    <div role="alert" className="rounded border border-destructive bg-destructive-subtle p-3 text-sm text-destructive">
       <p className="font-medium">This examination is open in another tab.</p>
       <p>
         Only one tab may answer. This tab is read-only. Close the other tab and reload this one to
@@ -101,7 +101,7 @@ export function SecondTabNotice() {
 /** The expired state, shown when the server deadline has passed (§130, §132). */
 export function ExpiredNotice({ submitted }: { submitted: boolean }) {
   return (
-    <div role="alert" className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-900">
+    <div role="alert" className="rounded border border-destructive bg-destructive-subtle p-3 text-sm text-destructive">
       <p className="font-medium">Time is up.</p>
       <p>
         {submitted
@@ -150,12 +150,12 @@ export function SubmissionDialog({
           <dt className="text-muted-foreground">Answered</dt>
           <dd className="font-medium">{counts.answered}</dd>
           <dt className="text-muted-foreground">Not answered</dt>
-          <dd className={unanswered > 0 ? "font-medium text-red-700" : "font-medium"}>{unanswered}</dd>
+          <dd className={unanswered > 0 ? "font-medium text-destructive" : "font-medium"}>{unanswered}</dd>
           <dt className="text-muted-foreground">Marked for review</dt>
           <dd className="font-medium">{counts.markedForReview}</dd>
         </dl>
         {unanswered > 0 ? (
-          <p role="note" className="mt-3 text-sm text-amber-800">
+          <p role="note" className="mt-3 text-sm text-warning">
             You have {unanswered} unanswered question{unanswered === 1 ? "" : "s"}. You cannot change
             your answers after submitting.
           </p>

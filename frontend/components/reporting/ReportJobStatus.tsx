@@ -96,13 +96,13 @@ export function ReportJobStatus({
         <p className="text-sm text-muted-foreground">The report is running. This page updates itself.</p>
       ) : null}
       {status === "UNKNOWN" ? (
-        <p className="text-sm text-amber-700">
+        <p className="text-sm text-warning">
           The server reported a status this screen does not recognize. It is not treated as complete.
         </p>
       ) : null}
 
       {status === "FAILED" || status === "COMPLETED_WITH_ERRORS" ? (
-        <div role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div role="alert" className="rounded border border-destructive bg-destructive-subtle p-3 text-sm text-destructive">
           <p className="font-medium">
             {status === "FAILED" ? "The report could not be generated." : "Completed with errors."}
           </p>
@@ -131,7 +131,7 @@ export function ReportJobStatus({
               event.preventDefault();
               void download();
             }}
-            className="inline-block rounded border border-input bg-surface px-3 py-1 text-sm font-medium text-blue-700 underline hover:border-blue-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            className="inline-block rounded border border-input bg-surface px-3 py-1 text-sm font-medium text-info underline hover:border-info focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           >
             {downloading ? "Downloading…" : "Download report"}
           </a>
@@ -139,7 +139,7 @@ export function ReportJobStatus({
             <p className="text-xs text-muted-foreground">{job.artifactName}</p>
           ) : null}
           {downloadError ? (
-            <p role="alert" className="text-xs text-red-600">
+            <p role="alert" className="text-xs text-destructive">
               {downloadError}
             </p>
           ) : null}
@@ -151,7 +151,7 @@ export function ReportJobStatus({
       ) : null}
 
       {pollingStopped && !terminal ? (
-        <p role="note" className="text-sm text-amber-700">
+        <p role="note" className="text-sm text-warning">
           Automatic status updates stopped after reaching the polling limit. Open the report history
           to check the final outcome.
         </p>

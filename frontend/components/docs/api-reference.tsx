@@ -5,11 +5,11 @@ import { useMemo, useState } from "react";
 import type { ApiEndpoint, ApiTag } from "@/lib/openapi";
 
 const METHOD_STYLE: Record<string, string> = {
- GET: "bg-emerald-100 text-emerald-800",
- POST: "bg-blue-100 text-blue-800",
- PUT: "bg-amber-100 text-amber-800",
- PATCH: "bg-amber-100 text-amber-800",
- DELETE: "bg-red-100 text-red-800",
+ GET: "bg-emerald-100 text-success",
+ POST: "bg-blue-100 text-info",
+ PUT: "bg-amber-100 text-warning",
+ PATCH: "bg-amber-100 text-warning",
+ DELETE: "bg-destructive-subtle text-destructive",
 };
 
 /**

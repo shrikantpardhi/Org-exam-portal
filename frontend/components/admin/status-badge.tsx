@@ -4,12 +4,12 @@ import { statusLabel } from "./format";
 
 /** A lifecycle or health status pill ({@code specs/20-P11-Administration-V1.5.md §129}). */
 const TONES: Record<string, string> = {
-  ACTIVE: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  ACTIVE: "border-success bg-success-subtle text-success",
   INACTIVE: "border-border bg-muted text-muted-foreground",
   ARCHIVED: "border-border bg-muted text-muted-foreground",
-  UP: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  DOWN: "border-red-200 bg-red-50 text-red-700",
-  DEGRADED: "border-amber-200 bg-amber-50 text-amber-800",
+  UP: "border-success bg-success-subtle text-success",
+  DOWN: "border-destructive bg-destructive-subtle text-destructive",
+  DEGRADED: "border-warning bg-warning-subtle text-warning",
   UNKNOWN: "border-border bg-muted text-muted-foreground",
 };
 

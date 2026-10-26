@@ -103,7 +103,7 @@ export function CollectionList() {
 
       {collections.isPending ? <p role="status">Loading collections…</p> : null}
       {collections.isError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           Collections could not be loaded.
         </p>
       ) : null}
@@ -134,7 +134,7 @@ export function CollectionList() {
       </ul>
 
       {error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}
@@ -203,7 +203,7 @@ export function CollectionDetail({ collectionId }: { collectionId: string }) {
 
   if (collection.isError || !membership) {
     return (
-      <p role="alert" className="text-sm text-red-600">
+      <p role="alert" className="text-sm text-destructive">
         The collection could not be loaded.
       </p>
     );
@@ -273,12 +273,12 @@ export function CollectionDetail({ collectionId }: { collectionId: string }) {
       </div>
 
       {message ? (
-        <p role="status" className="text-sm text-green-700">
+        <p role="status" className="text-sm text-success">
           {message}
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}

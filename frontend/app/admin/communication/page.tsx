@@ -24,7 +24,7 @@ export default function AdminCommunicationPage() {
           {can("COMMUNICATION_TEMPLATE_READ") ? (
             <Link
               href="/admin/communication/templates"
-              className="rounded-lg border border-border bg-surface p-4 shadow-sm hover:border-blue-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              className="rounded-lg border border-border bg-surface p-4 shadow-sm hover:border-info focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
             >
               <h2 className="text-base font-semibold">Email templates</h2>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -35,7 +35,7 @@ export default function AdminCommunicationPage() {
           {can("ANNOUNCEMENT_READ") ? (
             <Link
               href="/admin/communication/announcements"
-              className="rounded-lg border border-border bg-surface p-4 shadow-sm hover:border-blue-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              className="rounded-lg border border-border bg-surface p-4 shadow-sm hover:border-info focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
             >
               <h2 className="text-base font-semibold">Announcements</h2>
               <p className="mt-1 text-sm text-muted-foreground">

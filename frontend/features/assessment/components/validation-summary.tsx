@@ -13,7 +13,7 @@ import { groupValidationIssues, summarizeGroup } from "@/features/assessment/lib
 export function ValidationSummary({ result }: { result: ValidationResult }) {
   if (result.valid) {
     return (
-      <p role="status" className="text-sm text-green-700">
+      <p role="status" className="text-sm text-success">
         The server validated this assessment version successfully.
       </p>
     );
@@ -23,7 +23,7 @@ export function ValidationSummary({ result }: { result: ValidationResult }) {
 
   return (
     <div className="space-y-3">
-      <p role="alert" className="text-sm font-medium text-red-700">
+      <p role="alert" className="text-sm font-medium text-destructive">
         {result.errors.length} validation issue{result.errors.length === 1 ? "" : "s"} must be resolved
         before publication.
       </p>

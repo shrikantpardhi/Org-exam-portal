@@ -217,7 +217,7 @@ export function QuestionPicker({
 
       {questions.isPending ? <p role="status">Loading questions…</p> : null}
       {questions.isError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           Questions could not be loaded.
         </p>
       ) : null}

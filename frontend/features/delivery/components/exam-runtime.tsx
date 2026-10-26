@@ -336,7 +336,7 @@ export function ExamRuntime({ attemptId }: { attemptId: string }) {
   }
   if (attempt.isError || questionsQuery.isError) {
     return (
-      <p role="alert" className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-900">
+      <p role="alert" className="rounded border border-destructive bg-destructive-subtle p-3 text-sm text-destructive">
         Your examination could not be loaded. Reload the page to recover your attempt — your saved
         answers are on the server.
       </p>
@@ -344,7 +344,7 @@ export function ExamRuntime({ attemptId }: { attemptId: string }) {
   }
   if (!attempt.data || !configuration) {
     return (
-      <p role="alert" className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-900">
+      <p role="alert" className="rounded border border-destructive bg-destructive-subtle p-3 text-sm text-destructive">
         This examination is not available. Contact support if this continues.
       </p>
     );
@@ -353,7 +353,7 @@ export function ExamRuntime({ attemptId }: { attemptId: string }) {
   if (submitted) {
     return (
       <div className="flex flex-col gap-3">
-        <div role="status" className="rounded border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900">
+        <div role="status" className="rounded border border-success bg-success-subtle p-3 text-sm text-emerald-900">
           <p className="font-medium">Your examination has been submitted.</p>
           <p>You can no longer change your answers.</p>
         </div>
@@ -500,7 +500,7 @@ export function ExamRuntime({ attemptId }: { attemptId: string }) {
       </div>
 
       {submit.isError ? (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-destructive">
           Submission failed. Your answers are safe — please try again.
         </p>
       ) : null}

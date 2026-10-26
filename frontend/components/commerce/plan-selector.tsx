@@ -40,7 +40,7 @@ export function PlanSelector({
             <li key={plan.id}>
               <label
                 className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${
-                  selected ? "border-blue-400 bg-blue-50" : "border-border bg-surface"
+                  selected ? "border-blue-400 bg-info-subtle" : "border-border bg-surface"
                 } focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-blue-600`}
               >
                 <input

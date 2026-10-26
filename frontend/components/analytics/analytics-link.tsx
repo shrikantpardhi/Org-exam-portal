@@ -21,7 +21,7 @@ export function AnalyticsLink({ href, label }: { href: string; label: string }) 
   return (
     <Link
       href={href}
-      className="inline-block rounded text-sm font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+      className="inline-block rounded text-sm font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
     >
       {label}
     </Link>

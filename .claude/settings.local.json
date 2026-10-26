@@ -1,7 +1,0 @@
-{
-  "env": {
-    "ANTHROPIC_BASE_URL": "http://127.0.0.1:4000",
-    "ANTHROPIC_AUTH_TOKEN": "sk-litellm-local",
-    "ANTHROPIC_MODEL": "hive-deepseek-v4.1-flash-1017"
-  }
-}

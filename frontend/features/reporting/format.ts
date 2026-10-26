@@ -30,15 +30,15 @@ export function reportStatusLabel(value: string | null | undefined): string {
 export function reportStatusTone(value: string | null | undefined): string {
   switch ((value ?? "").toUpperCase()) {
     case "COMPLETED":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+      return "border-success bg-success-subtle text-success";
     case "RUNNING":
-      return "border-blue-200 bg-blue-50 text-blue-700";
+      return "border-info bg-info-subtle text-info";
     case "QUEUED":
-      return "border-amber-200 bg-amber-50 text-amber-800";
+      return "border-warning bg-warning-subtle text-warning";
     case "COMPLETED_WITH_ERRORS":
-      return "border-amber-200 bg-amber-50 text-amber-800";
+      return "border-warning bg-warning-subtle text-warning";
     case "FAILED":
-      return "border-red-200 bg-red-50 text-red-700";
+      return "border-destructive bg-destructive-subtle text-destructive";
     case "CANCELLED":
       return "border-slate-200 bg-slate-100 text-slate-600";
     default:

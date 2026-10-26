@@ -34,7 +34,7 @@ export default function BlueprintDetailPage() {
         </header>
 
         {blueprint.isError ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             The blueprint could not be loaded.
           </p>
         ) : null}

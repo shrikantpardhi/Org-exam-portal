@@ -47,7 +47,7 @@ export function AssessmentQuestionTable({
       </div>
 
       {sectionNames.length === 0 ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           The bound blueprint version has no sections, so a question cannot be assigned yet.
         </p>
       ) : null}

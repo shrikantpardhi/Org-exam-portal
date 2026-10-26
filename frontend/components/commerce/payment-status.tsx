@@ -9,9 +9,9 @@ import { formatDateTime, paymentStatusLabel } from "./format";
  * status from a client action; it only renders what the purchase or payment read returned.
  */
 const TONES: Record<string, string> = {
-  PENDING: "border-amber-200 bg-amber-50 text-amber-800",
-  SUCCESS: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  FAILED: "border-red-200 bg-red-50 text-red-700",
+  PENDING: "border-warning bg-warning-subtle text-warning",
+  SUCCESS: "border-success bg-success-subtle text-success",
+  FAILED: "border-destructive bg-destructive-subtle text-destructive",
   REFUNDED: "border-border bg-muted text-muted-foreground",
   UNKNOWN: "border-border bg-muted text-muted-foreground",
 };

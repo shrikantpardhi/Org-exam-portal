@@ -30,7 +30,7 @@ export function AuthenticatedGuard({
 
   if (status !== "authenticated") {
     return (
-      <p role="alert" className="text-sm text-red-600">
+      <p role="alert" className="text-sm text-destructive">
         You must sign in to view this page.
       </p>
     );
@@ -38,7 +38,7 @@ export function AuthenticatedGuard({
 
   if (permission && !can(permission)) {
     return (
-      <p role="alert" className="text-sm text-red-600">
+      <p role="alert" className="text-sm text-destructive">
         You do not have access to this page.
       </p>
     );

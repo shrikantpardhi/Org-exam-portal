@@ -77,7 +77,7 @@ export function ReportingWorkspace({
 
   return (
     <div className="space-y-6">
-      <p role="note" className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+      <p role="note" className="rounded-lg border border-info bg-info-subtle p-3 text-sm text-blue-900">
         {scopeNote}
       </p>
 
@@ -88,14 +88,14 @@ export function ReportingWorkspace({
             Loading the report catalog…
           </p>
         ) : catalog.isError ? (
-          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div role="alert" className="rounded-lg border border-destructive bg-destructive-subtle p-4 text-sm text-destructive">
             <p>{describeReportError(catalog.error, "The report catalog could not be loaded.")}</p>
             <button
               type="button"
               onClick={() => {
                 void catalog.refetch();
               }}
-              className="mt-2 rounded border border-red-300 bg-surface px-3 py-1 text-sm font-medium text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+              className="mt-2 rounded border border-destructive bg-surface px-3 py-1 text-sm font-medium text-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
             >
               Try again
             </button>
@@ -124,7 +124,7 @@ export function ReportingWorkspace({
       )}
 
       {formError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {formError}
         </p>
       ) : null}

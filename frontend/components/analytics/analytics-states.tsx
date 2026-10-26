@@ -10,8 +10,8 @@ import type { ReactNode } from "react";
  * zeros. The retry control is a real button, so it is reachable by keyboard.
  */
 const BUTTON_CLASS =
-  "mt-2 rounded border border-red-300 bg-surface px-3 py-1 text-sm font-medium text-red-700 " +
-  "hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 " +
+  "mt-2 rounded border border-destructive bg-surface px-3 py-1 text-sm font-medium text-destructive " +
+  "hover:bg-destructive-subtle focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 " +
   "focus-visible:outline-red-600";
 
 export function AnalyticsLoading({ label = "Loading analytics…" }: { label?: string }) {
@@ -41,7 +41,7 @@ export function AnalyticsError({
   onRetry?: () => void;
 }) {
   return (
-    <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+    <div role="alert" className="rounded-lg border border-destructive bg-destructive-subtle p-4 text-sm text-destructive">
       <p>{message}</p>
       {onRetry ? (
         <button type="button" onClick={onRetry} className={BUTTON_CLASS}>
@@ -63,14 +63,14 @@ export function AnalyticsStaleNotice({
   return (
     <div
       role="alert"
-      className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"
+      className="rounded-lg border border-warning bg-warning-subtle p-4 text-sm text-warning"
     >
       <p>{message}</p>
       {onRetry ? (
         <button
           type="button"
           onClick={onRetry}
-          className="mt-2 rounded border border-amber-300 bg-surface px-3 py-1 text-sm font-medium text-amber-800 hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
+          className="mt-2 rounded border border-warning bg-surface px-3 py-1 text-sm font-medium text-warning hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
         >
           Refresh again
         </button>

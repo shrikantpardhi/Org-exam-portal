@@ -19,7 +19,7 @@ export function ProvidersScreen() {
 
   if (query.isError) {
     return (
-      <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <div role="alert" className="rounded-lg border border-destructive bg-destructive-subtle p-4 text-sm text-destructive">
         {describeAdminError(query.error, "Providers could not be loaded.")}
         <button type="button" onClick={() => void query.refetch()} className="ml-3 underline">
           Retry

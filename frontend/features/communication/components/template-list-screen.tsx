@@ -105,13 +105,13 @@ export function TemplateListScreen() {
                       <div className="flex flex-wrap gap-3">
                         <Link
                           href={`/admin/communication/templates/${template.id}`}
-                          className="rounded font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                          className="rounded font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                         >
                           Edit
                         </Link>
                         <Link
                           href={`/admin/communication/templates/${template.id}/preview`}
-                          className="rounded font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                          className="rounded font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                         >
                           Preview
                         </Link>
@@ -121,7 +121,7 @@ export function TemplateListScreen() {
                             onClick={() => {
                               archive.mutate(template.id);
                             }}
-                            className="rounded text-sm font-medium text-red-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+                            className="rounded text-sm font-medium text-destructive underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
                           >
                             Archive
                           </button>
@@ -162,7 +162,7 @@ export function TemplateListScreen() {
             }}
           />
           {message ? (
-            <p role="status" className="text-sm text-emerald-700">
+            <p role="status" className="text-sm text-success">
               {message}
             </p>
           ) : null}

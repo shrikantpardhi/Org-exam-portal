@@ -96,7 +96,7 @@ export function AnnouncementListScreen() {
                     <td className="py-2">
                       <Link
                         href={`/admin/communication/announcements/${announcement.id}`}
-                        className="rounded font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                        className="rounded font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                       >
                         Edit
                       </Link>
@@ -130,7 +130,7 @@ export function AnnouncementListScreen() {
             }}
           />
           {message ? (
-            <p role="status" className="text-sm text-emerald-700">
+            <p role="status" className="text-sm text-success">
               {message}
             </p>
           ) : null}

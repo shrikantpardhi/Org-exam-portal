@@ -44,7 +44,7 @@ export function ExamsManager() {
         </p>
       ) : null}
       {exams.isError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {(exams.error as ApiClientError).message}
         </p>
       ) : null}
@@ -73,7 +73,7 @@ export function ExamsManager() {
                   <td className="py-2">
                     <button
                       type="button"
-                      className="text-red-600 underline"
+                      className="text-destructive underline"
                       onClick={() => void archiveExam.mutateAsync(exam.id)}
                     >
                       Archive

@@ -39,7 +39,7 @@ export function TagsManager() {
         </p>
       ) : null}
       {tags.isError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {(tags.error as ApiClientError).message}
         </p>
       ) : null}
@@ -68,7 +68,7 @@ export function TagsManager() {
                   <td className="py-2">
                     <button
                       type="button"
-                      className="text-red-600 underline"
+                      className="text-destructive underline"
                       onClick={() => void archiveTag.mutateAsync(tag.id)}
                     >
                       Archive

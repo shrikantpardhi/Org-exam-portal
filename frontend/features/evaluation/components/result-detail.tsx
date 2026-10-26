@@ -33,14 +33,14 @@ export function ResultDetail({ result }: { result: ResultResponse }) {
       <nav aria-label="Result actions" className="flex flex-wrap gap-4 text-sm">
         <Link
           href={`/results/${result.id}/scorecard`}
-          className="rounded font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          className="rounded font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
           View scorecard
         </Link>
         {result.attemptId ? (
           <Link
             href={`/attempts/${result.attemptId}/result`}
-            className="rounded font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            className="rounded font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           >
             Attempt-bound result
           </Link>

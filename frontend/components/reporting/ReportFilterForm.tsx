@@ -149,7 +149,7 @@ export function ReportFilterForm({
                   }`}
                 />
                 {error ? (
-                  <p id={`${id}-error`} role="alert" className="text-xs text-red-600">
+                  <p id={`${id}-error`} role="alert" className="text-xs text-destructive">
                     {error}
                   </p>
                 ) : null}
@@ -178,7 +178,7 @@ export function ReportFilterForm({
           ))}
         </select>
         {errors.format ? (
-          <p role="alert" className="text-xs text-red-600">
+          <p role="alert" className="text-xs text-destructive">
             {errors.format}
           </p>
         ) : null}

@@ -139,11 +139,11 @@ export function FinancePurchaseLookup({ mode }: { mode: "purchases" | "payments"
                   payment state before calling the provider.
                 </p>
               ) : !can("PURCHASE_REFUND") ? (
-                <p role="alert" className="text-sm text-red-600">
+                <p role="alert" className="text-sm text-destructive">
                   You do not have permission to refund purchases.
                 </p>
               ) : refund.isSuccess && refund.data?.refunded ? (
-                <div role="status" className="space-y-1 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                <div role="status" className="space-y-1 rounded-lg border border-success bg-success-subtle p-4 text-sm text-success">
                   <p className="font-medium">Refund confirmed by the server.</p>
                   <p>The purchase is now {refund.data.paymentStatus} and its access was revoked.</p>
                 </div>
@@ -180,13 +180,13 @@ export function FinancePurchaseLookup({ mode }: { mode: "purchases" | "payments"
                     <button
                       type="button"
                       onClick={() => setConfirmingRefund(true)}
-                      className="rounded border border-red-300 bg-surface px-4 py-2 text-sm font-medium text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+                      className="rounded border border-destructive bg-surface px-4 py-2 text-sm font-medium text-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
                     >
                       Refund purchase
                     </button>
                   )}
                   {refund.isError ? (
-                    <p role="alert" className="text-sm text-red-600">
+                    <p role="alert" className="text-sm text-destructive">
                       {describeCommerceError(refund.error, "The refund could not be completed.")}
                     </p>
                   ) : null}

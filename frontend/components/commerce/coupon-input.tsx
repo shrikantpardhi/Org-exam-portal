@@ -109,7 +109,7 @@ export function CouponInput({
       </form>
 
       {validation && validation.valid ? (
-        <p role="status" className="text-sm text-emerald-700">
+        <p role="status" className="text-sm text-success">
           Coupon {validation.code} applied. Discount{" "}
           {formatAmount(validation.discount, validation.currency) ?? "not available"}; payable{" "}
           {formatAmount(validation.finalAmount, validation.currency) ?? "not available"}.
@@ -117,13 +117,13 @@ export function CouponInput({
       ) : null}
 
       {validation && !validation.valid ? (
-        <p role="alert" className="text-sm text-amber-800">
+        <p role="alert" className="text-sm text-warning">
           Coupon not applied: {validation.reason ?? "the coupon is not valid for this plan."}
         </p>
       ) : null}
 
       {mutation.isError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {describeCommerceError(mutation.error, "The coupon could not be validated.")}
         </p>
       ) : null}

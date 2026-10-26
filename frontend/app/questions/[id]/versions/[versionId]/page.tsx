@@ -36,7 +36,7 @@ export default function QuestionVersionPage() {
               {options.data?.map((option) => (
                 <li key={option.id}>
                   <span className="font-mono">{option.optionKey}</span>: {option.content}
-                  {option.isCorrect ? <span className="ml-2 text-green-700">(correct)</span> : null}
+                  {option.isCorrect ? <span className="ml-2 text-success">(correct)</span> : null}
                 </li>
               ))}
             </ul>

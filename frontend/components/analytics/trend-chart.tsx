@@ -185,7 +185,7 @@ export function TrendChart({
       ) : null}
 
       <details className="pt-1">
-        <summary className="cursor-pointer rounded text-sm font-medium text-blue-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+        <summary className="cursor-pointer rounded text-sm font-medium text-info underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
           View data table
         </summary>
         <div className="overflow-x-auto">

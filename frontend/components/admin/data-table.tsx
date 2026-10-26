@@ -60,13 +60,13 @@ export function DataTable<T>({
 
   if (error) {
     return (
-      <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <div role="alert" className="rounded-lg border border-destructive bg-destructive-subtle p-4 text-sm text-destructive">
         <p>{error}</p>
         {onRetry ? (
           <button
             type="button"
             onClick={onRetry}
-            className="mt-2 rounded border border-red-300 bg-surface px-3 py-1 text-sm font-medium text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+            className="mt-2 rounded border border-destructive bg-surface px-3 py-1 text-sm font-medium text-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
           >
             Try again
           </button>

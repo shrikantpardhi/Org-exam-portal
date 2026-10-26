@@ -53,7 +53,7 @@ export function VersionHistory({
     return (
       <section aria-label="Version history">
         <h2 className="text-lg font-semibold">Version history</h2>
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       </section>
@@ -159,7 +159,7 @@ function SelectedVersionNotice({
     );
   }
   return (
-    <p role="note" className="text-sm text-amber-700">
+    <p role="note" className="text-sm text-warning">
       Version {selected.version} is published and therefore immutable. Editing it is not offered —
       create a new version to change the content.
     </p>

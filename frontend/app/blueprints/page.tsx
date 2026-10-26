@@ -28,7 +28,7 @@ export default function BlueprintsPage() {
       <AuthenticatedGuard permission="BLUEPRINT_VIEW">
         {blueprints.isPending ? <p role="status">Loading blueprints…</p> : null}
         {blueprints.isError ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {(blueprints.error as ApiClientError).message}
           </p>
         ) : null}

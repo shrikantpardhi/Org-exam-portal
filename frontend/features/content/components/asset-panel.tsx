@@ -91,7 +91,7 @@ export function AssetPanel({
       </div>
 
       {error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}
@@ -136,7 +136,7 @@ export function AssetPanel({
                     disabled={published}
                     aria-label={`Remove asset ${asset.fileName}`}
                     onClick={() => void handleRemove(asset.id, asset.fileName)}
-                    className="text-red-600"
+                    className="text-destructive"
                   >
                     Remove
                   </Button>

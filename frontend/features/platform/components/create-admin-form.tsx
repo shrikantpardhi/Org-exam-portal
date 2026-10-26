@@ -23,7 +23,7 @@ export function CreateAdminForm({ organizationId }: { organizationId: string }) 
     return (
       <div
         role="status"
-        className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700"
+        className="rounded-lg border border-success bg-success-subtle p-4 text-sm text-success"
       >
         Invitation sent to {invited}.
         <Link href={"/platform/organizations/" + organizationId} className="ml-3 underline">
