@@ -98,3 +98,6 @@ Desktop.ini
 .npm/
 .pnpm-store/
 .dsh
+.acl-recovery
+.claude
+.commandcode

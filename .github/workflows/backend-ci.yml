@@ -1,0 +1,57 @@
+# Backend CI (P0-12, P12 §132/§133).
+#
+# Runs on every pull request and on pushes to main, so the required check always
+# has a run: a path filter would let a frontend-only pull request leave the
+# backend check permanently "awaiting" and block the merge.
+#
+# Migration check is part of ./mvnw clean verify: fallback runs every Flyway
+# migration from scratch against an embedded, disposable PostgreSQL (ADR-0009),
+# so a failing migration fails the build (P12 §133).
+name: backend-ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  backend:
+    name: Backend (compile, unit, integration, migration)
+    # The repository targets Java 21 (backend/pom.xml `<java.version>21</java.version>`;
+    # §"Technology stack": Java 25 preferred, 21 approved fallback).
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 with Maven cache
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          # setup-java restores the local Maven repository keyed on pom.xml, so dependency
+          # resolution is cached without a separate cache step.
+          cache: maven
+
+      - name: Clean verify (compile, unit, integration, Flyway migration)
+        # --ntp: do not print progress bars (keeps the log readable).
+        run: ./mvnw --batch-mode --show-version --errors --no-transfer-progress clean verify
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: |
+            backend/target/surefire-reports/**
+            backend/target/failsafe-reports/**
+          if-no-files-found: warn
+          retention-days: 30
