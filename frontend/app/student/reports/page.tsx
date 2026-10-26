@@ -12,11 +12,11 @@ import { ReportingWorkspace } from "@/features/reporting/components/reporting-wo
  */
 export default function StudentReportsPage() {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-16">
+    <div className="flex w-full max-w-6xl flex-col gap-6">
       <header className="space-y-1">
-        <p className="text-sm text-slate-500">Student</p>
+        <p className="text-sm text-muted-foreground">Student</p>
         <h1 className="text-2xl font-semibold tracking-tight">My reports</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Generate a report of your own attempt and performance data, then download it when it is
           ready.
         </p>
@@ -27,6 +27,6 @@ export default function StudentReportsPage() {
           scopeNote="Student reports are always scoped to you by the backend. A report cannot be pointed at another student, and a filter cannot widen that scope."
         />
       </AuthenticatedGuard>
-    </main>
+    </div>
   );
 }

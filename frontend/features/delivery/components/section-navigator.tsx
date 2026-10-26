@@ -28,7 +28,7 @@ export function SectionNavigator({
             variant="outline"
             size="sm"
             aria-current={active ? "true" : undefined}
-            className={active ? "border-slate-900 bg-slate-100" : ""}
+            className={active ? "border-primary bg-muted" : ""}
             onClick={() => {
               const first = ids[0];
               if (first) {
@@ -37,7 +37,7 @@ export function SectionNavigator({
             }}
           >
             {section}
-            <span className="text-xs text-slate-500">({ids.length})</span>
+            <span className="text-xs text-muted-foreground">({ids.length})</span>
           </Button>
         );
       })}

@@ -41,7 +41,7 @@ import type { QuestionTemplate } from "@/features/content/schemas/content";
 import { ApiClientError } from "@/lib/errors";
 
 const fieldClass =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900";
+  "w-full rounded-md border border-input px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900";
 
 export function RuleBuilder({
   versionId,
@@ -184,7 +184,7 @@ export function RuleBuilder({
         <h2 id="rule-builder-heading" className="text-lg font-semibold tracking-tight">
           Rule builder
         </h2>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Filters exposed here are only those backed by published content. The server materializes the
           concrete question set; the browser never decides which questions are selected.
         </p>
@@ -192,23 +192,23 @@ export function RuleBuilder({
 
       <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-5" aria-label="Hybrid counts">
         <div>
-          <dt className="text-slate-500">Manual count</dt>
+          <dt className="text-muted-foreground">Manual count</dt>
           <dd data-testid="manual-count">{counts.manualCount}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">Rule count</dt>
+          <dt className="text-muted-foreground">Rule count</dt>
           <dd data-testid="rule-count">{counts.ruleCount}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">Target count</dt>
+          <dt className="text-muted-foreground">Target count</dt>
           <dd data-testid="target-count">{counts.targetCount}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">Selected count</dt>
+          <dt className="text-muted-foreground">Selected count</dt>
           <dd data-testid="selected-count">{counts.selectedCount}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">Remaining count</dt>
+          <dt className="text-muted-foreground">Remaining count</dt>
           <dd data-testid="remaining-count">{counts.remainingCount}</dd>
         </div>
       </dl>
@@ -421,14 +421,14 @@ export function RuleBuilder({
               checked={form.publishedOnly}
               disabled={disabled}
               onChange={(event) => patch({ publishedOnly: event.target.checked })}
-              className="h-4 w-4 rounded border-slate-300"
+              className="h-4 w-4 rounded border-input"
             />
             Published only
           </label>
         </div>
       </div>
 
-      <p className="text-xs text-slate-500" data-testid="rule-pool-note">
+      <p className="text-xs text-muted-foreground" data-testid="rule-pool-note">
         {pool.isSuccess
           ? `The current filter matched ${pool.data.length} question${pool.data.length === 1 ? "" : "s"} on the first page. The server re-resolves the full eligible pool when the rule is materialized.`
           : "The eligible pool is resolved by the server when the rule is materialized."}
@@ -446,17 +446,17 @@ export function RuleBuilder({
       </div>
 
       {rules.length === 0 ? (
-        <p role="note" className="text-sm text-slate-500">
+        <p role="note" className="text-sm text-muted-foreground">
           No selection rules yet.
         </p>
       ) : (
         <ul className="space-y-2">
           {rules.map((rule) => (
-            <li key={rule.id} className="flex flex-wrap items-center justify-between gap-3 rounded border border-slate-200 p-3">
+            <li key={rule.id} className="flex flex-wrap items-center justify-between gap-3 rounded border border-border p-3">
               <div className="text-sm">
                 <span className="font-medium">{rule.sectionName}</span>
-                <span className="text-slate-500"> · target {rule.targetCount}</span>
-                <span className="text-slate-500">
+                <span className="text-muted-foreground"> · target {rule.targetCount}</span>
+                <span className="text-muted-foreground">
                   {" "}
                   · {rule.materializedOn ? `materialized ${rule.materializedQuestionCount ?? 0}` : "not materialized"}
                 </span>
@@ -484,13 +484,13 @@ export function RuleBuilder({
         </ul>
       )}
 
-      <div className="space-y-2 rounded-lg border border-slate-200 p-4">
+      <div className="space-y-2 rounded-lg border border-border p-4">
         <h3 className="text-sm font-semibold">Materialize</h3>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted-foreground">
           The server materializes the final question set from the rules. Manual questions already on the
           version are preserved.
         </p>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted-foreground">
           Only <code>REPLACE_UNMATERIALIZED</code> is defined by the contract: rules not yet materialized
           are filled in, and rules that already are are skipped, so re-running is safe.
         </p>

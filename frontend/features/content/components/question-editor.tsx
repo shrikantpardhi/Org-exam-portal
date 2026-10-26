@@ -115,7 +115,7 @@ export function QuestionEditor() {
             aria-label="Template"
             value={templateId}
             onChange={(event) => setTemplateId(event.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           >
             <option value="">Select a template</option>
             {(templates.data ?? []).map((template) => (
@@ -142,7 +142,7 @@ export function QuestionEditor() {
             aria-label="Language"
             value={languageId}
             onChange={(event) => setLanguageId(event.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           >
             <option value="">Select a language</option>
             {(languages.data ?? []).map((language) => (
@@ -168,7 +168,7 @@ export function QuestionEditor() {
             value={title}
             maxLength={255}
             onChange={(event) => setTitle(event.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           />
         </div>
 
@@ -192,7 +192,7 @@ export function QuestionEditor() {
               min="0"
               value={marks}
               onChange={(event) => setMarks(event.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm"
             />
           </div>
           <div className="space-y-1">
@@ -207,7 +207,7 @@ export function QuestionEditor() {
               min="0"
               value={negativeMarks}
               onChange={(event) => setNegativeMarks(event.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm"
             />
           </div>
           <div className="space-y-1">
@@ -219,7 +219,7 @@ export function QuestionEditor() {
               aria-label="Difficulty"
               value={difficulty}
               onChange={(event) => setDifficulty(event.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm"
             >
               <option value="EASY">EASY</option>
               <option value="MEDIUM">MEDIUM</option>
@@ -231,7 +231,7 @@ export function QuestionEditor() {
 
       <section aria-label="Answer mode" className="space-y-1">
         <h2 className="text-lg font-semibold">Answer mode</h2>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted-foreground">
           The template configuration remains authoritative for how correctness is validated.
         </p>
         <label className="flex items-center gap-2 text-sm">
@@ -263,7 +263,7 @@ export function QuestionEditor() {
         problems={problems}
       />
 
-      <p role="note" className="text-sm text-slate-500">
+      <p role="note" className="text-sm text-muted-foreground">
         Saving creates the question and its first draft version. Options, assets, explanation, hint,
         tags and previous exam history are version-bound, so they are authored on the question page
         once the version exists.

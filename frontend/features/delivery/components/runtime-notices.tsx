@@ -61,7 +61,7 @@ export function SaveIndicator({
       role="status"
       aria-live="polite"
       className={
-        failed > 0 && !offline ? "text-sm text-red-700" : "text-sm text-slate-600"
+        failed > 0 && !offline ? "text-sm text-red-700" : "text-sm text-muted-foreground"
       }
     >
       {text}
@@ -138,20 +138,20 @@ export function SubmissionDialog({
       role="dialog"
       aria-modal="true"
       aria-labelledby="submit-heading"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-primary/40 p-4"
     >
-      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 shadow-lg">
+      <div className="w-full max-w-md rounded-lg border border-border bg-surface p-5 shadow-lg">
         <h2 id="submit-heading" className="text-lg font-semibold tracking-tight">
           Submit this examination?
         </h2>
         <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-          <dt className="text-slate-600">Questions</dt>
+          <dt className="text-muted-foreground">Questions</dt>
           <dd className="font-medium">{counts.total}</dd>
-          <dt className="text-slate-600">Answered</dt>
+          <dt className="text-muted-foreground">Answered</dt>
           <dd className="font-medium">{counts.answered}</dd>
-          <dt className="text-slate-600">Not answered</dt>
+          <dt className="text-muted-foreground">Not answered</dt>
           <dd className={unanswered > 0 ? "font-medium text-red-700" : "font-medium"}>{unanswered}</dd>
-          <dt className="text-slate-600">Marked for review</dt>
+          <dt className="text-muted-foreground">Marked for review</dt>
           <dd className="font-medium">{counts.markedForReview}</dd>
         </dl>
         {unanswered > 0 ? (
@@ -160,7 +160,7 @@ export function SubmissionDialog({
             your answers after submitting.
           </p>
         ) : (
-          <p role="note" className="mt-3 text-sm text-slate-600">
+          <p role="note" className="mt-3 text-sm text-muted-foreground">
             You cannot change your answers after submitting.
           </p>
         )}

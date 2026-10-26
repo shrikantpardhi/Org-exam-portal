@@ -39,13 +39,13 @@ export function TagMultiSelect({
   return (
     <section aria-label="Tags" className="space-y-2">
       <h2 className="text-lg font-semibold">Tags</h2>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-muted-foreground">
         Tags come from the Academic Tag masters. Selecting one only associates it; a tag is never
         created from this screen.
       </p>
 
       {selected.length === 0 ? (
-        <p className="text-sm text-slate-500">No tags selected.</p>
+        <p className="text-sm text-muted-foreground">No tags selected.</p>
       ) : (
         <ul aria-label="Selected tags" className="flex flex-wrap gap-2">
           {selected.map((tagId) => {
@@ -53,7 +53,7 @@ export function TagMultiSelect({
             // While the catalog is loading the id is all we have; once it resolves the label wins.
             const label = known?.name ?? tagId;
             return (
-              <li key={tagId} className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-sm">
+              <li key={tagId} className="flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-sm">
                 <span>{label}</span>
                 <Button
                   variant="ghost"
@@ -78,18 +78,18 @@ export function TagMultiSelect({
           disabled={disabled}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search tags"
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="w-full rounded-md border border-input px-3 py-2 text-sm"
         />
       </label>
 
       {tags.isPending ? (
-        <p role="status" className="text-sm text-slate-500">
+        <p role="status" className="text-sm text-muted-foreground">
           Loading tags…
         </p>
       ) : null}
 
       {tags.data && available.length === 0 ? (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           {search.trim().length > 0
             ? "No matching tag. A new tag must be created in Academic masters, not here."
             : "All available tags are already selected."}

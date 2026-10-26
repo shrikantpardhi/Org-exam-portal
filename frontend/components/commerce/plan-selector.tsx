@@ -32,7 +32,7 @@ export function PlanSelector({
 
   return (
     <fieldset className="space-y-2">
-      <legend className="text-sm font-semibold text-slate-800">{legend}</legend>
+      <legend className="text-sm font-semibold text-foreground">{legend}</legend>
       <ul className="space-y-2">
         {plans.map((plan) => {
           const selected = plan.id === selectedPlanId;
@@ -40,7 +40,7 @@ export function PlanSelector({
             <li key={plan.id}>
               <label
                 className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${
-                  selected ? "border-blue-400 bg-blue-50" : "border-slate-200 bg-white"
+                  selected ? "border-blue-400 bg-blue-50" : "border-border bg-surface"
                 } focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-blue-600`}
               >
                 <input
@@ -52,12 +52,12 @@ export function PlanSelector({
                   className="mt-1"
                 />
                 <span className="flex-1">
-                  <span className="block text-sm font-medium text-slate-900">{plan.name}</span>
-                  <span className="mt-0.5 block text-xs text-slate-500">
+                  <span className="block text-sm font-medium text-foreground">{plan.name}</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
                     {plan.durationDays ?? "Unknown"} days of access
                   </span>
                 </span>
-                <span className="text-sm font-semibold tabular-nums text-slate-900">
+                <span className="text-sm font-semibold tabular-nums text-foreground">
                   {formatAmount(plan.price) ?? "Price not set"}
                 </span>
               </label>

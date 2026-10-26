@@ -73,7 +73,7 @@ export function MathTextField({
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+        className="w-full rounded-md border border-input px-3 py-2 text-sm"
       />
       <div className="flex flex-wrap items-center gap-2">
         <Button
@@ -94,7 +94,7 @@ export function MathTextField({
         >
           Block math
         </Button>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-muted-foreground">
           {hint ?? "Inline math uses the round delimiters and block math the square ones. $500 stays ordinary text."}
         </span>
       </div>

@@ -27,6 +27,12 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     Optional<User> findByIdAndStatus(UUID id, com.company.exam.common.enums.Status status);
 
+    /** Counts users in a status other than the excluded id (excludes the system actor). */
+    long countByStatusAndIdNot(com.company.exam.common.enums.Status status, UUID id);
+
+    /** Counts users of an organization in a status (platform org detail user count). */
+    long countByOrganizationIdAndStatus(UUID organizationId, com.company.exam.common.enums.Status status);
+
     /**
      * Loads a user under a pessimistic write lock so concurrent password resets serialize and the
      * single-use reset binding cannot be consumed twice

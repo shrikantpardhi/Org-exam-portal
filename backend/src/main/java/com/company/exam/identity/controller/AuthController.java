@@ -4,6 +4,7 @@ import com.company.exam.common.api.ApiResponse;
 import com.company.exam.identity.dto.AuthDtos;
 import com.company.exam.identity.security.IdentityPrincipal;
 import com.company.exam.identity.service.AuthenticationService;
+import com.company.exam.identity.service.PasswordChangeService;
 import com.company.exam.identity.service.PasswordResetService;
 import com.company.exam.identity.security.ClientIpResolver;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,12 +33,14 @@ public class AuthController {
 
     private final AuthenticationService authenticationService;
     private final PasswordResetService passwordResetService;
+    private final PasswordChangeService passwordChangeService;
     private final ClientIpResolver clientIpResolver;
 
     public AuthController(AuthenticationService authenticationService, PasswordResetService passwordResetService,
-            ClientIpResolver clientIpResolver) {
+            PasswordChangeService passwordChangeService, ClientIpResolver clientIpResolver) {
         this.authenticationService = authenticationService;
         this.passwordResetService = passwordResetService;
+        this.passwordChangeService = passwordChangeService;
         this.clientIpResolver = clientIpResolver;
     }
 
@@ -70,6 +73,15 @@ public class AuthController {
     public ApiResponse<Void> forgotPassword(@Valid @RequestBody AuthDtos.ForgotPasswordRequest request) {
         passwordResetService.requestReset(request.email());
         return ApiResponse.ok("If the account exists, password reset instructions have been sent", null);
+    }
+
+    @Operation(summary = "Change the caller's password",
+            description = "Verifies the current password and replaces it. Clears must_change_password.")
+    @PostMapping("/change-password")
+    public ApiResponse<Void> changePassword(@Valid @RequestBody AuthDtos.ChangePasswordRequest request,
+            @AuthenticationPrincipal IdentityPrincipal principal) {
+        passwordChangeService.changePassword(principal.userId(), principal.sessionId(), request);
+        return ApiResponse.ok("Password changed", null);
     }
 
     @Operation(summary = "Reset a password", description = "Completes a reset with a single-use token.")

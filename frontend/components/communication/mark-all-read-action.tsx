@@ -15,7 +15,7 @@ export function MarkAllReadAction({
       type="button"
       onClick={onMarkAll}
       disabled={unreadCount === 0 || pending}
-      className="rounded border border-slate-300 bg-white px-3 py-1 text-sm font-medium text-slate-700 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+      className="rounded border border-input bg-surface px-3 py-1 text-sm font-medium text-foreground disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
     >
       {pending ? "Marking…" : `Mark all read${unreadCount > 0 ? ` (${unreadCount})` : ""}`}
     </button>

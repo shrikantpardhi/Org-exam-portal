@@ -14,7 +14,7 @@ export default function QuestionVersionPage() {
   const options = useOptions(questionId, versionId);
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-16">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-16">
       <h1 className="text-2xl font-semibold tracking-tight">
         Version {version.data?.version ?? ""} — preview
       </h1>
@@ -24,13 +24,13 @@ export default function QuestionVersionPage() {
 
       {version.data ? (
         <>
-          <p className="text-xs text-slate-500">Content format: {version.data.contentFormat}</p>
+          <p className="text-xs text-muted-foreground">Content format: {version.data.contentFormat}</p>
           <VersionPreview html={version.data.renderedContent} />
 
           <section className="space-y-2">
             <h2 className="text-lg font-semibold">Options</h2>
             {options.data && options.data.length === 0 ? (
-              <p className="text-sm text-slate-500">No options.</p>
+              <p className="text-sm text-muted-foreground">No options.</p>
             ) : null}
             <ul className="space-y-1 text-sm">
               {options.data?.map((option) => (
@@ -43,6 +43,6 @@ export default function QuestionVersionPage() {
           </section>
         </>
       ) : null}
-    </main>
+    </div>
   );
 }

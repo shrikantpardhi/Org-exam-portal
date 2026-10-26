@@ -1,10 +1,6 @@
-import { LoginForm } from "@/features/auth/components/login-form";
+import { redirect } from "next/navigation";
 
-export default function LoginPage() {
-  return (
-    <main className="mx-auto flex w-full max-w-md flex-col gap-6 px-6 py-16">
-      <h1 className="text-2xl font-semibold tracking-tight">Smart Competitive Examination Platform</h1>
-      <LoginForm />
-    </main>
-  );
+/** Legacy /login entry point now redirects to the student portal ({@code docs/frontend/login-portals.md}). */
+export default function LoginIndexPage() {
+  redirect("/login/student");
 }

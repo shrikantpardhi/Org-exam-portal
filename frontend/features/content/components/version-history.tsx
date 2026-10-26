@@ -42,7 +42,7 @@ export function VersionHistory({
     return (
       <section aria-label="Version history">
         <h2 className="text-lg font-semibold">Version history</h2>
-        <p role="status" className="text-sm text-slate-500">
+        <p role="status" className="text-sm text-muted-foreground">
           Loading version history…
         </p>
       </section>
@@ -64,10 +64,11 @@ export function VersionHistory({
     <section aria-label="Version history" className="space-y-2">
       <h2 className="text-lg font-semibold">Version history</h2>
 
-      {versions.length === 0 ? <p className="text-sm text-slate-500">No versions yet.</p> : null}
+      {versions.length === 0 ? <p className="text-sm text-muted-foreground">No versions yet.</p> : null}
 
       {versions.length > 0 ? (
-        <table aria-label="Versions" className="w-full text-sm">
+        <div className="overflow-x-auto" tabIndex={0}>
+<table aria-label="Versions" className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="text-left">
               <th scope="col">Version</th>
@@ -87,7 +88,7 @@ export function VersionHistory({
                 <tr
                   key={version.id}
                   aria-current={selected ? "true" : undefined}
-                  className={selected ? "bg-slate-50" : undefined}
+                  className={selected ? "bg-muted" : undefined}
                 >
                   <td>v{version.version}</td>
                   <td>{version.publishedOn ?? "Not published"}</td>
@@ -117,11 +118,12 @@ export function VersionHistory({
             })}
           </tbody>
         </table>
+</div>
       ) : null}
 
       {selectedVersionId ? <SelectedVersionNotice versions={versions} selectedVersionId={selectedVersionId} /> : null}
 
-      <p role="note" className="text-xs text-slate-500">
+      <p role="note" className="text-xs text-muted-foreground">
         {/* Frozen-contract gap: §110 asks for a created date, but GET /questions/{id}/versions
             returns only VersionListItem (id, version, reviewStatus, published, marks,
             negativeMarks, difficulty, publishedOn). No created timestamp is exposed for a version,
@@ -151,7 +153,7 @@ function SelectedVersionNotice({
   }
   if (!selected.published) {
     return (
-      <p role="note" className="text-sm text-slate-600">
+      <p role="note" className="text-sm text-muted-foreground">
         Editing version {selected.version} in place.
       </p>
     );

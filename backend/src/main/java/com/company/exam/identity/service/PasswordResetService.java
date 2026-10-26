@@ -69,6 +69,17 @@ public class PasswordResetService {
     }
 
     /**
+     * Issues and delivers a reset link for a freshly created account so its owner can choose a
+     * first password (ADR-0034). Unlike {@link #requestReset}, this is driven by the create-user
+     * workflow, not by a self-service request, and takes the already-persisted user directly.
+     */
+    @Transactional
+    public void deliverFirstPasswordInvitation(User user) {
+        String token = tokenService.issue(user);
+        delivery.deliver(user, token);
+    }
+
+    /**
      * Completes a reset. Requires a valid, unexpired, unused token and a policy-compliant password.
      */
     @Transactional
@@ -84,6 +95,9 @@ public class PasswordResetService {
         }
         passwordPolicy.validate(newPassword, user.getEmail());
         user.setPassword(passwordEncoder.encode(newPassword));
+        // The owner has now chosen their own password, so the forced first-login change no
+        // longer applies (ADR-0034).
+        user.setMustChangePassword(false);
         userRepository.save(user);
         sessionService.expireAllForUser(user.getId());
         authorizationService.evictAfterCommit(user.getId());

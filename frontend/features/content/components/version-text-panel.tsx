@@ -112,7 +112,7 @@ function VersionTextEditor({
         </p>
       ) : null}
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-muted-foreground">
         {query.isPending ? `Loading ${kind}…` : query.isError ? `The ${kind} could not be loaded.` : existing ? copy.present : copy.absent}
       </p>
 
@@ -123,7 +123,7 @@ function VersionTextEditor({
           {save.isPending ? "Saving…" : `Save ${kind}`}
         </Button>
         {published ? (
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-muted-foreground">
             {copy.heading} editing is disabled while the version is published.
           </span>
         ) : null}
@@ -135,7 +135,7 @@ function VersionTextEditor({
         </p>
       ) : null}
       {status ? (
-        <p role="status" className="text-sm text-slate-600">
+        <p role="status" className="text-sm text-muted-foreground">
           {status}
         </p>
       ) : null}

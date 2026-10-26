@@ -60,9 +60,9 @@ export function TemplateEditScreen({ templateId }: { templateId: string }) {
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <p className="font-mono text-xs text-slate-500">{template.code}</p>
+        <p className="font-mono text-xs text-muted-foreground">{template.code}</p>
         <h2 className="text-xl font-semibold tracking-tight">{template.name}</h2>
-        <p className="text-sm text-slate-500">Status: {lifecycleLabel(template.status)}</p>
+        <p className="text-sm text-muted-foreground">Status: {lifecycleLabel(template.status)}</p>
       </header>
 
       <nav aria-label="Template actions" className="flex flex-wrap gap-4 text-sm">
@@ -128,7 +128,7 @@ export function TemplateEditScreen({ templateId }: { templateId: string }) {
           onClick={() => {
             archive.mutate(template.id);
           }}
-          className="rounded border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+          className="rounded border border-red-300 bg-surface px-4 py-2 text-sm font-medium text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
         >
           Archive template
         </button>

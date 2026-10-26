@@ -86,8 +86,8 @@ export function AssessmentAnalyticsDashboard({ assessmentId }: { assessmentId: s
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="font-mono text-xs text-slate-500">{assessmentId}</p>
-          <p className="text-sm text-slate-500">
+          <p className="font-mono text-xs text-muted-foreground">{assessmentId}</p>
+          <p className="text-sm text-muted-foreground">
             Derived from evaluated attempts. The grain is the Assessment, across its versions.
           </p>
         </div>
@@ -141,7 +141,7 @@ export function AssessmentAnalyticsDashboard({ assessmentId }: { assessmentId: s
               <h3 id="assessment-question-heading" className="text-base font-semibold">
                 Question difficulty
               </h3>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 Difficulty index per question, 1.00 the hardest and 0.00 the easiest; answered
                 outcomes only.
               </p>

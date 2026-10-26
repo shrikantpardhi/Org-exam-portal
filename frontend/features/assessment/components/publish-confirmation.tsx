@@ -35,7 +35,7 @@ export function PublishConfirmation({
 
   if (published) {
     return (
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-muted-foreground">
         This assessment version is published and immutable. A change requires a new version.
       </p>
     );
@@ -49,27 +49,27 @@ export function PublishConfirmation({
 
       <dl className="grid gap-2 text-sm sm:grid-cols-2">
         <div>
-          <dt className="text-slate-500">Assessment</dt>
+          <dt className="text-muted-foreground">Assessment</dt>
           <dd>{assessmentName}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">Version</dt>
+          <dt className="text-muted-foreground">Version</dt>
           <dd>{version?.version ?? "—"}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">Blueprint version</dt>
+          <dt className="text-muted-foreground">Blueprint version</dt>
           <dd className="font-mono text-xs">{version?.blueprintVersionId ?? "—"}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">Questions</dt>
+          <dt className="text-muted-foreground">Questions</dt>
           <dd>{questionCount}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">Total marks</dt>
+          <dt className="text-muted-foreground">Total marks</dt>
           <dd>{totalMarks}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">Duration (minutes)</dt>
+          <dt className="text-muted-foreground">Duration (minutes)</dt>
           <dd>{version?.durationMinutes ?? "—"}</dd>
         </div>
       </dl>
@@ -77,7 +77,7 @@ export function PublishConfirmation({
       <div>
         <h3 className="text-sm font-medium">Sections</h3>
         {sectionNames.length === 0 ? (
-          <p className="text-sm text-slate-500">No sections are defined on the bound blueprint version.</p>
+          <p className="text-sm text-muted-foreground">No sections are defined on the bound blueprint version.</p>
         ) : (
           <ul className="list-inside list-disc text-sm">
             {sectionNames.map((name) => (
@@ -91,7 +91,7 @@ export function PublishConfirmation({
         Publish
       </Button>
       {!validated ? (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Run validation first. Publish stays disabled until the server reports the version as valid.
         </p>
       ) : null}

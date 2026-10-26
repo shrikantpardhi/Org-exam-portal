@@ -22,6 +22,24 @@
 - **Testing notes:** [`docs/testing/p13/README.md`](testing/p13/README.md)
 - **Rehearsal record:** [`docs/testing/p12/rehearsal-2026-10-19.md`](testing/p12/rehearsal-2026-10-19.md)
 
+## SUPER_ADMIN / ADMIN UI mission (Steps 1–7)
+
+A nine-step, stop-gated mission to deliver the business landing page, the three split login
+portals, the SUPER_ADMIN and ADMIN UIs, the in-UI `/docs` site, and the supporting backend —
+end to end. Each step stops for an explicit `approved` from the human before the next begins.
+
+| Step | Scope | State |
+|---|---|---|
+| 0 | Stack verification (6 containers, edge 8081, health, env) | Complete — approved |
+| 1 | Amendments (ADR-0035 login `portal`, ADR-0036 `/docs` section, ADR-0037 org-config + contact; spec §21.1/§73; GAP-169; kept ADR-0032/0033/0034 + V29/V30/V31) | Complete — approved |
+| 2 | Design docs (`public-landing.md`, `login-portals.md`, `config-surface.md`, `docs-site.md`; updated `README.md`, `navigation.md`, flow Login screens) | Complete — approved |
+| 3 | Backend deltas (`portal` field, `GET /admin/organization-config`, `POST /public/contact`, SUPER_ADMIN immutability, ADMIN-cap in `assignRole` + 5 new test classes + 1 rewritten test) | **Complete — approved** |
+| 4 | Frontend: public layout + landing, three login portals, shell, change-password, docs skeleton | **Complete — approved** |
+| 5 | SUPER_ADMIN screens (dashboard, organizations list/create/detail + create-ADMIN, providers, system info, seeds) | **Complete — approved** |
+| 6 | ADMIN screens (users list/create/detail/edit, ADMIN role cap, shell cleanup) | **Complete — approved** |
+| 7 | Docs content (9 curated pages + build-time /docs/api from OpenAPI) | **Complete — approved** |
+| 8 | Final verification (full backend + frontend verify) | **Complete — awaiting approval** |
+
 ## Completed tasks
 
 P0 Foundation (application foundation):
@@ -36,12 +54,12 @@ P0 Foundation (application foundation):
 | P0-06 | Security bootstrap | Completed |
 | P0-07 | Frontend bootstrap | Completed |
 | P0-08 | Frontend API boundary | Completed |
-| P0-09 | Docker | Outstanding (no Docker on the development host) |
-| P0-10 | Edge infrastructure (Nginx, PgBouncer) | Outstanding (no Docker on the development host) |
+| P0-09 | Docker | Completed (6-container stack verified; Docker now on the development host) |
+| P0-10 | Edge infrastructure (Nginx, PgBouncer) | Completed (Nginx edge + PgBouncer verified end to end) |
 | P0-11 | Observability | Partial (actuator/health/metrics + structured logs; monitoring stack files outstanding) |
 | P0-12 | CI/CD | Outstanding (no workflow yet) |
 | P0-13 | Security and secret validation | Partial |
-| P0-14 | Full smoke test | Outstanding (blocked on Docker) |
+| P0-14 | Full smoke test | Completed (headless-browser smoke test passes through the Nginx edge) |
 | P0-15 | Final review | Outstanding |
 
 P1 Identity and Security:
@@ -445,11 +463,13 @@ P13 Broader Reporting and Operational Reporting:
 
 ## In progress
 
-- None.
+- The nine-step mission is complete through Step 8 (final verification); the mission awaits the final `approved`.
+- Step 8 follow-up: the running stack was browser-tested (Chrome over CDP) and a landing-footer defect fixed — Terms/Privacy links now point at `/docs/terms` and `/docs/privacy` (were 404), a missing `/docs/support` link added, and the design docs aligned. Frontend re-verified (85 files / 483 tests, lint + tsc + build clean) and the frontend image rebuilt.
+- Portal pass: all three portals were signed into through a real browser, which required provisioning one known account per portal through the environment-gated CLIs (`bootstrap-super-admin.sh`, `LoadCohortCli`, ADR-0014 `user_role` grant — no default login, no seeded password). That exposed GAP-171: the STUDENT role home `/student` had no page, so students authenticated into a 404. `frontend/app/student/page.tsx` now exists, `frontend/lib/auth/role-home-routes.test.ts` asserts every `roleHome` destination resolves to a real page, and `scripts/smoke-frontend.mjs` gained `--path` and a landed-path assertion so `/login/admin` and `/login/organization` can be exercised at all. Verified in-browser: SUPER_ADMIN → `/change-password` → `/platform`, ADMIN → `/admin`, STUDENT → `/student`; frontend 86 files / 487 tests, lint + tsc + build clean, image rebuilt. The provisioning recipes are in `docs/PROJECT-SUMMARY.md` §5a-1; the live local passwords are kept out of the repository in the git-ignored `load/out/local-portal-credentials.md` (never committed, per AGENTS.md).
 
 ## Blocked
 
-- None (P0-09/P0-10/P0-14 are blocked on Docker availability, not on code).
+- None.
 
 ## Deferred
 
@@ -495,10 +515,22 @@ P13 Broader Reporting and Operational Reporting:
 
 ## Latest verified result
 
-- **Backend:** 388 tests, 0 failures, 0 errors, 0 skipped — `BUILD SUCCESS`
-  (`mvnw.cmd test`, `JAVA_HOME=C:\java\jdk-25.0.4.1`, compiled with `--release 21`).
-- **Frontend:** lint clean, 42 test files / 157 tests passing, `next build` succeeds and emits the analytics routes (`/analytics`, `/analytics/student`, `/analytics/organization`, `/analytics/assessments/[id]`, `/analytics/questions/[id]`, `/analytics/topics/[id]`) and the results routes (`/results`, `/results/[id]`, `/results/[id]/scorecard`, `/attempts/[id]/result`) and the commerce routes (`/student/store`, `/student/packages/[id]`, `/student/checkout`, `/student/purchases`, `/student/purchases/[id]`, `/student/access`, `/finance/{purchases,payments,refunds,coupons,plans}`, `/staff/access-grants`, `/admin/commerce`) and the communication routes (`/student/notifications`, `/student/announcements`, `/admin/communication`, `/admin/communication/templates`, `/admin/communication/templates/[id]`, `/admin/communication/templates/[id]/preview`, `/admin/communication/announcements`, `/admin/communication/announcements/[id]`) and the administration routes (`/admin`, `/admin/{dashboard,users,students,roles,permissions,settings,business-rules,lookups,audit,system-health}`).
-- **Schema:** 26 Flyway migrations `V1`–`V26` apply cleanly with no numbering gaps. P13 adds a
+- **Backend:** 603 tests, 0 failures, 0 errors, 2 skipped — `BUILD SUCCESS`
+- **Frontend:** 521 tests, 0 failures (93 files); lint and type-check clean; production build succeeds
+  (permission model hardening, tasks 1-11: 47 tests added across findings D-01, D-02, D-03, D-04/D-09,
+  D-05, D-07, D-08, D-10, D-11 and D-12)
+  (`mvnw.cmd clean verify`, `JAVA_HOME=C:\java\jdk-25.0.4.1`, compiled with `--release 21`).
+- **Frontend:** lint clean, 86 test files / 487 tests passing (Step 5 platform + Step 6 user-management + Step 7 docs tests + the GAP-171 route-existence guard), `next build` succeeds and emits the public routes (`/`, `/login/{student,organization,admin}`, `/change-password`, `/docs` + `/docs/[slug]`), the authenticated shells (`/platform`, `/admin/{dashboard,users,roles,permissions,settings,business-rules,lookups,audit,system-health}`), and the analytics routes (`/analytics`, `/analytics/student`, `/analytics/organization`, `/analytics/assessments/[id]`, `/analytics/questions/[id]`, `/analytics/topics/[id]`) and the results routes (`/results`, `/results/[id]`, `/results/[id]/scorecard`, `/attempts/[id]/result`) and the commerce routes (`/student/store`, `/student/packages/[id]`, `/student/checkout`, `/student/purchases`, `/student/purchases/[id]`, `/student/access`, `/finance/{purchases,payments,refunds,coupons,plans}`, `/staff/access-grants`, `/admin/commerce`) and the communication routes (`/student/notifications`, `/student/announcements`, `/admin/communication`, `/admin/communication/templates`, `/admin/communication/templates/[id]`, `/admin/communication/templates/[id]/preview`, `/admin/communication/announcements`, `/admin/communication/announcements/[id]`) and the administration routes (`/admin`, `/admin/{dashboard,users,students,roles,permissions,settings,business-rules,lookups,audit,system-health}`) and the student home (`/student`, GAP-171).
+- **Schema:** 36 Flyway migrations `V1`–`V36` apply cleanly with no numbering gaps. `V32` grants
+  `ROLE_VIEW` + `PERMISSION_VIEW` to `SUPER_ADMIN` (D-01, ADR-0032 amendment); `V33` adds the
+  `UNBOUNDED_PERMISSION_ASSIGN` permission plus the `RESERVED_PERMISSIONS` business rule (D-03,
+  ADR-0039); `V34` grants role authoring and the reserved-set bypass to `SUPER_ADMIN` and seeds the
+  `PLATFORM_ADMIN_VIEW` / `PLATFORM_ADMIN_RECOVER` permissions (Gate A A1/A2/A2b/A4, ADR-0042) —
+  all three are grant/seed only, **no table and no column**. `V35` adds `role.organization_id` and
+  splits the global `UNIQUE(code)` into two partial uniques (D-05, ADR-0045/0047); `V36` adds
+  `audit_log.organization_id` with a derive-where-derivable backfill (D-11, ADR-0046/0047). These are
+  the **only two migrations in the project that add a column to a frozen table**, and both are
+  recorded in ADR-0047, which is **Proposed** pending sign-off (GAP-185). P13 adds a
   permission seed only, P5 hardening adds one configuration seed only, and P6 adds the
   `answer_key_detail_option` child table (ADR-0025, GAP-072) — **no reporting table and no new
   column**. The attempt completion contract (GAP-073) added no table, no column, and no endpoint.

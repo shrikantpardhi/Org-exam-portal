@@ -15,11 +15,11 @@ export default function AnalyticsPage() {
   const isStaff = can("ANALYTICS_VIEW");
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-16">
+    <div className="flex w-full flex-col gap-6">
       <header className="space-y-1">
-        <p className="text-sm text-slate-500">Analytics</p>
+        <p className="text-sm text-muted-foreground">Analytics</p>
         <h1 className="text-2xl font-semibold tracking-tight">Analytics and insights</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Derived metrics, refreshed from evaluated attempts. Every view states what it measures,
           when it was calculated, and shows an empty state instead of a misleading zero.
         </p>
@@ -28,10 +28,10 @@ export default function AnalyticsPage() {
       <nav aria-label="Analytics views" className="grid gap-4 sm:grid-cols-2">
         <Link
           href="/analytics/student"
-          className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm hover:border-blue-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          className="rounded-lg border border-border bg-surface p-4 shadow-sm hover:border-blue-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
           <h2 className="text-base font-semibold">My analytics</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Your attempts, average score, accuracy, topic performance and progress.
           </p>
         </Link>
@@ -39,10 +39,10 @@ export default function AnalyticsPage() {
         {status === "authenticated" && isStaff ? (
           <Link
             href="/analytics/organization"
-            className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm hover:border-blue-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            className="rounded-lg border border-border bg-surface p-4 shadow-sm hover:border-blue-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           >
             <h2 className="text-base font-semibold">Organization analytics</h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               Students, assessments, attempts and active users for your organization.
             </p>
           </Link>
@@ -53,12 +53,12 @@ export default function AnalyticsPage() {
         <h2 id="analytics-staff-note" className="text-base font-semibold">
           Assessment, question and topic dashboards
         </h2>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Staff with the analytics permission open these from an assessment, question or topic
           record. Their URLs are <code>/analytics/assessments/&lt;id&gt;</code>,{" "}
           <code>/analytics/questions/&lt;id&gt;</code> and <code>/analytics/topics/&lt;id&gt;</code>.
         </p>
       </section>
-    </main>
+    </div>
   );
 }

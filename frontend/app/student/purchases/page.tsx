@@ -8,11 +8,11 @@ import { PurchaseHistoryScreen } from "@/features/commerce/components/purchase-h
 /** Student purchase history ({@code specs/18-P9-Commerce-V1.5.md §81}). */
 export default function StudentPurchasesPage() {
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-16">
+    <div className="flex w-full max-w-5xl flex-col gap-6">
       <header className="space-y-1">
-        <p className="text-sm text-slate-500">Student</p>
+        <p className="text-sm text-muted-foreground">Student</p>
         <h1 className="text-2xl font-semibold tracking-tight">My purchases</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Purchase date, plan, amount and the payment status reported by the server.{" "}
           <Link href="/student/store" className="underline">
             Browse the store
@@ -22,6 +22,6 @@ export default function StudentPurchasesPage() {
       <AuthenticatedGuard>
         <PurchaseHistoryScreen />
       </AuthenticatedGuard>
-    </main>
+    </div>
   );
 }

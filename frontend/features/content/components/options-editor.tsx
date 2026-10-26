@@ -106,18 +106,18 @@ export function OptionsEditor({
           Add option
         </Button>
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-muted-foreground">
         {answerModel === "SINGLE_OPTION"
           ? "Single-choice template: exactly one correct answer."
           : "Multiple-choice template: one or more correct answers."}{" "}
         The backend template configuration is authoritative for the final option rules.
       </p>
 
-      {rows.length === 0 ? <p className="text-sm text-slate-500">No options yet.</p> : null}
+      {rows.length === 0 ? <p className="text-sm text-muted-foreground">No options yet.</p> : null}
 
       <ol aria-label="Option rows" className="space-y-2">
         {rows.map((row, index) => (
-          <li key={`${row.optionKey}-${index}`} className="rounded border border-slate-200 p-3">
+          <li key={`${row.optionKey}-${index}`} className="rounded border border-border p-3">
             <div className="grid gap-2 sm:grid-cols-[6rem_1fr_auto]">
               <label className="space-y-1 text-sm">
                 <span className="font-medium">Option key</span>
@@ -127,7 +127,7 @@ export function OptionsEditor({
                   maxLength={20}
                   disabled={disabled}
                   onChange={(event) => update(index, { optionKey: event.target.value })}
-                  className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+                  className="w-full rounded-md border border-input px-2 py-1 text-sm"
                 />
               </label>
               <label className="space-y-1 text-sm">
@@ -137,7 +137,7 @@ export function OptionsEditor({
                   value={row.content}
                   disabled={disabled}
                   onChange={(event) => update(index, { content: event.target.value })}
-                  className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+                  className="w-full rounded-md border border-input px-2 py-1 text-sm"
                 />
               </label>
               <div className="flex flex-col justify-end gap-1 text-sm">

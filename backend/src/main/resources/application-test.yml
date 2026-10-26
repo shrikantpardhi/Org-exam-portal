@@ -45,6 +45,7 @@ app:
     gateway-secret: commerce-test-gateway-secret
   communication:
     # The deterministic fake email provider; communication workers run explicitly in tests.
+    # Tests never select SMTP or HTTP_API: a test run must not emit real traffic.
     provider: FAKE
     worker:
       enabled: false

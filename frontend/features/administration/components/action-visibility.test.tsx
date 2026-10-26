@@ -22,12 +22,7 @@ vi.mock("@/lib/auth/auth-context", () => ({
   }),
 }));
 
-vi.mock("next/navigation", () => ({
-  usePathname: () => "/admin/users",
-}));
-
 import { apiDelete, apiGet } from "@/lib/api-client";
-import { AdminNav } from "@/features/administration/components/admin-nav";
 import { UsersScreen } from "@/features/administration/components/users-screen";
 
 const mockedGet = vi.mocked(apiGet);
@@ -70,7 +65,7 @@ beforeEach(() => {
         pagination: { page: 0, size: 100, totalElements: 1, totalPages: 1 },
       } as never);
     }
-    return Promise.reject(new Error(`Unexpected GET ${url}`));
+    return Promise.reject(new Error("Unexpected GET " + url));
   });
   mockedDelete.mockResolvedValue(undefined as never);
 });
@@ -81,7 +76,7 @@ describe("permission-gated actions", () => {
 
     expect(await screen.findByText("ada@example.com")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Archive" })).toBeNull();
-    expect(screen.getAllByText("View only").length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: "View" })).toHaveAttribute("href", "/admin/users/u1");
   });
 
   it("shows the archive action with USER_ARCHIVE and calls the frozen endpoint", async () => {
@@ -98,41 +93,5 @@ describe("permission-gated actions", () => {
     await userEventSetup.click(screen.getByRole("button", { name: "Archive user" }));
 
     expect(mockedDelete).toHaveBeenCalledWith("/users/u1");
-  });
-});
-
-describe("permission-driven navigation", () => {
-  it("shows only the sections the caller may use", () => {
-    auth.permissions = ["USER_VIEW"];
-    render(<AdminNav />);
-
-    expect(screen.getByRole("link", { name: "Users" })).toHaveAttribute("href", "/admin/users");
-    expect(screen.getByRole("link", { name: "Students" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Audit" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
-  });
-
-  it("shows every configured route for a full admin permission set", () => {
-    auth.permissions = [
-      "ADMIN_DASHBOARD_VIEW",
-      "USER_VIEW",
-      "ROLE_VIEW",
-      "PERMISSION_VIEW",
-      "ORGANIZATION_SETTING_VIEW",
-      "BUSINESS_RULE_VIEW",
-      "LOOKUP_VIEW",
-      "AUDIT_LOG_VIEW",
-      "SYSTEM_HEALTH_VIEW",
-      "ACCESS_PACKAGE_MANAGE",
-      "COMMUNICATION_TEMPLATE_READ",
-    ];
-    render(<AdminNav />);
-
-    expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Audit" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "System health" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Commerce" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Communication" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Users" })).toHaveAttribute("aria-current", "page");
   });
 });

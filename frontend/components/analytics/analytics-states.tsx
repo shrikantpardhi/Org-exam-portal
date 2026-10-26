@@ -10,13 +10,13 @@ import type { ReactNode } from "react";
  * zeros. The retry control is a real button, so it is reachable by keyboard.
  */
 const BUTTON_CLASS =
-  "mt-2 rounded border border-red-300 bg-white px-3 py-1 text-sm font-medium text-red-700 " +
+  "mt-2 rounded border border-red-300 bg-surface px-3 py-1 text-sm font-medium text-red-700 " +
   "hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 " +
   "focus-visible:outline-red-600";
 
 export function AnalyticsLoading({ label = "Loading analytics…" }: { label?: string }) {
   return (
-    <p role="status" aria-live="polite" className="text-sm text-slate-500">
+    <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
       {label}
     </p>
   );
@@ -24,11 +24,11 @@ export function AnalyticsLoading({ label = "Loading analytics…" }: { label?: s
 
 export function AnalyticsEmpty({ message, hint }: { message: string; hint?: ReactNode }) {
   return (
-    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
-      <p role="note" className="text-sm font-medium text-slate-700">
+    <div className="rounded-lg border border-dashed border-input bg-muted p-4">
+      <p role="note" className="text-sm font-medium text-foreground">
         {message}
       </p>
-      {hint ? <p className="mt-1 text-sm text-slate-500">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-sm text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }
@@ -70,7 +70,7 @@ export function AnalyticsStaleNotice({
         <button
           type="button"
           onClick={onRetry}
-          className="mt-2 rounded border border-amber-300 bg-white px-3 py-1 text-sm font-medium text-amber-800 hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
+          className="mt-2 rounded border border-amber-300 bg-surface px-3 py-1 text-sm font-medium text-amber-800 hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
         >
           Refresh again
         </button>

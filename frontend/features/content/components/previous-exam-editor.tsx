@@ -101,22 +101,23 @@ export function PreviousExamEditor({
   return (
     <section aria-label="Previous exam history" className="space-y-3">
       <h2 className="text-lg font-semibold">Previous exam history</h2>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-muted-foreground">
         The exam is selected from the masters and stored by id — an exam name is never typed here.
       </p>
 
       {history.isPending ? (
-        <p role="status" className="text-sm text-slate-500">
+        <p role="status" className="text-sm text-muted-foreground">
           Loading previous exams…
         </p>
       ) : null}
 
       {history.data && history.data.length === 0 ? (
-        <p className="text-sm text-slate-500">No previous exam recorded.</p>
+        <p className="text-sm text-muted-foreground">No previous exam recorded.</p>
       ) : null}
 
       {history.data && history.data.length > 0 ? (
-        <table aria-label="Previous exams" className="w-full text-sm">
+        <div className="overflow-x-auto" tabIndex={0}>
+<table aria-label="Previous exams" className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="text-left">
               <th scope="col">Exam</th>
@@ -137,7 +138,7 @@ export function PreviousExamEditor({
                     onChange={(event) =>
                       setEditing({ ...editing, row: { ...editing.row, year: event.target.value } })
                     }
-                    className="w-24 rounded-md border border-slate-300 px-2 py-1"
+                    className="w-24 rounded-md border border-input px-2 py-1"
                   />
                 ) : (row.year ?? "—")}</td>
                 <td>{editing?.historyId === row.id ? (
@@ -147,7 +148,7 @@ export function PreviousExamEditor({
                     onChange={(event) =>
                       setEditing({ ...editing, row: { ...editing.row, shift: event.target.value } })
                     }
-                    className="w-24 rounded-md border border-slate-300 px-2 py-1"
+                    className="w-24 rounded-md border border-input px-2 py-1"
                   />
                 ) : (row.shift ?? "—")}</td>
                 <td>{editing?.historyId === row.id ? (
@@ -157,7 +158,7 @@ export function PreviousExamEditor({
                     onChange={(event) =>
                       setEditing({ ...editing, row: { ...editing.row, source: event.target.value } })
                     }
-                    className="w-32 rounded-md border border-slate-300 px-2 py-1"
+                    className="w-32 rounded-md border border-input px-2 py-1"
                   />
                 ) : (row.source ?? "—")}</td>
                 <td className="space-x-2">
@@ -208,6 +209,7 @@ export function PreviousExamEditor({
             ))}
           </tbody>
         </table>
+</div>
       ) : null}
 
       <fieldset aria-label="Add previous exam" className="grid gap-2 sm:grid-cols-4">
@@ -218,7 +220,7 @@ export function PreviousExamEditor({
             value={draft.examId}
             disabled={disabled}
             onChange={(event) => setDraft({ ...draft, examId: event.target.value })}
-            className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+            className="w-full rounded-md border border-input px-2 py-1 text-sm"
           >
             <option value="">Select an exam</option>
             {(exams.data ?? []).map((exam) => (
@@ -236,7 +238,7 @@ export function PreviousExamEditor({
             inputMode="numeric"
             disabled={disabled}
             onChange={(event) => setDraft({ ...draft, year: event.target.value })}
-            className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+            className="w-full rounded-md border border-input px-2 py-1 text-sm"
           />
         </label>
         <label className="space-y-1 text-sm">
@@ -246,7 +248,7 @@ export function PreviousExamEditor({
             value={draft.shift}
             disabled={disabled}
             onChange={(event) => setDraft({ ...draft, shift: event.target.value })}
-            className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+            className="w-full rounded-md border border-input px-2 py-1 text-sm"
           />
         </label>
         <label className="space-y-1 text-sm">
@@ -256,7 +258,7 @@ export function PreviousExamEditor({
             value={draft.source}
             disabled={disabled}
             onChange={(event) => setDraft({ ...draft, source: event.target.value })}
-            className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+            className="w-full rounded-md border border-input px-2 py-1 text-sm"
           />
         </label>
       </fieldset>
@@ -271,7 +273,7 @@ export function PreviousExamEditor({
         </p>
       ) : null}
       {status ? (
-        <p role="status" className="text-sm text-slate-600">
+        <p role="status" className="text-sm text-muted-foreground">
           {status}
         </p>
       ) : null}

@@ -425,7 +425,8 @@ Request.
 ```json
 {
   "username": "student@example.com",
-  "password": "********"
+  "password": "********",
+  "portal": "STUDENT"
 }
 ```
 
@@ -452,6 +453,11 @@ Response.
 The response never contains password hashes, session secrets, or internal security details.
 
 Login is rejected for the system actor identity.
+
+`portal` is an optional field (`SYSTEM_ADMIN` | `ORGANIZATION_ADMIN` | `STUDENT`). When present,
+the backend validates that the authenticated account's roles match the portal and returns
+`401 PORTAL_MISMATCH` with a generic message that does not reveal which portal the account does
+belong to (ADR-0035). When absent, behaviour is unchanged.
 
 ### 21.2 Logout
 
@@ -2316,11 +2322,12 @@ Object storage credentials, filesystem paths, and signed URLs are never exposed.
 ### Authentication
 
 ```text
-POST /api/v1/auth/login
+POST /api/v1/auth/login            (optional `portal`: SYSTEM_ADMIN | ORGANIZATION_ADMIN | STUDENT)
 POST /api/v1/auth/logout
 POST /api/v1/auth/refresh-token
 POST /api/v1/auth/forgot-password
 POST /api/v1/auth/reset-password
+POST /api/v1/auth/change-password
 ```
 
 ### Current user
@@ -2562,6 +2569,27 @@ GET/POST/PUT/DELETE /api/v1/lookups
 GET /api/v1/audit-logs
 
 GET /api/v1/admin/system-health
+
+GET /api/v1/admin/organization-config
+```
+
+### Platform (SUPER_ADMIN)
+
+```text
+POST /api/v1/platform/organizations
+GET  /api/v1/platform/organizations
+GET  /api/v1/platform/organizations/{id}
+POST /api/v1/platform/organizations/{id}/admins
+GET  /api/v1/platform/status
+GET  /api/v1/platform/system
+GET  /api/v1/platform/providers
+PUT  /api/v1/platform/providers
+```
+
+### Public
+
+```text
+POST /api/v1/public/contact
 ```
 
 ### Reports, imports, bulk, search, files
@@ -2774,6 +2802,234 @@ The following are frozen.
 24. Global search permission and resource contract.
 25. Report history and job status served by `background_job`.
 26. Report and import artifact delivery through the protected file endpoint.
+
+---
+
+## 72. Amendment — SUPER_ADMIN and ADMIN UI endpoints (ADR-0032, ADR-0033, ADR-0034)
+
+Appended by ADR-0032/0033/0034. These nine endpoints support the SUPER_ADMIN install
+flow and the ADMIN user-management surface. Permission codes follow the UPPER_SNAKE
+convention (P13 §75). Every platform endpoint is SUPER_ADMIN-only.
+
+### 72.1 Change password (authenticated)
+
+```http
+POST /api/v1/auth/change-password
+```
+
+Permission: authenticated (any role).
+
+Request.
+
+```json
+{ "currentPassword": "********", "newPassword": "********" }
+```
+
+Response.
+
+```json
+{ "success": true, "message": "Password changed", "data": null }
+```
+
+Errors: `AUTHENTICATION_ERROR` (401), `VALIDATION_ERROR` (400 policy violation).
+
+On success: re-hashes the password, clears `must_change_password`, emits
+`PASSWORD_CHANGE`, and invalidates all other sessions for the user.
+
+### 72.2 Create business organization
+
+```http
+POST /api/v1/platform/organizations
+```
+
+Permission: `PLATFORM_ORGANIZATION_CREATE`.
+
+Request.
+
+```json
+{ "code": "ACME", "name": "Acme", "description": "…" }
+```
+
+Response.
+
+```json
+{ "success": true, "message": "Organization created", "data": { "id": "<uuid>", "code": "ACME", "name": "Acme" } }
+```
+
+Errors: `VALIDATION_ERROR` (400), `CONFLICT` (409 duplicate code, PLATFORM excluded).
+
+Emits `ORGANIZATION_CREATE`.
+
+### 72.3 List business organizations
+
+```http
+GET /api/v1/platform/organizations
+```
+
+Permission: `PLATFORM_ORGANIZATION_VIEW`.
+
+Filters: `status`, `search` (code/name), pagination (`page`, `size`).
+`PLATFORM` is always excluded.
+
+Response.
+
+```json
+{ "success": true, "data": [ { "id": "<uuid>", "code": "ACME", "name": "Acme", "status": "ACTIVE" } ], "pagination": { "page": 0, "size": 20, "totalElements": 1, "totalPages": 1 } }
+```
+
+### 72.4 Organization detail
+
+```http
+GET /api/v1/platform/organizations/{id}
+```
+
+Permission: `PLATFORM_ORGANIZATION_VIEW`.
+
+Response includes `adminCount` and `userCount`. `PLATFORM` returns 404.
+
+```json
+{ "success": true, "data": { "id": "<uuid>", "code": "ACME", "name": "Acme", "description": "…", "status": "ACTIVE", "adminCount": 0, "userCount": 0 } }
+```
+
+### 72.5 Create organization ADMIN
+
+```http
+POST /api/v1/platform/organizations/{id}/admins
+```
+
+Permission: `PLATFORM_ADMIN_CREATE`.
+
+Request.
+
+```json
+{ "firstName": "Jane", "lastName": "Doe", "email": "jane@acme.example", "mobile": "…" }
+```
+
+Response.
+
+```json
+{ "success": true, "message": "Administrator created", "data": { "userId": "<uuid>", "email": "jane@acme.example", "invitationSentAt": "2026-10-24T10:00:00Z" } }
+```
+
+Errors: `VALIDATION_ERROR` (400), `CONFLICT` (409 duplicate email/mobile, or
+`MAX_ADMINS_PER_ORG` cap reached), `NOT_FOUND` (404 organization).
+
+Sets `must_change_password = true`, generates a reset token, delivers it through
+`PasswordResetDelivery` (ADR-0034), emits `USER_CREATE` and `ADMIN_ASSIGN`.
+
+### 72.6 Platform status
+
+```http
+GET /api/v1/platform/status
+```
+
+Permission: `PLATFORM_STATUS_VIEW`.
+
+Response.
+
+```json
+{ "success": true, "data": { "organizationCount": 1, "adminCount": 1, "userCount": 1, "seedStatus": "COMPLETE", "systemHealth": "UP" } }
+```
+
+### 72.7 Platform system information
+
+```http
+GET /api/v1/platform/system
+```
+
+Permission: `PLATFORM_SYSTEM_VIEW`.
+
+Response.
+
+```json
+{ "success": true, "data": {
+  "appVersion": "1.5.0", "frontendVersion": "1.5.0",
+  "gitCommit": "c966d1c", "buildDate": "2026-10-23T00:00:00Z",
+  "migrationVersion": 31, "lastMigration": "V31__add_reset_link_to_password_reset_template.sql",
+  "appliedOn": "2026-10-23T00:00:00Z", "uptimeSeconds": 3600,
+  "dependencies": [ { "name": "postgres", "status": "UP" } ]
+} }
+```
+
+`gitCommit` and `buildDate` are `null` when no build-info is present (ADR-0033, C6).
+
+### 72.8 Read provider configuration
+
+```http
+GET /api/v1/platform/providers
+```
+
+Permission: `PLATFORM_PROVIDER_VIEW`.
+
+Response (never returns API keys or secrets).
+
+```json
+{ "success": true, "data": {
+  "email":   { "configured": true, "providerName": "reference", "fromAddress": "no-reply@example.com", "updatedAt": "…" },
+  "payment": { "configured": false, "providerName": "reference", "webhookSecretSet": false, "updatedAt": null }
+} }
+```
+
+### 72.9 Update provider configuration
+
+```http
+PUT /api/v1/platform/providers
+```
+
+Permission: `PLATFORM_PROVIDER_UPDATE`.
+
+Stores credentials in `organization_setting.configuration` for the PLATFORM org
+(no new table, ADR-0033 C5). Reference adapters are the only active providers in
+V1.5 (GAP-099, GAP-108).
+
+Emits `PROVIDER_CONFIG_UPDATE`.
+---
+
+## 73. Amendment — ADMIN org-scoped config and public contact endpoints (ADR-0037)
+
+### 73.1 Organization-scoped configuration (ADMIN)
+
+```http
+GET /api/v1/admin/organization-config
+```
+
+Permission: `ADMIN` role (organization admin only). Read-only.
+
+Returns the caller's organization-scoped configuration, composed from existing sources:
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "organization": { "name": "Acme", "code": "ACME", "timezone": "Asia/Kolkata" },
+    "featureFlags": {},
+    "providerStatus": { "emailConfigured": false, "paymentConfigured": false },
+    "lastMigrationVersion": "31",
+    "appVersion": "1.5.0"
+  }
+}
+```
+
+No secrets, no database internals, and no container status are returned.
+
+### 73.2 Public contact
+
+```http
+POST /api/v1/public/contact
+```
+
+Public (no authentication). Rate-limited per source IP.
+
+Request.
+
+```json
+{ "name": "Jane", "email": "jane@example.com", "message": "...", "organization": "Acme" }
+```
+
+`organization` is optional. The submission is handed off to the Communication email pipeline
+and/or recorded as a `background_job` of type `CONTACT_REQUEST`. It creates no user and writes no
+business data. Returns the standard success response.
 
 ---
 

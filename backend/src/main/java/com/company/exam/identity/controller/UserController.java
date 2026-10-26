@@ -57,16 +57,19 @@ public class UserController {
             @RequestParam(required = false) Status status,
             @RequestParam(required = false) UUID roleId,
             @RequestParam(required = false) String search,
-            @PageableDefault(size = 20) Pageable pageable) {
-        Page<UserDtos.UserSummary> page = userService.list(status, roleId, search, QuerySupport.sanitize(pageable, SORTABLE));
+            @PageableDefault(size = 20) Pageable pageable,
+            @AuthenticationPrincipal IdentityPrincipal principal) {
+        Page<UserDtos.UserSummary> page = userService.list(status, roleId, search,
+                QuerySupport.sanitize(pageable, SORTABLE), principal.userId());
         return ApiResponse.paged(PageResponse.from(page, summary -> summary));
     }
 
     @Operation(summary = "Get a user", description = "Returns safe profile and role information.")
     @GetMapping("/{id}")
     @PreAuthorize("@authorizationService.hasPermission(authentication, 'USER_VIEW')")
-    public ApiResponse<UserDtos.UserDetail> get(@PathVariable UUID id) {
-        return ApiResponse.ok(userService.get(id));
+    public ApiResponse<UserDtos.UserDetail> get(@PathVariable UUID id,
+            @AuthenticationPrincipal IdentityPrincipal principal) {
+        return ApiResponse.ok(userService.get(id, principal.userId()));
     }
 
     @Operation(summary = "Create a user", description = "Creates a user and assigns roles.")

@@ -3,6 +3,7 @@ package com.company.exam.identity.service;
 import com.company.exam.common.cache.CacheService;
 import com.company.exam.common.exception.AuthorizationException;
 import com.company.exam.identity.repository.PermissionRepository;
+import com.company.exam.identity.repository.RoleRepository;
 import com.company.exam.identity.security.IdentityPrincipal;
 import java.time.Duration;
 import java.util.List;
@@ -32,10 +33,13 @@ public class AuthorizationService {
     private static final Duration CACHE_TTL = Duration.ofMinutes(5);
 
     private final PermissionRepository permissionRepository;
+    private final RoleRepository roleRepository;
     private final CacheService cacheService;
 
-    public AuthorizationService(PermissionRepository permissionRepository, CacheService cacheService) {
+    public AuthorizationService(PermissionRepository permissionRepository, RoleRepository roleRepository,
+            CacheService cacheService) {
         this.permissionRepository = permissionRepository;
+        this.roleRepository = roleRepository;
         this.cacheService = cacheService;
     }
 
@@ -50,6 +54,13 @@ public class AuthorizationService {
     /** SpEL-friendly check used by {@code @PreAuthorize("@authorizationService.hasPermission(authentication, 'X')")}. */
     public boolean hasPermission(Authentication authentication, String permissionCode) {
         return currentUserId(authentication).map(userId -> hasPermission(userId, permissionCode)).orElse(false);
+    }
+
+    /** SpEL-friendly role check used by {@code @PreAuthorize("@authorizationService.hasRole(authentication, 'ADMIN')")}. */
+    public boolean hasRole(Authentication authentication, String roleCode) {
+        return currentUserId(authentication)
+                .map(userId -> roleRepository.findEffectiveRoleCodes(userId).contains(roleCode))
+                .orElse(false);
     }
 
     /** Throws 403 when the user does not hold the permission. */

@@ -11,6 +11,7 @@ export const authUserSchema = z.object({
   firstName: z.string().nullish(),
   lastName: z.string().nullish(),
   roles: z.array(z.string()),
+  mustChangePassword: z.boolean().nullish(),
 });
 
 export const loginResultSchema = z.object({
@@ -27,11 +28,16 @@ export const currentUserSchema = z.object({
   email: z.string(),
   roles: z.array(z.string()),
   permissions: z.array(z.string()),
+  mustChangePassword: z.boolean().nullish(),
 });
 
 export const currentPermissionsSchema = z.object({
   permissions: z.array(z.string()),
 });
+
+/** The three split-login portals (ADR-0035). Matches the backend {@code portal} field. */
+export const loginPortals = ["SYSTEM_ADMIN", "ORGANIZATION_ADMIN", "STUDENT"] as const;
+export type LoginPortal = (typeof loginPortals)[number];
 
 export type AuthUser = z.infer<typeof authUserSchema>;
 export type LoginResult = z.infer<typeof loginResultSchema>;

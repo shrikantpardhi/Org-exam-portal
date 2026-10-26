@@ -23,7 +23,7 @@ import type { Schedule } from "@/features/assessment/schemas/assessment-builder"
 import { ApiClientError } from "@/lib/errors";
 
 const fieldClass =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900";
+  "w-full rounded-md border border-input px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900";
 
 export function ScheduleList() {
   const schedules = useSchedules();
@@ -195,15 +195,16 @@ export function ScheduleList() {
         </p>
       ) : null}
       {schedules.data && schedules.data.length === 0 ? (
-        <p role="note" className="text-sm text-slate-500">
+        <p role="note" className="text-sm text-muted-foreground">
           No schedules yet.
         </p>
       ) : null}
 
       {schedules.data && schedules.data.length > 0 ? (
-        <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto" role="region" aria-label="Scrollable table" tabIndex={0}>
+<table className="w-full min-w-[640px] text-left text-sm">
           <thead>
-            <tr className="border-b border-slate-200">
+            <tr className="border-b border-border">
               <th className="py-2">Version</th>
               <th className="py-2">Mode</th>
               <th className="py-2">Window</th>
@@ -222,6 +223,7 @@ export function ScheduleList() {
             ))}
           </tbody>
         </table>
+</div>
       ) : null}
 
       {message ? (
@@ -251,7 +253,7 @@ function ScheduleRow({
   const [end, setEnd] = useState(isoToLocalDateTime(schedule.endTime));
 
   return (
-    <tr className="border-b border-slate-100">
+    <tr className="border-b border-border">
       <td className="py-2 font-mono text-xs">{schedule.assessmentVersionId}</td>
       <td className="py-2">{schedule.mode}</td>
       <td className="py-2">

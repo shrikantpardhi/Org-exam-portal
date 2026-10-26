@@ -28,9 +28,9 @@ export function NotificationBell({
       aria-expanded={open}
       aria-controls={controlsId}
       aria-label="Notifications"
-      className="relative rounded-full border border-slate-300 bg-white p-2 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+      className="relative rounded-full border border-input bg-surface p-2 hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
     >
-      <Bell aria-hidden="true" className="h-5 w-5 text-slate-700" />
+      <Bell aria-hidden="true" className="h-5 w-5 text-foreground" />
       <UnreadBadge count={unreadCount} />
     </button>
   );

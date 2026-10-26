@@ -30,14 +30,14 @@ export function TopicAnalysis({
   return (
     <section
       aria-labelledby={headingId}
-      className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+      className="space-y-3 rounded-lg border border-border bg-surface p-4 shadow-sm"
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 id={headingId} className="text-base font-semibold text-slate-900">
+          <h3 id={headingId} className="text-base font-semibold text-foreground">
             Topic performance
           </h3>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Accuracy is correct answers divided by evaluated questions mapped to the topic. The
             weak-area flag comes from the platform accuracy threshold; topics below the minimum
             reliable sample are not classified.
@@ -58,7 +58,7 @@ export function TopicAnalysis({
           <table className="w-full text-left text-sm">
             <caption className="sr-only">Accuracy by topic</caption>
             <thead>
-              <tr className="border-b border-slate-200">
+              <tr className="border-b border-border">
                 <th scope="col" className="py-2 pr-3">
                   Topic
                 </th>
@@ -75,9 +75,9 @@ export function TopicAnalysis({
             </thead>
             <tbody>
               {topics.map((topic) => (
-                <tr key={topic.topicId} className="border-b border-slate-100 align-top">
+                <tr key={topic.topicId} className="border-b border-border align-top">
                   <th scope="row" className="py-2 pr-3 font-normal">
-                    <code className="rounded bg-slate-100 px-1 py-0.5 text-xs" title={topic.topicId}>
+                    <code className="rounded bg-muted px-1 py-0.5 text-xs" title={topic.topicId}>
                       {shortId(topic.topicId)}
                     </code>
                   </th>
@@ -91,7 +91,7 @@ export function TopicAnalysis({
                     {topic.accuracy !== null ? (
                       <span
                         aria-hidden="true"
-                        className="mt-1 block h-1.5 w-full max-w-32 overflow-hidden rounded bg-slate-100"
+                        className="mt-1 block h-1.5 w-full max-w-32 overflow-hidden rounded bg-muted"
                       >
                         <span
                           className={`block h-full rounded ${
@@ -112,7 +112,7 @@ export function TopicAnalysis({
                         Reliable sample
                       </span>
                     ) : (
-                      <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-slate-600">
+                      <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-muted-foreground">
                         Small sample
                       </span>
                     )}

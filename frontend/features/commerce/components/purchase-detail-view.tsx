@@ -140,7 +140,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
           onClick={() => {
             void checkStatus();
           }}
-          className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          className="rounded border border-input bg-surface px-4 py-2 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
           Check payment status
         </button>
@@ -162,7 +162,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
       ) : null}
 
       {purchase.paymentStatus === "REFUNDED" ? (
-        <p role="status" className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+        <p role="status" className="rounded-lg border border-border bg-muted p-4 text-sm text-muted-foreground">
           This purchase was refunded and its access grant was revoked.
         </p>
       ) : null}

@@ -91,18 +91,18 @@ export function TrendChart({
   return (
     <figure
       aria-labelledby={titleId}
-      className="space-y-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+      className="space-y-2 rounded-lg border border-border bg-surface p-4 shadow-sm"
     >
       <figcaption className="space-y-1">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 id={titleId} className="text-base font-semibold text-slate-900">
+          <h3 id={titleId} className="text-base font-semibold text-foreground">
             {title}
           </h3>
-          <span className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-600">
+          <span className="rounded border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
             {unit === "%" ? "Percent" : unit ? `Unit: ${unit}` : "No unit"}
           </span>
         </div>
-        <p className="text-sm text-slate-500">{description}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </figcaption>
 
       {points.length === 0 || plotted.length === 0 ? (
@@ -170,7 +170,7 @@ export function TrendChart({
             )}
           </svg>
 
-          <div className="flex justify-between text-xs text-slate-500" aria-hidden="true">
+          <div className="flex justify-between text-xs text-muted-foreground" aria-hidden="true">
             <span>{points[0]?.label}</span>
             <span>{points[points.length - 1]?.label}</span>
           </div>
@@ -192,7 +192,7 @@ export function TrendChart({
           <table className="mt-2 w-full text-left text-sm">
             <caption className="sr-only">{title}: data table</caption>
             <thead>
-              <tr className="border-b border-slate-200">
+              <tr className="border-b border-border">
                 <th scope="col" className="py-2">
                   Point
                 </th>
@@ -203,8 +203,8 @@ export function TrendChart({
             </thead>
             <tbody>
               {points.map((point, index) => (
-                <tr key={`${point.label}-${index}`} className="border-b border-slate-100">
-                  <th scope="row" className="py-1 font-normal text-slate-700">
+                <tr key={`${point.label}-${index}`} className="border-b border-border">
+                  <th scope="row" className="py-1 font-normal text-foreground">
                     {point.label}
                   </th>
                   <td className="py-1 tabular-nums">

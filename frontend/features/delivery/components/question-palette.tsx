@@ -14,12 +14,15 @@ import { statusLabel, type QuestionStatus } from "@/features/delivery/lib/palett
  * "Question 4, Answered and marked" rather than a colour.
  */
 
+// Examination runtime palette (specs/Design-Theme.md §21). These are the -600/-700 "state" variants,
+// not the -subtle backgrounds: a candidate must be able to tell answered from marked at a glance, and
+// the runtime deliberately avoids soft tints for state. Colour is always backed by the accessible name.
 const STATUS_STYLES: Record<QuestionStatus, string> = {
-  Answered: "bg-emerald-600 text-white border-emerald-700",
-  NotAnswered: "bg-red-100 text-red-800 border-red-300",
+  Answered: "bg-success text-success-foreground border-success",
+  NotAnswered: "bg-destructive-subtle text-destructive border-destructive",
   MarkedForReview: "bg-violet-600 text-white border-violet-700",
-  AnsweredMarkedForReview: "bg-violet-600 text-white border-violet-700 ring-2 ring-emerald-500",
-  NotVisited: "bg-white text-slate-700 border-slate-300",
+  AnsweredMarkedForReview: "bg-violet-600 text-white border-violet-700 ring-2 ring-success",
+  NotVisited: "bg-surface text-foreground border-input",
 };
 
 export function QuestionPalette({
@@ -37,8 +40,8 @@ export function QuestionPalette({
   disabled?: boolean;
 }) {
   return (
-    <div className="rounded border border-slate-200 bg-white p-3">
-      <h2 className="text-sm font-semibold text-slate-900">Question palette</h2>
+    <div className="rounded-md border border-border bg-surface p-3">
+      <h2 className="text-sm font-semibold text-foreground">Question palette</h2>
       <ol className="mt-2 grid grid-cols-5 gap-2" aria-label="Questions">
         {statuses.map((status, index) => {
           const isCurrent = index === currentIndex;
@@ -50,7 +53,7 @@ export function QuestionPalette({
                 disabled={disabled}
                 aria-current={isCurrent ? "true" : undefined}
                 aria-label={`Question ${index + 1}, ${statusLabel(status)}`}
-                className={`w-full justify-center border ${STATUS_STYLES[status]} ${
+                className={`h-11 w-full min-w-11 justify-center border ${STATUS_STYLES[status]} ${
                   isCurrent ? "outline outline-2 outline-offset-2 outline-slate-900" : ""
                 }`}
                 onClick={() => onJump(index)}
@@ -76,7 +79,7 @@ function Legend() {
     "NotVisited",
   ];
   return (
-    <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+    <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
       {entries.map((status) => (
         <li key={status} className="flex items-center gap-1">
           <span

@@ -72,7 +72,7 @@ export function MasterForm<T extends Record<string, unknown>>({
             id={field.name}
             type={field.type ?? "text"}
             {...register(field.name)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           />
           {errors[field.name] ? (
             <p role="alert" className="text-sm text-red-600">

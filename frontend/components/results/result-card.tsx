@@ -31,12 +31,12 @@ export function ResultCard({ result, heading, href }: ResultCardProps) {
   return (
     <article
       aria-label={title}
-      className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+      className="rounded-lg border border-border bg-surface p-4 shadow-sm"
     >
       <header className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-          <p className="mt-1 font-mono text-xs text-slate-500">
+          <h2 className="text-base font-semibold text-foreground">{title}</h2>
+          <p className="mt-1 font-mono text-xs text-muted-foreground">
             Attempt {shortId(result.attemptId)} · Version {shortId(result.assessmentVersionId)}
           </p>
         </div>
@@ -48,35 +48,35 @@ export function ResultCard({ result, heading, href }: ResultCardProps) {
 
       <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div>
-          <dt className="text-xs text-slate-500">Obtained marks</dt>
-          <dd className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
-            {marks ?? <span className="text-sm font-normal text-slate-500">Not available</span>}
+          <dt className="text-xs text-muted-foreground">Obtained marks</dt>
+          <dd className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+            {marks ?? <span className="text-sm font-normal text-muted-foreground">Not available</span>}
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-slate-500">Percentage</dt>
-          <dd className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+          <dt className="text-xs text-muted-foreground">Percentage</dt>
+          <dd className="mt-1 text-lg font-semibold tabular-nums text-foreground">
             {percentage ?? (
-              <span className="text-sm font-normal text-slate-500">Not available</span>
+              <span className="text-sm font-normal text-muted-foreground">Not available</span>
             )}
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-slate-500">Rank</dt>
-          <dd className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+          <dt className="text-xs text-muted-foreground">Rank</dt>
+          <dd className="mt-1 text-lg font-semibold tabular-nums text-foreground">
             {result.rank !== null && result.rank > 0 ? `#${result.rank}` : (
-              <span className="text-sm font-normal text-slate-500">Unranked</span>
+              <span className="text-sm font-normal text-muted-foreground">Unranked</span>
             )}
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-slate-500">Percentile</dt>
+          <dt className="text-xs text-muted-foreground">Percentile</dt>
           <dd
-            className="mt-1 text-lg font-semibold tabular-nums text-slate-900"
+            className="mt-1 text-lg font-semibold tabular-nums text-foreground"
             title="Share of the compared cohort this result ranks above."
           >
             {percentile ?? (
-              <span className="text-sm font-normal text-slate-500">Not available</span>
+              <span className="text-sm font-normal text-muted-foreground">Not available</span>
             )}
           </dd>
         </div>

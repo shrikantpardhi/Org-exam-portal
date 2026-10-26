@@ -11,7 +11,7 @@ export function RankBadge({ rank }: { rank: number | null }) {
 
   if (!hasRank) {
     return (
-      <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+      <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
         Unranked
       </span>
     );
@@ -24,7 +24,7 @@ export function RankBadge({ rank }: { rank: number | null }) {
       className={`rounded-full border px-2 py-0.5 text-xs font-semibold tabular-nums ${
         leader
           ? "border-blue-200 bg-blue-50 text-blue-700"
-          : "border-slate-200 bg-white text-slate-700"
+          : "border-border bg-surface text-foreground"
       }`}
     >
       #{rank}

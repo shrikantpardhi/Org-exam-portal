@@ -36,7 +36,7 @@ export function RuntimeTimer({
       ? "font-mono text-lg text-red-600"
       : level === "warning"
         ? "font-mono text-lg text-amber-600"
-        : "font-mono text-lg text-slate-900";
+        : "font-mono text-lg text-foreground";
 
   return (
     <div className="flex items-center gap-2">

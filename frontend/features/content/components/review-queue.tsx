@@ -28,13 +28,13 @@ export function ReviewQueue() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-muted-foreground">
         Questions whose latest version is awaiting review. The review state shown is the state the
         server returned.
       </p>
 
       {questions.isPending ? (
-        <p role="status" className="text-sm text-slate-500">
+        <p role="status" className="text-sm text-muted-foreground">
           Loading the review queue…
         </p>
       ) : null}
@@ -44,11 +44,12 @@ export function ReviewQueue() {
         </p>
       ) : null}
       {questions.data && questions.data.length === 0 ? (
-        <p className="text-sm text-slate-500">Nothing is awaiting review.</p>
+        <p className="text-sm text-muted-foreground">Nothing is awaiting review.</p>
       ) : null}
 
       {questions.data && questions.data.length > 0 ? (
-        <table aria-label="Review queue" className="w-full text-sm">
+        <div className="overflow-x-auto" tabIndex={0}>
+<table aria-label="Review queue" className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="text-left">
               <th scope="col">Question</th>
@@ -76,6 +77,7 @@ export function ReviewQueue() {
             ))}
           </tbody>
         </table>
+</div>
       ) : null}
 
       {/*
@@ -84,7 +86,7 @@ export function ReviewQueue() {
        * selected version, where the server's review state for that exact version is known, rather
        * than here against a guessed version.
        */}
-      <p role="note" className="text-xs text-slate-500">
+      <p role="note" className="text-xs text-muted-foreground">
         Approving needs the exact version, which the list response does not carry, so approval is
         performed on the question page where the version is explicit.
       </p>

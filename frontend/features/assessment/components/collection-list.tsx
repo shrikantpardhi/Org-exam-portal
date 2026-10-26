@@ -24,7 +24,7 @@ import type { Collection } from "@/features/assessment/schemas/assessment-builde
 import { ApiClientError } from "@/lib/errors";
 
 const fieldClass =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900";
+  "w-full rounded-md border border-input px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900";
 
 const statuses = ["ACTIVE", "INACTIVE", "ARCHIVED"] as const;
 
@@ -108,24 +108,24 @@ export function CollectionList() {
         </p>
       ) : null}
       {collections.data && collections.data.length === 0 ? (
-        <p role="note" className="text-sm text-slate-500">
+        <p role="note" className="text-sm text-muted-foreground">
           No collections yet.
         </p>
       ) : null}
 
       <ul className="space-y-3">
         {(collections.data ?? []).map((collection) => (
-          <li key={collection.id} className="rounded border border-slate-200 p-4">
+          <li key={collection.id} className="rounded border border-border p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <Link href={`/collections/${collection.id}`} className="font-medium underline">
                   {collection.name}
                 </Link>
-                <p className="font-mono text-xs text-slate-500">{collection.code}</p>
+                <p className="font-mono text-xs text-muted-foreground">{collection.code}</p>
               </div>
-              <span className="text-sm text-slate-500">{collection.status}</span>
+              <span className="text-sm text-muted-foreground">{collection.status}</span>
             </div>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-muted-foreground">
               {collection.assessmentIds.length} assessment
               {collection.assessmentIds.length === 1 ? "" : "s"}
             </p>
@@ -213,9 +213,9 @@ export function CollectionDetail({ collectionId }: { collectionId: string }) {
     <div className="space-y-6">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">{membership.name}</h1>
-        <p className="font-mono text-xs text-slate-500">{membership.code}</p>
-        {membership.description ? <p className="text-sm text-slate-600">{membership.description}</p> : null}
-        <p className="text-sm text-slate-500">Status: {membership.status}</p>
+        <p className="font-mono text-xs text-muted-foreground">{membership.code}</p>
+        {membership.description ? <p className="text-sm text-muted-foreground">{membership.description}</p> : null}
+        <p className="text-sm text-muted-foreground">Status: {membership.status}</p>
       </header>
 
       <form onSubmit={add} className="flex flex-wrap items-end gap-3">
@@ -249,13 +249,13 @@ export function CollectionDetail({ collectionId }: { collectionId: string }) {
           Members
         </h2>
         {memberIds.length === 0 ? (
-          <p role="note" className="text-sm text-slate-500">
+          <p role="note" className="text-sm text-muted-foreground">
             This collection has no assessments yet.
           </p>
         ) : (
           <ul className="space-y-2">
             {memberIds.map((id) => (
-              <li key={id} className="flex items-center justify-between gap-3 rounded border border-slate-200 p-3 text-sm">
+              <li key={id} className="flex items-center justify-between gap-3 rounded border border-border p-3 text-sm">
                 <span>{nameFor(id)}</span>
                 <Button variant="ghost" size="sm" aria-label={`Remove ${nameFor(id)}`} onClick={() => void remove(id)}>
                   Remove

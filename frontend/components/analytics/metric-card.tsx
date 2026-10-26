@@ -35,20 +35,20 @@ export function MetricCard({
   return (
     <section
       aria-label={label}
-      className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+      className="rounded-lg border border-border bg-surface p-4 shadow-sm"
     >
-      <h3 className="text-sm font-medium text-slate-600">{label}</h3>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
+      <h3 className="text-sm font-medium text-muted-foreground">{label}</h3>
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
         {value === null ? (
-          <span className="text-sm font-normal text-slate-500">{emptyValue}</span>
+          <span className="text-sm font-normal text-muted-foreground">{emptyValue}</span>
         ) : (
           <>
             {value}
-            {unit ? <span className="ml-1 text-sm font-normal text-slate-500">{unit}</span> : null}
+            {unit ? <span className="ml-1 text-sm font-normal text-muted-foreground">{unit}</span> : null}
           </>
         )}
       </p>
-      {description ? <p className="mt-1 text-xs text-slate-500">{description}</p> : null}
+      {description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}
       {showFreshness ? (
         <FreshnessIndicator
           lastCalculatedOn={lastCalculatedOn ?? null}

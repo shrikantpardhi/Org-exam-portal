@@ -53,6 +53,15 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
+    <!--
+      SMTP transport for the local Mailpit gateway (ADR-0048). Jakarta Mail stays behind the
+      EmailGateway adapter (specs/19-P10 section 29): only SmtpEmailGateway imports it, and no
+      business module can reach it.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-mail</artifactId>
+    </dependency>
 
     <!-- ==================== Observability (required) ==================== -->
     <dependency>

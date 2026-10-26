@@ -49,7 +49,7 @@ export function ReviewActions({
   }
 
   if (published) {
-    return <p className="text-sm text-slate-600">This version is published and immutable.</p>;
+    return <p className="text-sm text-muted-foreground">This version is published and immutable.</p>;
   }
 
   return (
@@ -68,7 +68,7 @@ export function ReviewActions({
             rows={2}
             value={remarks}
             onChange={(event) => setRemarks(event.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           />
           <div className="flex gap-2">
             <Button onClick={() => void run(() => approve.mutateAsync({ versionId, remarks }))}>Approve</Button>

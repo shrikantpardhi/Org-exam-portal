@@ -22,11 +22,13 @@ import {
   type AdminDashboard,
   type AuditLog,
   type BusinessRule,
+  type CreateUser,
   type Lookup,
   type OrganizationSetting,
   type PermissionSummary,
   type RoleSummary,
   type SystemHealth,
+  type UpdateUser,
   type UserDetail,
   type UserSummary,
 } from "@/features/administration/schemas/administration";
@@ -75,6 +77,16 @@ export async function getUser(userId: string): Promise<UserDetail> {
 
 export async function archiveUser(userId: string): Promise<void> {
   await apiDelete(`/users/${userId}`);
+}
+
+export async function createUser(body: CreateUser): Promise<UserDetail> {
+  const result = await apiPost<unknown>("/users", body);
+  return userDetailSchema.parse(result.data);
+}
+
+export async function updateUser(userId: string, body: UpdateUser): Promise<UserDetail> {
+  const result = await apiPut<unknown>(`/users/${userId}`, body);
+  return userDetailSchema.parse(result.data);
 }
 
 export function listRoles(sort?: string): Promise<AdminPage<RoleSummary>> {

@@ -11,18 +11,18 @@ export function HealthCard({ component }: { component: HealthComponent }) {
   return (
     <article
       aria-label={component.name}
-      className="space-y-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+      className="space-y-2 rounded-lg border border-border bg-surface p-4 shadow-sm"
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <h3 className="text-base font-semibold text-slate-900">{component.name}</h3>
+        <h3 className="text-base font-semibold text-foreground">{component.name}</h3>
         <StatusBadge status={component.status} />
       </div>
-      <p className="text-sm text-slate-600">{component.message ?? "No detail reported."}</p>
-      <p className="text-xs text-slate-500">
+      <p className="text-sm text-muted-foreground">{component.message ?? "No detail reported."}</p>
+      <p className="text-xs text-muted-foreground">
         Latency: {component.latencyMs === null ? "not reported" : `${component.latencyMs} ms`}
       </p>
       {detail.length > 0 ? (
-        <dl className="space-y-1 text-xs text-slate-500">
+        <dl className="space-y-1 text-xs text-muted-foreground">
           {detail.map(([key, value]) => (
             <div key={key} className="flex gap-1">
               <dt className="font-medium">{key}:</dt>

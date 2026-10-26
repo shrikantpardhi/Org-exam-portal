@@ -289,7 +289,7 @@ public class LoadCohortProvisioningService {
     }
 
     private Role requireStudentRole() {
-        return roleRepository.findByCode(STUDENT_ROLE_CODE)
+        return roleRepository.findByCodeAndOrganizationIdIsNull(STUDENT_ROLE_CODE)
                 .filter(role -> role.getStatus() == Status.ACTIVE)
                 .orElseThrow(() -> new BusinessException("The STUDENT role is not configured or is inactive"));
     }

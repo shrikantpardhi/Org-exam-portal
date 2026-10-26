@@ -110,20 +110,21 @@ class IdentityRoleApiIntegrationTest extends AbstractIdentityIntegrationTest {
     }
 
     @Test
-    void adminRoleAssignmentSucceedsOnlyWithTheAdminRoleAssignPermission() throws Exception {
-        // Without the permission: denied.
+    void adminRoleAssignmentRequiresPermissionAndEnforcesTheOrgCap() throws Exception {
+        // Without the ADMIN_ROLE_ASSIGN permission: denied.
         String plainAdminToken = tokenFor(anAdmin());
         User target = createUser(syntheticEmail("assign-target"), PASSWORD, "STUDENT");
         mockMvc.perform(put("/api/v1/users/" + target.getId()).header(AUTHORIZATION, bearer(plainAdminToken))
                         .contentType(JSON).content(rolesBody("ADMIN")))
                 .andExpect(status().isForbidden());
 
-        // With the permission: granted.
+        // With the permission but the DEFAULT org already has an ADMIN: the one-ADMIN-per-org cap
+        // (ADR-0032 C3) rejects the grant instead of creating a second administrator.
         String assignerToken = tokenFor(anAdminAssigner());
         mockMvc.perform(put("/api/v1/users/" + target.getId()).header(AUTHORIZATION, bearer(assignerToken))
                         .contentType(JSON).content(rolesBody("ADMIN")))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.roles", org.hamcrest.Matchers.hasItem("ADMIN")));
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errors[0].code").value("ADMIN_CAP_EXCEEDED"));
     }
 
     @Test

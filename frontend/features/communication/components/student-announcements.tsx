@@ -49,13 +49,13 @@ export function StudentAnnouncements() {
         <article
           key={announcement.id}
           aria-label={announcement.title}
-          className="space-y-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+          className="space-y-2 rounded-lg border border-border bg-surface p-4 shadow-sm"
         >
-          <h2 className="text-base font-semibold text-slate-900">{announcement.title}</h2>
-          <p className="text-sm text-slate-600">
+          <h2 className="text-base font-semibold text-foreground">{announcement.title}</h2>
+          <p className="text-sm text-muted-foreground">
             {announcement.description ?? "No further details."}
           </p>
-          <dl className="flex flex-wrap gap-4 text-xs text-slate-500">
+          <dl className="flex flex-wrap gap-4 text-xs text-muted-foreground">
             <div className="flex gap-1">
               <dt className="font-medium">Visible from</dt>
               <dd>

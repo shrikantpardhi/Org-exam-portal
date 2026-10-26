@@ -2,9 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Semantic design tokens (ADR-0050). The application is deliberately light-only: `color-scheme` is
+ * pinned to light and no `dark` class is ever applied, so an OS preference cannot half-theme an
+ * examination screen. Values are HSL channels so Tailwind can compose opacity utilities.
+ */
 @layer base {
   :root {
     color-scheme: light;
+
+    /* Surfaces */
+    --background: 210 40% 98%; /* page canvas */
+    --surface: 0 0% 100%; /* cards, panels, header */
+    --muted: 210 40% 96%; /* subtle fills, table headers */
+    --muted-foreground: 215 16% 47%; /* secondary text */
+
+    /* Text and lines */
+    --foreground: 222 47% 11%; /* primary text */
+    --border: 214 32% 91%;
+    --input: 214 32% 88%;
+
+    /* Brand */
+    --primary: 222 47% 20%;
+    --primary-hover: 222 47% 15%;
+    --primary-foreground: 0 0% 100%;
+    --primary-subtle: 214 95% 96%;
+    --ring: 222 47% 20%;
+
+    /* Semantic status */
+    --success: 142 71% 35%;
+    --success-foreground: 0 0% 100%;
+    --success-subtle: 138 76% 96%;
+    --warning: 32 95% 44%;
+    --warning-foreground: 0 0% 100%;
+    --warning-subtle: 48 100% 96%;
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-subtle: 0 86% 97%;
+    --info: 217 91% 45%;
+    --info-foreground: 0 0% 100%;
+    --info-subtle: 214 95% 96%;
   }
 
   html,
@@ -13,11 +50,33 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-background text-foreground antialiased;
   }
 
-  /* Visible focus for keyboard users across the application. */
+  /*
+   * One visible focus treatment for keyboard users. `:focus-visible` keeps mouse clicks clean
+   * while guaranteeing a 2px ring with an offset on every interactive element.
+   */
   :focus-visible {
-    @apply outline-none ring-2 ring-slate-900 ring-offset-2;
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-surface;
+  }
+
+  /* Honour a user who has asked the OS to reduce motion. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Skip link: hidden until focused, then pinned to the top-left of the viewport. */
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-foreground focus:shadow-lg;
   }
 }

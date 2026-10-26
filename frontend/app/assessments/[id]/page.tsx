@@ -19,11 +19,11 @@ export default function AssessmentDetailPage() {
   const id = params?.id ?? "";
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-16">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-16">
       <AuthenticatedGuard permission="ASSESSMENT_VIEW">
         <AssessmentDetail id={id} />
       </AuthenticatedGuard>
-    </main>
+    </div>
   );
 }
 
@@ -37,7 +37,7 @@ function AssessmentDetail({ id }: { id: string }) {
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight">{assessment.data?.name ?? "Assessment"}</h1>
-      <p className="font-mono text-xs text-slate-500">{id}</p>
+      <p className="font-mono text-xs text-muted-foreground">{id}</p>
       <AnalyticsLink href={`/analytics/assessments/${id}`} label="View assessment analytics" />
 
       {assessment.isPending ? <p role="status">Loading…</p> : null}
@@ -46,10 +46,10 @@ function AssessmentDetail({ id }: { id: string }) {
       {assessment.data ? (
         <ul className="space-y-4">
           {assessment.data.versions.map((version) => (
-            <li key={version.id} className="rounded border border-slate-200 p-4">
+            <li key={version.id} className="rounded border border-border p-4">
               <div className="flex items-center justify-between">
                 <span className="font-medium">Version {version.version}</span>
-                <span className="text-sm text-slate-500">
+                <span className="text-sm text-muted-foreground">
                   {version.published ? "PUBLISHED" : "DRAFT"}
                   {version.engineType ? ` · ${version.engineType}` : ""}
                 </span>

@@ -42,7 +42,12 @@ class IdentityMigrationIntegrationTest extends AbstractIntegrationTest {
     @Test
     void requiredIndexesAndUniqueConstraintsAreInstalled() {
         for (String index : new String[] {
-                "uk_organization_code", "uk_user_email", "uk_user_mobile", "uk_role_code", "uk_permission_code",
+                // uk_role_code is an APPROVED AMENDMENT: §25.3 freezes UNIQUE(code) on role, but a
+                // role can now carry an organization (ADR-0045 / V35), so the single global unique was
+                // split into two partial uniques. The exhaustive pin is kept and the replacements are
+                // named here, so an index that is in neither place still fails this test.
+                "uk_role_code_platform", "uk_role_code_organization",
+                "uk_organization_code", "uk_user_email", "uk_user_mobile", "uk_permission_code",
                 "uk_user_role_user_id_role_id", "uk_role_permission_role_id_permission_id",
                 "idx_user_organization_id", "idx_user_role_user_id", "idx_user_role_role_id",
                 "idx_role_permission_role_id", "idx_role_permission_permission_id",

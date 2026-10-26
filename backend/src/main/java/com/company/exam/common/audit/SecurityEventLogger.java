@@ -1,5 +1,6 @@
 package com.company.exam.common.audit;
 
+import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,8 +47,43 @@ public class SecurityEventLogger {
         AuditTrail trail = this.auditTrail;
         if (trail != null) {
             // Participates in the caller's transaction; a failure rolls the business mutation back (§11.11).
-            trail.record(new AuditTrail.Entry(actorId, action, entityName, entityId, remarks));
+            trail.record(new AuditTrail.Entry(actorId, action, entityName, entityId, remarks,
+                    organizationOf(actorId, entityName, entityId)));
         }
+    }
+
+    /**
+     * The organization an audit row belongs to (ADR-0046, D-11).
+     *
+     * <p>Resolution order, most specific first:
+     *
+     * <ol>
+     *   <li>the audited entity is an Organization — that organization;</li>
+     *   <li>the actor is a user — the actor's organization;</li>
+     *   <li>otherwise {@code null}, meaning platform-wide (system actor, scheduler, worker).</li>
+     * </ol>
+     *
+     * <p>Null is a real answer, not a failure: it is the correct attribution for activity that
+     * belongs to no tenant, and those rows are deliberately not shown to any organization's ADMIN.
+     */
+    private UUID organizationOf(UUID actorId, String entityName, UUID entityId) {
+        if ("Organization".equals(entityName) && entityId != null) {
+            return entityId;
+        }
+        if (actorId == null) {
+            return null;
+        }
+        return userOrganizationLookup == null ? null
+                : userOrganizationLookup.organizationOf(actorId).orElse(null);
+    }
+
+    /** Optional dependency so modules without Identity can still construct this logger. */
+    @Autowired(required = false)
+    private UserOrganizationLookup userOrganizationLookup;
+
+    /** Small read boundary: keeps this shared logger free of a repository dependency. */
+    public interface UserOrganizationLookup {
+        Optional<UUID> organizationOf(UUID userId);
     }
 
     public void loginSucceeded(UUID userId) {

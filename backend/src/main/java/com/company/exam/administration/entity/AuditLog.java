@@ -47,8 +47,24 @@ public class AuditLog {
     @Column(name = "remarks", columnDefinition = "text", updatable = false)
     private String remarks;
 
+    /**
+     * The organization this row belongs to, or {@code null} for platform-wide activity (ADR-0046,
+     * D-11). Recorded at write time rather than derived at read time, because derivation silently
+     * reports nothing for entities that have no user (organizations, business rules, providers).
+     */
+    @Column(name = "organization_id", updatable = false)
+    private UUID organizationId;
+
     @Column(name = "created_on", updatable = false)
     private Instant createdOn;
+
+    public UUID getOrganizationId() {
+        return organizationId;
+    }
+
+    public void setOrganizationId(UUID organizationId) {
+        this.organizationId = organizationId;
+    }
 
     public UUID getId() {
         return id;

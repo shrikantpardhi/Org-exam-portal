@@ -40,7 +40,7 @@ export function TemplatePreviewScreen({ templateId }: { templateId: string }) {
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <p className="font-mono text-xs text-slate-500">{query.data.code}</p>
+        <p className="font-mono text-xs text-muted-foreground">{query.data.code}</p>
         <h2 className="text-xl font-semibold tracking-tight">Preview: {query.data.name}</h2>
       </header>
       <TemplatePreview template={query.data} />

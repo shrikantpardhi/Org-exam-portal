@@ -24,7 +24,7 @@ export function AcademicHierarchy() {
 
   if (exams.isPending) {
     return (
-      <p role="status" className="text-sm text-slate-500">
+      <p role="status" className="text-sm text-muted-foreground">
         Loading exams…
       </p>
     );
@@ -37,7 +37,7 @@ export function AcademicHierarchy() {
     );
   }
   if (!exams.data || exams.data.length === 0) {
-    return <p className="text-sm text-slate-500">No exams yet.</p>;
+    return <p className="text-sm text-muted-foreground">No exams yet.</p>;
   }
 
   return (
@@ -61,10 +61,10 @@ function Branch({ label, heading, children }: { label: string; heading: string; 
         onClick={() => setOpen((value) => !value)}
         className="rounded px-1 text-left text-sm font-medium underline-offset-2 hover:underline"
       >
-        <span className="text-slate-400">{heading}: </span>
+        <span className="text-muted-foreground">{heading}: </span>
         {label}
       </button>
-      {open ? <div className="ml-4 border-l border-slate-200 pl-3">{children}</div> : null}
+      {open ? <div className="ml-4 border-l border-border pl-3">{children}</div> : null}
     </li>
   );
 }
@@ -80,7 +80,7 @@ function BranchList<T>({
 }) {
   if (query.isPending) {
     return (
-      <p role="status" className="text-sm text-slate-500">
+      <p role="status" className="text-sm text-muted-foreground">
         Loading…
       </p>
     );
@@ -93,7 +93,7 @@ function BranchList<T>({
     );
   }
   if (!query.data || query.data.length === 0) {
-    return <p className="text-sm text-slate-400">{emptyLabel}</p>;
+    return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
   }
   return <ul className="space-y-1">{query.data.map(render)}</ul>;
 }
@@ -149,7 +149,7 @@ function SubTopicBranch({ topicId }: { topicId: string }) {
     <BranchList
       query={subTopics}
       emptyLabel="No sub-topics."
-      render={(subTopic) => <li key={subTopic.id} className="text-sm text-slate-700">SubTopic: {subTopic.name}</li>}
+      render={(subTopic) => <li key={subTopic.id} className="text-sm text-foreground">SubTopic: {subTopic.name}</li>}
     />
   );
 }

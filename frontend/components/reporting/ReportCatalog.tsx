@@ -48,7 +48,7 @@ export function ReportCatalog({
 
   if (entries.length === 0) {
     return (
-      <p role="note" className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+      <p role="note" className="rounded-lg border border-dashed border-input bg-muted p-4 text-sm text-foreground">
         No reports are available to you.
       </p>
     );
@@ -61,7 +61,7 @@ export function ReportCatalog({
           <h2 id={headingId} className="text-lg font-semibold tracking-tight">
             Report catalog
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Only reports the server advertises for your permissions are listed.
           </p>
         </div>
@@ -73,7 +73,7 @@ export function ReportCatalog({
             id="report-category"
             value={category}
             onChange={(event) => setCategory(event.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm sm:w-56"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm sm:w-56"
           >
             <option value="ALL">All categories</option>
             {categories.map((value) => (
@@ -86,7 +86,7 @@ export function ReportCatalog({
       </div>
 
       {visible.length === 0 ? (
-        <p role="note" className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+        <p role="note" className="rounded-lg border border-dashed border-input bg-muted p-4 text-sm text-foreground">
           No reports exist in that category.
         </p>
       ) : null}
@@ -94,7 +94,7 @@ export function ReportCatalog({
       <div className="space-y-4">
         {groups.map(([groupName, groupEntries]) => (
           <section key={groupName} aria-label={`${groupName} reports`} className="space-y-2">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               {groupName.charAt(0) + groupName.slice(1).toLowerCase()}
             </h3>
             <ul className="grid gap-3 sm:grid-cols-2">
@@ -109,18 +109,18 @@ export function ReportCatalog({
                     aria-current={selected ? "true" : undefined}
                     className={`rounded-lg border p-4 ${
                       disabled
-                        ? "border-dashed border-slate-300 bg-slate-50 text-slate-500"
+                        ? "border-dashed border-input bg-muted text-muted-foreground"
                         : selected
                           ? "border-blue-500 bg-blue-50"
-                          : "border-slate-200 bg-white"
+                          : "border-border bg-surface"
                     }`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="space-y-1">
                         <h4 className="text-base font-semibold">{entry.displayName}</h4>
-                        <p className="text-xs text-slate-500">{entry.reportType}</p>
+                        <p className="text-xs text-muted-foreground">{entry.reportType}</p>
                       </div>
-                      <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                      <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                         {entry.executionMode === "ASYNC_PREFERRED"
                           ? "Large reports are queued"
                           : entry.executionMode === "SYNC"
@@ -129,17 +129,17 @@ export function ReportCatalog({
                       </span>
                     </div>
 
-                    <p className="mt-2 text-sm text-slate-600">
+                    <p className="mt-2 text-sm text-muted-foreground">
                       {entry.description ?? "No description was provided for this report."}
                     </p>
 
-                    <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-500">
+                    <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                       <div>
-                        <dt className="font-medium text-slate-600">Formats</dt>
+                        <dt className="font-medium text-muted-foreground">Formats</dt>
                         <dd>{entry.supportedFormats.join(", ")}</dd>
                       </div>
                       <div>
-                        <dt className="font-medium text-slate-600">Filters</dt>
+                        <dt className="font-medium text-muted-foreground">Filters</dt>
                         <dd>
                           {entry.filterSchema.length > 0
                             ? entry.filterSchema.map(filterLabel).join(", ")
@@ -150,7 +150,7 @@ export function ReportCatalog({
 
                     <div className="mt-3">
                       {disabled ? (
-                        <p role="note" className="text-xs font-medium text-slate-500">
+                        <p role="note" className="text-xs font-medium text-muted-foreground">
                           Not available yet — this report type has no data provider.
                         </p>
                       ) : (
@@ -158,7 +158,7 @@ export function ReportCatalog({
                           type="button"
                           aria-pressed={selected}
                           onClick={() => onSelect(entry)}
-                          className="rounded border border-slate-300 bg-white px-3 py-1 text-sm font-medium hover:border-blue-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                          className="rounded border border-input bg-surface px-3 py-1 text-sm font-medium hover:border-blue-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                         >
                           {selected ? "Selected" : "Select"}
                         </button>

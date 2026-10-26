@@ -20,7 +20,7 @@ const STYLES: Record<string, string> = {
   CURRENT: "border-emerald-200 bg-emerald-50 text-emerald-700",
   STALE: "border-amber-200 bg-amber-50 text-amber-800",
   REFRESHING: "border-blue-200 bg-blue-50 text-blue-700",
-  EMPTY: "border-slate-200 bg-slate-100 text-slate-600",
+  EMPTY: "border-border bg-muted text-muted-foreground",
 };
 
 export function freshnessLabel(freshness: string | null | undefined): string {
@@ -42,12 +42,12 @@ export function FreshnessIndicator({
 
   return (
     <p
-      className={`flex flex-wrap items-center gap-2 text-xs text-slate-500 ${className ?? ""}`}
+      className={`flex flex-wrap items-center gap-2 text-xs text-muted-foreground ${className ?? ""}`}
       data-freshness={key || "UNKNOWN"}
     >
       <span
         className={`rounded-full border px-2 py-0.5 font-medium ${
-          STYLES[key] ?? "border-slate-200 bg-slate-100 text-slate-600"
+          STYLES[key] ?? "border-border bg-muted text-muted-foreground"
         }`}
       >
         {freshnessLabel(freshness)}

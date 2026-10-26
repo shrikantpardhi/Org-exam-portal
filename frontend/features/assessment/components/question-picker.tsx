@@ -16,7 +16,7 @@ import { useQuestionSearch, useQuestionVersions } from "@/features/assessment/ho
 import type { Difficulty, VersionListItem } from "@/features/assessment/schemas/assessment-builder";
 
 const fieldClass =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900";
+  "w-full rounded-md border border-input px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900";
 
 const PAGE_SIZE = 10;
 
@@ -102,7 +102,7 @@ export function QuestionPicker({
         <h2 id="question-picker-heading" className="text-lg font-semibold tracking-tight">
           Question picker
         </h2>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Search runs on the server with pagination; the question bank is never downloaded in bulk.
         </p>
       </div>
@@ -222,15 +222,16 @@ export function QuestionPicker({
         </p>
       ) : null}
       {questions.data && questions.data.length === 0 ? (
-        <p role="note" className="text-sm text-slate-500">
+        <p role="note" className="text-sm text-muted-foreground">
           No question matched this search.
         </p>
       ) : null}
 
       {questions.data && questions.data.length > 0 ? (
-        <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto" role="region" aria-label="Scrollable table" tabIndex={0}>
+<table className="w-full min-w-[640px] text-left text-sm">
           <thead>
-            <tr className="border-b border-slate-200">
+            <tr className="border-b border-border">
               <th className="py-2">Question</th>
               <th className="py-2">Difficulty</th>
               <th className="py-2">Latest version</th>
@@ -240,7 +241,7 @@ export function QuestionPicker({
           </thead>
           <tbody>
             {questions.data.map((question) => (
-              <tr key={question.id} className="border-b border-slate-100">
+              <tr key={question.id} className="border-b border-border">
                 <td className="py-2 font-mono text-xs">{question.id}</td>
                 <td className="py-2">{question.difficulty ?? "—"}</td>
                 <td className="py-2">{question.latestVersion ?? "—"}</td>
@@ -260,6 +261,7 @@ export function QuestionPicker({
             ))}
           </tbody>
         </table>
+</div>
       ) : null}
 
       <div className="flex items-center gap-3">
@@ -271,7 +273,7 @@ export function QuestionPicker({
         >
           Previous page
         </Button>
-        <span className="text-sm text-slate-500">Page {page + 1}</span>
+        <span className="text-sm text-muted-foreground">Page {page + 1}</span>
         <Button
           variant="outline"
           size="sm"
@@ -283,14 +285,14 @@ export function QuestionPicker({
       </div>
 
       {selectedQuestionId ? (
-        <div className="space-y-3 rounded-lg border border-slate-200 p-4">
+        <div className="space-y-3 rounded-lg border border-border p-4">
           <h3 className="text-sm font-semibold">Choose the exact question version</h3>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             An assessment binds an exact published QuestionVersion, never “the latest version”.
           </p>
           {versions.isPending ? <p role="status">Loading versions…</p> : null}
           {versions.data && versions.data.length === 0 ? (
-            <p role="note" className="text-sm text-slate-500">
+            <p role="note" className="text-sm text-muted-foreground">
               This question has no versions.
             </p>
           ) : null}
@@ -308,8 +310,8 @@ export function QuestionPicker({
                   />
                   Version {version.version}
                 </label>
-                <span className="text-slate-500">{version.published ? "Published" : "Not published"}</span>
-                <span className="text-slate-500">
+                <span className="text-muted-foreground">{version.published ? "Published" : "Not published"}</span>
+                <span className="text-muted-foreground">
                   {version.marks ?? "—"} marks / {version.negativeMarks ?? "—"} negative
                 </span>
               </li>
@@ -333,7 +335,7 @@ export function QuestionPicker({
             {addLabel}
           </Button>
           {!canAdd ? (
-            <p className="text-xs text-slate-500">Select a published version to enable adding it.</p>
+            <p className="text-xs text-muted-foreground">Select a published version to enable adding it.</p>
           ) : null}
         </div>
       ) : null}

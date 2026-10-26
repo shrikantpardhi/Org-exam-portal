@@ -37,6 +37,13 @@ public class User extends BaseEntity {
     @Column(name = "password", nullable = false, length = 255)
     private String password;
 
+    /**
+     * True until the account owner has chosen their own password. Set on bootstrap and on API
+     * user creation; cleared by a successful password change or a self-service reset (ADR-0034).
+     */
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword;
+
     public UUID getOrganizationId() {
         return organizationId;
     }
@@ -83,5 +90,13 @@ public class User extends BaseEntity {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
     }
 }

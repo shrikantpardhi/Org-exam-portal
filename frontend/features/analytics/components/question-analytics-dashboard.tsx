@@ -51,7 +51,7 @@ export function QuestionAnalyticsDashboard({ questionId }: { questionId: string 
           }}
         />
       ) : null}
-      <p className="font-mono text-xs text-slate-500">{questionId}</p>
+      <p className="font-mono text-xs text-muted-foreground">{questionId}</p>
       <QuestionAnalysis analytics={query.data} title="Question analytics" />
     </section>
   );

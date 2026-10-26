@@ -37,9 +37,9 @@ export function PackageDetail({
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <p className="font-mono text-xs text-slate-500">{pkg.code}</p>
+        <p className="font-mono text-xs text-muted-foreground">{pkg.code}</p>
         <h2 className="text-xl font-semibold tracking-tight">{pkg.name}</h2>
-        <p className="text-sm text-slate-500">{pkg.description ?? "No description provided."}</p>
+        <p className="text-sm text-muted-foreground">{pkg.description ?? "No description provided."}</p>
       </header>
 
       <section aria-labelledby="package-collections" className="space-y-2">
@@ -51,7 +51,7 @@ export function PackageDetail({
         ) : (
           <ul className="space-y-1 text-sm">
             {collections.map((collection) => (
-              <li key={collection.id} className="rounded border border-slate-200 bg-white px-3 py-2">
+              <li key={collection.id} className="rounded border border-border bg-surface px-3 py-2">
                 <code className="text-xs" title={collection.assessmentCollectionId}>
                   {shortId(collection.assessmentCollectionId)}
                 </code>

@@ -65,7 +65,7 @@ export function TopicAnalyticsDashboard({ topicId }: { topicId: string }) {
       ) : null}
 
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <p className="font-mono text-xs text-slate-500">{topicId}</p>
+        <p className="font-mono text-xs text-muted-foreground">{topicId}</p>
         <FreshnessIndicator
           lastCalculatedOn={analytics.lastCalculatedOn}
           freshness={analytics.freshness}

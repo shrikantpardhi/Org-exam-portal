@@ -57,7 +57,7 @@ export function AnnouncementListScreen() {
             id="announcement-status"
             value={status}
             onChange={(event) => setStatus(event.target.value)}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="rounded-md border border-input px-3 py-2 text-sm"
           >
             <option value="">All</option>
             <option value="INACTIVE">Draft</option>
@@ -78,7 +78,7 @@ export function AnnouncementListScreen() {
             <table className="w-full text-left text-sm">
               <caption className="sr-only">Announcements</caption>
               <thead>
-                <tr className="border-b border-slate-200">
+                <tr className="border-b border-border">
                   <th scope="col" className="py-2 pr-3">Title</th>
                   <th scope="col" className="py-2 pr-3">Status</th>
                   <th scope="col" className="py-2 pr-3">Visible from</th>
@@ -88,7 +88,7 @@ export function AnnouncementListScreen() {
               </thead>
               <tbody>
                 {announcements.map((announcement) => (
-                  <tr key={announcement.id} className="border-b border-slate-100">
+                  <tr key={announcement.id} className="border-b border-border">
                     <th scope="row" className="py-2 pr-3 font-normal">{announcement.title}</th>
                     <td className="py-2 pr-3">{announcementStatusLabel(announcement.status)}</td>
                     <td className="py-2 pr-3">{formatDateTime(announcement.startDate) ?? "Immediately"}</td>

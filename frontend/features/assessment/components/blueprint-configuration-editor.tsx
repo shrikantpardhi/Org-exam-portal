@@ -16,7 +16,7 @@ import {
 import type { Language } from "@/features/academic/schemas/academic";
 
 const fieldClass =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900";
+  "w-full rounded-md border border-input px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900";
 
 function Checkbox({
   id,
@@ -39,7 +39,7 @@ function Checkbox({
         checked={checked}
         disabled={disabled}
         onChange={(event) => onChange(event.target.checked)}
-        className="h-4 w-4 rounded border-slate-300"
+        className="h-4 w-4 rounded border-input"
       />
       {label}
     </label>
@@ -117,7 +117,7 @@ export function BlueprintConfigurationEditor({
           disabled={disabled}
           onChange={(checked) => patch("navigation", { allowSectionSwitch: checked })}
         />
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted-foreground">
           P4 records navigation intent. The runtime policy is produced by the ExamEngine and enforced by
           Delivery.
         </p>
@@ -162,7 +162,7 @@ export function BlueprintConfigurationEditor({
           disabled={disabled}
           onChange={(checked) => patch("timer", { autoSubmitOnExpiry: checked })}
         />
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted-foreground">
           The server is always the timer authority; the browser only renders a countdown.
         </p>
       </section>
@@ -267,7 +267,7 @@ export function BlueprintConfigurationEditor({
           Language
         </h2>
         {languages.length === 0 ? (
-          <p role="note" className="text-sm text-slate-500">
+          <p role="note" className="text-sm text-muted-foreground">
             No languages are available from the Academic catalog yet.
           </p>
         ) : (

@@ -49,29 +49,29 @@ export function ScorecardView({
           <h2 id={headingId} className="text-xl font-semibold tracking-tight">
             Scorecard
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             A presentation artifact generated from the published result.
           </p>
         </div>
         <span
           data-scorecard-status={statusKey || "UNKNOWN"}
           className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
-            STATUS_STYLES[statusKey] ?? "border-slate-200 bg-slate-100 text-slate-600"
+            STATUS_STYLES[statusKey] ?? "border-border bg-muted text-muted-foreground"
           }`}
         >
           {STATUS_LABELS[statusKey] ?? "Unknown status"}
         </span>
       </div>
 
-      <dl className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
+      <dl className="grid gap-4 rounded-lg border border-border bg-surface p-4 shadow-sm sm:grid-cols-2">
         <div>
-          <dt className="text-xs text-slate-500">Scorecard</dt>
+          <dt className="text-xs text-muted-foreground">Scorecard</dt>
           <dd className="mt-1 font-mono text-sm">
             <code title={scorecard.scorecardId}>{shortId(scorecard.scorecardId)}</code>
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-slate-500">Generated on</dt>
+          <dt className="text-xs text-muted-foreground">Generated on</dt>
           <dd className="mt-1 text-sm">
             {generated ? (
               <time dateTime={scorecard.generatedOn ?? undefined}>{generated}</time>
@@ -81,14 +81,14 @@ export function ScorecardView({
           </dd>
         </div>
         <div className="sm:col-span-2">
-          <dt className="text-xs text-slate-500">Secure reference</dt>
+          <dt className="text-xs text-muted-foreground">Secure reference</dt>
           <dd className="mt-1 break-all font-mono text-sm">
             <code>{scorecard.secureDownloadReference ?? "Not available"}</code>
           </dd>
         </div>
       </dl>
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-muted-foreground">
         The secure reference identifies the artifact behind the files boundary. The file itself is
         served when the secure download boundary is enabled.
       </p>

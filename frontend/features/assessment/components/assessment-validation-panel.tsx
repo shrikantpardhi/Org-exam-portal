@@ -49,7 +49,7 @@ export function AssessmentValidationPanel({
   }
 
   if (published) {
-    return <p className="text-sm text-slate-600">This assessment version is published and immutable.</p>;
+    return <p className="text-sm text-muted-foreground">This assessment version is published and immutable.</p>;
   }
 
   return (

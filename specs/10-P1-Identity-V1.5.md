@@ -393,9 +393,14 @@ STAFF
 STUDENT
 SUPPORT
 FINANCE
+SUPER_ADMIN
 ```
 
 These are role concepts, not permission definitions.
+
+`SUPER_ADMIN` is the installation owner, added by ADR-0032. It is permanent, unique,
+non-demotable, non-archivable, and non-creatable at runtime; its single user is
+created by an environment-gated bootstrap CLI, not by any API.
 
 Do not encode business authorization as `if role == ADMIN` except for truly role-specific platform behavior approved by the authorization design. Prefer permission checks.
 
@@ -1403,9 +1408,13 @@ STAFF
 STUDENT
 SUPPORT
 FINANCE
+SUPER_ADMIN
 ```
 
 Seed these through Flyway or the approved master-data mechanism.
+
+`SUPER_ADMIN` is seeded as a role only (V29, ADR-0032); its user is created by the
+bootstrap CLI, never by a seed or an API.
 
 Seed operations are idempotent or protected by unique constraints.
 

@@ -46,7 +46,7 @@ export function NotificationInbox() {
         </div>
       </div>
 
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-muted-foreground">
         {typeof unread.data === "number" ? `${unread.data} unread` : "Unread count unavailable"}
       </p>
 

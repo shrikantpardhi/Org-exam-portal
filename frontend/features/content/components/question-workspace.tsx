@@ -135,7 +135,7 @@ export function QuestionWorkspace({ questionId }: { questionId: string }) {
         <>
           <section aria-label="Selected version" className="space-y-2">
             <h2 className="text-lg font-semibold">Selected version</h2>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-muted-foreground">
               Version {selected.version} · review state {selected.reviewStatus} ·{" "}
               {selected.published ? "published" : "not published"} · marks {selected.marks ?? "—"} ·
               negative marks {selected.negativeMarks ?? "—"} · difficulty{" "}
@@ -155,15 +155,16 @@ export function QuestionWorkspace({ questionId }: { questionId: string }) {
           <section aria-label="Version options" className="space-y-2">
             <h2 className="text-lg font-semibold">Options</h2>
             {options.isPending ? (
-              <p role="status" className="text-sm text-slate-500">
+              <p role="status" className="text-sm text-muted-foreground">
                 Loading options…
               </p>
             ) : null}
             {options.data && options.data.length === 0 ? (
-              <p className="text-sm text-slate-500">This version has no options.</p>
+              <p className="text-sm text-muted-foreground">This version has no options.</p>
             ) : null}
             {options.data && options.data.length > 0 ? (
-              <table aria-label="Version option list" className="w-full text-sm">
+              <div className="overflow-x-auto" tabIndex={0}>
+<table aria-label="Version option list" className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="text-left">
                     <th scope="col">Key</th>
@@ -183,6 +184,7 @@ export function QuestionWorkspace({ questionId }: { questionId: string }) {
                   ))}
                 </tbody>
               </table>
+</div>
             ) : null}
             {selected.published ? (
               <p role="note" className="text-sm text-amber-700">
@@ -212,7 +214,7 @@ export function QuestionWorkspace({ questionId }: { questionId: string }) {
       {selected ? (
         <section aria-label="Next version content" className="space-y-2">
           <h2 className="text-lg font-semibold">Content for the next version</h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             A version&apos;s content is fixed when the version is created, so edits here apply to the
             next version. Create a new version to publish them.
           </p>
@@ -233,7 +235,7 @@ export function QuestionWorkspace({ questionId }: { questionId: string }) {
               history above to author replacement content.
             </p>
           ) : (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               This draft version&apos;s stored content cannot be rewritten through the frozen contract;
               create a new version to save changes.
             </p>
@@ -266,7 +268,7 @@ export function QuestionWorkspace({ questionId }: { questionId: string }) {
         </p>
       ) : null}
       {status ? (
-        <p role="status" className="text-sm text-slate-600">
+        <p role="status" className="text-sm text-muted-foreground">
           {status}
         </p>
       ) : null}

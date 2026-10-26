@@ -49,8 +49,9 @@ public class RoleController {
     @Operation(summary = "List roles")
     @GetMapping
     @PreAuthorize("@authorizationService.hasPermission(authentication, 'ROLE_VIEW')")
-    public ApiResponse<List<RoleDtos.RoleSummary>> list(@PageableDefault(size = 20) Pageable pageable) {
-        Page<RoleDtos.RoleSummary> page = roleService.list(QuerySupport.sanitize(pageable, SORTABLE));
+    public ApiResponse<List<RoleDtos.RoleSummary>> list(@PageableDefault(size = 20) Pageable pageable,
+            @AuthenticationPrincipal IdentityPrincipal principal) {
+        Page<RoleDtos.RoleSummary> page = roleService.list(QuerySupport.sanitize(pageable, SORTABLE), principal.userId());
         return ApiResponse.paged(PageResponse.from(page, summary -> summary));
     }
 
@@ -58,8 +59,9 @@ public class RoleController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("@authorizationService.hasPermission(authentication, 'ROLE_CREATE')")
-    public ApiResponse<RoleDtos.RoleSummary> create(@Valid @RequestBody RoleDtos.CreateRoleRequest request) {
-        return ApiResponse.ok("Role created", roleService.create(request));
+    public ApiResponse<RoleDtos.RoleSummary> create(@Valid @RequestBody RoleDtos.CreateRoleRequest request,
+            @AuthenticationPrincipal IdentityPrincipal principal) {
+        return ApiResponse.ok("Role created", roleService.create(request, principal.userId()));
     }
 
     @Operation(summary = "Update a role")

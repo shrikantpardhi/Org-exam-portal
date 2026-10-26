@@ -6,11 +6,11 @@ import { AccessGrantAdmin } from "@/features/commerce/components/access-grant-ad
 /** Staff manual access grants ({@code specs/18-P9-Commerce-V1.5.md §88}). */
 export default function StaffAccessGrantsPage() {
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-16">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-16">
       <header className="space-y-1">
-        <p className="text-sm text-slate-500">Staff</p>
+        <p className="text-sm text-muted-foreground">Staff</p>
         <h1 className="text-2xl font-semibold tracking-tight">Access grants</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Manual grants are validated and audited by the server; the UI never merges grants on its
           own.
         </p>
@@ -18,6 +18,6 @@ export default function StaffAccessGrantsPage() {
       <AuthenticatedGuard permission="ACCESS_GRANT_MANAGE">
         <AccessGrantAdmin />
       </AuthenticatedGuard>
-    </main>
+    </div>
   );
 }

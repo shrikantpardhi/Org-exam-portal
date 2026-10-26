@@ -82,7 +82,7 @@ export function CommunicationForm<S extends ZodTypeAny>({
               rows={8}
               placeholder={field.placeholder}
               {...register(field.name)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm"
+              className="w-full rounded-md border border-input px-3 py-2 font-mono text-sm"
             />
           ) : (
             <input
@@ -90,7 +90,7 @@ export function CommunicationForm<S extends ZodTypeAny>({
               type={field.type ?? "text"}
               placeholder={field.placeholder}
               {...register(field.name)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm"
             />
           )}
           {errors[field.name] ? (
@@ -110,7 +110,7 @@ export function CommunicationForm<S extends ZodTypeAny>({
       <button
         type="submit"
         disabled={disabled || isSubmitting}
-        className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+        className="rounded bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
       >
         {isSubmitting ? "Saving…" : submitLabel}
       </button>

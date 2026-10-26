@@ -36,7 +36,7 @@ public class CandidateDirectoryService implements CandidateDirectory {
     @Override
     @Transactional(readOnly = true)
     public List<UUID> activeCandidateUserIds() {
-        return roleRepository.findByCode(STUDENT_ROLE)
+        return roleRepository.findByCodeAndOrganizationIdIsNull(STUDENT_ROLE)
                 .map(role -> userRoleRepository.findByRoleIdAndStatus(role.getId(), Status.ACTIVE).stream()
                         .map(UserRole::getUserId)
                         .distinct()

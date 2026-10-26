@@ -11,12 +11,25 @@ import {
   loginResultSchema,
   type CurrentPermissions,
   type CurrentUser,
+  type LoginPortal,
   type LoginResult,
 } from "@/schemas/auth";
 
-export async function login(username: string, password: string): Promise<LoginResult> {
-  const result = await apiPost<unknown>("/auth/login", { username, password });
+export async function login(
+  username: string,
+  password: string,
+  portal?: LoginPortal,
+): Promise<LoginResult> {
+  const result = await apiPost<unknown>("/auth/login", {
+    username,
+    password,
+    ...(portal ? { portal } : {}),
+  });
   return loginResultSchema.parse(result.data);
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await apiPost("/auth/change-password", { currentPassword, newPassword });
 }
 
 export async function logout(): Promise<void> {

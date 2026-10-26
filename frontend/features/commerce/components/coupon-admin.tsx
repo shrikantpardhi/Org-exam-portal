@@ -85,7 +85,7 @@ export function CouponAdmin() {
             <table className="w-full text-left text-sm">
               <caption className="sr-only">Coupons</caption>
               <thead>
-                <tr className="border-b border-slate-200">
+                <tr className="border-b border-border">
                   <th scope="col" className="py-2 pr-3">Code</th>
                   <th scope="col" className="py-2 pr-3">Name</th>
                   <th scope="col" className="py-2 pr-3">Discount</th>
@@ -96,7 +96,7 @@ export function CouponAdmin() {
               </thead>
               <tbody>
                 {coupons.map((coupon) => (
-                  <tr key={coupon.id} className="border-b border-slate-100">
+                  <tr key={coupon.id} className="border-b border-border">
                     <th scope="row" className="py-2 pr-3 font-mono text-xs">{coupon.code}</th>
                     <td className="py-2 pr-3">{coupon.name}</td>
                     <td className="py-2 pr-3 tabular-nums">
@@ -119,7 +119,7 @@ export function CouponAdmin() {
                           Archive
                         </button>
                       ) : (
-                        <span className="text-xs text-slate-500">Archived</span>
+                        <span className="text-xs text-muted-foreground">Archived</span>
                       )}
                     </td>
                   </tr>

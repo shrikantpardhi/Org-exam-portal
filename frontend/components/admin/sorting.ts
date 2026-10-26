@@ -21,6 +21,7 @@ export const ADMIN_SORTABLE_FIELDS = {
   roles: ["code", "name", "status", "createdOn"],
   permissions: ["code", "name", "status", "createdOn"],
   audit: ["createdOn", "action", "entityName"],
+  organizations: ["code", "name", "status", "createdOn"],
 } as const;
 
 export type AdminSortResource = keyof typeof ADMIN_SORTABLE_FIELDS;

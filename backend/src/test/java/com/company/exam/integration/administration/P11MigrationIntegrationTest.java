@@ -66,8 +66,13 @@ class P11MigrationIntegrationTest extends AbstractIntegrationTest {
         List<String> columns = jdbcTemplate.queryForList(
                 "select column_name from information_schema.columns where table_name = 'audit_log'", String.class);
         // No request_id, old_values, new_values, ip_address or payload field (§11.3).
+        //
+        // organization_id is an APPROVED AMENDMENT, not part of §34.4: ADR-0046 / V36 add it so the audit
+        // explorer can be scoped by organization (D-11). This assertion stays exhaustive on purpose — it
+        // is the guard that catches any unapproved column — so an amendment must be added here and in
+        // specs/04 §34.4 together. If a column appears that is in neither place, this fails.
         assertThat(columns).containsExactlyInAnyOrder("id", "user_id", "entity_name", "entity_id", "action",
-                "remarks", "created_on");
+                "remarks", "created_on", "organization_id");
     }
 
     @Test

@@ -13,6 +13,7 @@ export const adminKeys = {
   permissions: (page: number, sort?: string) =>
     ["administration", "permissions", page, sort ?? "DEFAULT"] as const,
   settings: () => ["administration", "settings"] as const,
+  organizationProfile: () => ["administration", "organization-profile"] as const,
   businessRules: (status?: string) => ["administration", "business-rules", status ?? "ALL"] as const,
   lookups: (filters: unknown) => ["administration", "lookups", filters] as const,
   audit: (filters: unknown) => ["administration", "audit", filters] as const,

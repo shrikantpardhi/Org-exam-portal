@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import type { AssessmentQuestion } from "@/features/assessment/schemas/assessment-builder";
 
 const fieldClass =
-  "w-full rounded-md border border-slate-300 px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900";
+  "w-full rounded-md border border-input px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900";
 
 export function AssessmentQuestionTable({
   questions,
@@ -40,7 +40,7 @@ export function AssessmentQuestionTable({
         <h2 id="assessment-questions-heading" className="text-lg font-semibold tracking-tight">
           Questions, sections, and scoring
         </h2>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           The QuestionVersion default marks and the AssessmentQuestion actual marks may differ. The value
           saved here is the score used for this assessment.
         </p>
@@ -53,13 +53,14 @@ export function AssessmentQuestionTable({
       ) : null}
 
       {questions.length === 0 ? (
-        <p role="note" className="text-sm text-slate-500">
+        <p role="note" className="text-sm text-muted-foreground">
           No questions are configured on this version yet.
         </p>
       ) : (
-        <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto" role="region" aria-label="Scrollable table" tabIndex={0}>
+<table className="w-full min-w-[640px] text-left text-sm">
           <thead>
-            <tr className="border-b border-slate-200">
+            <tr className="border-b border-border">
               <th className="py-2">Order</th>
               <th className="py-2">Question version</th>
               <th className="py-2">Section</th>
@@ -70,7 +71,7 @@ export function AssessmentQuestionTable({
           </thead>
           <tbody>
             {questions.map((question, index) => (
-              <tr key={question.id} className="border-b border-slate-100" data-testid="assessment-question-row">
+              <tr key={question.id} className="border-b border-border" data-testid="assessment-question-row">
                 <td className="py-2">{question.displayOrder}</td>
                 <td className="py-2 font-mono text-xs">{question.questionVersionId}</td>
                 <td className="py-2">
@@ -148,6 +149,7 @@ export function AssessmentQuestionTable({
             ))}
           </tbody>
         </table>
+</div>
       )}
     </section>
   );

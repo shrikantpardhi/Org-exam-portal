@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -66,18 +67,20 @@ public class IdentityJwtAuthenticationFilter extends OncePerRequestFilter {
         UUID userId = UUID.fromString(subject);
         String sessionReference = claims.get(JwtTokenIssuer.SESSION_CLAIM, String.class);
         if (sessionReference == null || sessionReference.isBlank()) {
-            setAuthentication(userId, null, request);
+            setAuthentication(userId, null, false, request);
             return;
         }
         UUID sessionId = UUID.fromString(sessionReference);
-        if (sessionService.isActive(sessionId, userId)) {
-            setAuthentication(userId, sessionId, request);
+        Optional<Boolean> mustChangePassword = sessionService.mustChangePasswordForActiveSession(sessionId, userId);
+        if (mustChangePassword.isPresent()) {
+            setAuthentication(userId, sessionId, mustChangePassword.get(), request);
         }
     }
 
-    private void setAuthentication(UUID userId, UUID sessionId, HttpServletRequest request) {
+    private void setAuthentication(UUID userId, UUID sessionId, boolean mustChangePassword,
+            HttpServletRequest request) {
         var authentication = new UsernamePasswordAuthenticationToken(
-                new IdentityPrincipal(userId, sessionId), null, List.of());
+                new IdentityPrincipal(userId, sessionId, mustChangePassword), null, List.of());
         authentication.setDetails(request.getRequestURI());
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }

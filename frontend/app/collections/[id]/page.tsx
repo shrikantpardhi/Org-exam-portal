@@ -13,10 +13,10 @@ export default function CollectionDetailPage() {
   const collectionId = params?.id ?? "";
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-16">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-16">
       <AuthenticatedGuard permission="ASSESSMENT_COLLECTION_VIEW">
         <CollectionDetail collectionId={collectionId} />
       </AuthenticatedGuard>
-    </main>
+    </div>
   );
 }

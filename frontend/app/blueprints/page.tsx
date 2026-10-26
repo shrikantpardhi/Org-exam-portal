@@ -16,10 +16,10 @@ export default function BlueprintsPage() {
   const blueprints = useBlueprints();
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-16">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-16">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Blueprints</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           A blueprint defines the sections and delivery configuration an assessment version is built
           against.
         </p>
@@ -33,23 +33,23 @@ export default function BlueprintsPage() {
           </p>
         ) : null}
         {blueprints.data && blueprints.data.length === 0 ? (
-          <p role="note" className="text-sm text-slate-500">
+          <p role="note" className="text-sm text-muted-foreground">
             No blueprints yet.
           </p>
         ) : null}
 
         <ul className="space-y-2 text-sm">
           {blueprints.data?.map((blueprint) => (
-            <li key={blueprint.id} className="rounded border border-slate-200 p-3">
+            <li key={blueprint.id} className="rounded border border-border p-3">
               <Link href={`/blueprints/${blueprint.id}`} className="font-medium underline">
                 {blueprint.name}
               </Link>
-              <span className="ml-2 font-mono text-xs text-slate-500">{blueprint.code}</span>
-              <span className="ml-2 text-slate-500">{blueprint.status}</span>
+              <span className="ml-2 font-mono text-xs text-muted-foreground">{blueprint.code}</span>
+              <span className="ml-2 text-muted-foreground">{blueprint.status}</span>
             </li>
           ))}
         </ul>
       </AuthenticatedGuard>
-    </main>
+    </div>
   );
 }

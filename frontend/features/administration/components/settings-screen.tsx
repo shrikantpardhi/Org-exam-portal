@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { DangerActionDialog } from "@/components/admin/danger-action-dialog";
 import { describeAdminError } from "@/components/admin/format";
+import { OrganizationProfileCard } from "@/features/administration/components/organization-profile-card";
 import type { SettingKeyDescriptor } from "@/features/administration/schemas/administration";
 import { useSettings, useUpdateSettings } from "@/features/administration/hooks/use-administration";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -33,7 +34,7 @@ export function SettingsScreen() {
   }, [query.data, initialized]);
 
   if (query.isPending) {
-    return <p role="status" className="text-sm text-slate-500">Loading settings…</p>;
+    return <p role="status" className="text-sm text-muted-foreground">Loading settings…</p>;
   }
 
   if (query.isError) {
@@ -45,7 +46,7 @@ export function SettingsScreen() {
           onClick={() => {
             void query.refetch();
           }}
-          className="mt-2 rounded border border-red-300 bg-white px-3 py-1 text-sm font-medium text-red-700"
+          className="mt-2 rounded border border-red-300 bg-surface px-3 py-1 text-sm font-medium text-red-700"
         >
           Try again
         </button>
@@ -55,7 +56,7 @@ export function SettingsScreen() {
 
   const setting = query.data;
   if (!setting) {
-    return <p role="status" className="text-sm text-slate-500">Loading settings…</p>;
+    return <p role="status" className="text-sm text-muted-foreground">Loading settings…</p>;
   }
 
   const canUpdate = can("ORGANIZATION_SETTING_UPDATE");
@@ -98,7 +99,7 @@ export function SettingsScreen() {
           onChange={(event) =>
             setValue(descriptor.key, event.target.value === "" ? null : Number(event.target.value))
           }
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="w-full rounded-md border border-input px-3 py-2 text-sm"
         />
       );
     }
@@ -111,7 +112,7 @@ export function SettingsScreen() {
           value={raw === null || raw === undefined ? "" : String(raw)}
           disabled={disabled}
           onChange={(event) => setValue(descriptor.key, event.target.value)}
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="w-full rounded-md border border-input px-3 py-2 text-sm"
         />
       );
     }
@@ -139,7 +140,7 @@ export function SettingsScreen() {
               }));
             }
           }}
-          className="w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm"
+          className="w-full rounded-md border border-input px-3 py-2 font-mono text-sm"
         />
         {jsonErrors[descriptor.key] ? (
           <p role="alert" className="text-sm text-red-600">{jsonErrors[descriptor.key]}</p>
@@ -150,7 +151,7 @@ export function SettingsScreen() {
 
   if (setting.registry.length === 0) {
     return (
-      <p role="note" className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+      <p role="note" className="rounded-lg border border-dashed border-input bg-muted p-4 text-sm text-foreground">
         No configurable settings are registered.
       </p>
     );
@@ -158,18 +159,24 @@ export function SettingsScreen() {
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-slate-500">
-        {setting.registry.length} registered setting{setting.registry.length === 1 ? "" : "s"} for
-        this organization. Values are validated by the backend on save.
-      </p>
+      {/* The organization's own identity, above the behaviour settings. */}
+      <OrganizationProfileCard />
+
+      <div>
+        <h2 className="text-base font-semibold">Behaviour settings</h2>
+        <p className="text-sm text-muted-foreground">
+          {setting.registry.length} registered setting{setting.registry.length === 1 ? "" : "s"} for
+          this organization. Values are validated by the backend on save.
+        </p>
+      </div>
 
       <div className="space-y-4">
         {setting.registry.map((descriptor) => (
-          <section key={descriptor.key} aria-label={descriptor.key} className="space-y-1 rounded-lg border border-slate-200 bg-white p-4">
+          <section key={descriptor.key} aria-label={descriptor.key} className="space-y-1 rounded-lg border border-border bg-surface p-4">
             <label htmlFor={descriptor.key} className="text-sm font-medium">
               {descriptor.key}
             </label>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               {descriptor.type}
               {descriptor.securityClassification
                 ? ` · ${descriptor.securityClassification}`
@@ -191,7 +198,7 @@ export function SettingsScreen() {
           Save settings
         </button>
       ) : (
-        <p className="text-xs text-slate-500">You can view settings but not change them.</p>
+        <p className="text-xs text-muted-foreground">You can view settings but not change them.</p>
       )}
 
       {message ? <p role="status" className="text-sm text-emerald-700">{message}</p> : null}
@@ -200,7 +207,7 @@ export function SettingsScreen() {
           {describeAdminError(update.error, "The settings could not be saved.")}
         </p>
       ) : null}
-      <p className="text-xs text-slate-500">Configuration changes are audited by the backend.</p>
+      <p className="text-xs text-muted-foreground">Configuration changes are audited by the backend.</p>
 
       <DangerActionDialog
         open={confirmOpen}

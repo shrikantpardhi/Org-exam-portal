@@ -14,10 +14,10 @@ export default function AssessmentBuilderPage() {
   const versionId = params?.versionId ?? "";
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-16">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-16">
       <AuthenticatedGuard permission="ASSESSMENT_VERSION_VIEW">
         <AssessmentBuilder assessmentId={assessmentId} versionId={versionId} />
       </AuthenticatedGuard>
-    </main>
+    </div>
   );
 }

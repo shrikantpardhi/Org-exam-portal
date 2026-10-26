@@ -49,12 +49,12 @@ export function AuditDrawer({
   const created = formatDateTime(entry.createdOn);
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-slate-900/40" role="presentation">
+    <div className="fixed inset-0 z-40 flex justify-end bg-primary/40" role="presentation">
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-xl"
+        className="h-full w-full max-w-md overflow-y-auto bg-surface p-6 shadow-xl"
       >
         <div className="flex items-start justify-between gap-3">
           <h2 id={titleId} className="text-lg font-semibold">
@@ -65,7 +65,7 @@ export function AuditDrawer({
             type="button"
             onClick={onClose}
             aria-label="Close audit details"
-            className="rounded border border-slate-300 px-3 py-1 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            className="rounded border border-input px-3 py-1 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           >
             Close
           </button>
@@ -73,32 +73,32 @@ export function AuditDrawer({
 
         <dl className="mt-4 space-y-3 text-sm">
           <div>
-            <dt className="text-xs text-slate-500">When</dt>
+            <dt className="text-xs text-muted-foreground">When</dt>
             <dd className="mt-0.5">
               {created ? <time dateTime={entry.createdOn ?? undefined}>{created}</time> : "Not available"}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-500">Actor</dt>
+            <dt className="text-xs text-muted-foreground">Actor</dt>
             <dd className="mt-0.5 break-all font-mono text-xs">{entry.userId ?? "System"}</dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-500">Entity</dt>
+            <dt className="text-xs text-muted-foreground">Entity</dt>
             <dd className="mt-0.5">
               {entry.entityName ?? "Not available"}
               {entry.entityId ? ` · ${shortId(entry.entityId)}` : ""}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-500">Action</dt>
+            <dt className="text-xs text-muted-foreground">Action</dt>
             <dd className="mt-0.5">{entry.action ?? "Not available"}</dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-500">Remarks</dt>
+            <dt className="text-xs text-muted-foreground">Remarks</dt>
             <dd className="mt-0.5 whitespace-pre-wrap">{entry.remarks ?? "No remarks."}</dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-500">Event id</dt>
+            <dt className="text-xs text-muted-foreground">Event id</dt>
             <dd className="mt-0.5 break-all font-mono text-xs">{entry.id}</dd>
           </div>
         </dl>

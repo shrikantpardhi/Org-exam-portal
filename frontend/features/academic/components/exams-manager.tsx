@@ -39,7 +39,7 @@ export function ExamsManager() {
       ) : null}
 
       {exams.isPending ? (
-        <p role="status" className="text-sm text-slate-500">
+        <p role="status" className="text-sm text-muted-foreground">
           Loading exams…
         </p>
       ) : null}
@@ -49,13 +49,14 @@ export function ExamsManager() {
         </p>
       ) : null}
       {exams.data && exams.data.length === 0 ? (
-        <p className="text-sm text-slate-500">No exams yet.</p>
+        <p className="text-sm text-muted-foreground">No exams yet.</p>
       ) : null}
 
       {exams.data && exams.data.length > 0 ? (
-        <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto" role="region" aria-label="Scrollable table" tabIndex={0}>
+<table className="w-full min-w-[640px] text-left text-sm">
           <thead>
-            <tr className="border-b border-slate-200">
+            <tr className="border-b border-border">
               <th className="py-2">Code</th>
               <th className="py-2">Name</th>
               <th className="py-2">Status</th>
@@ -64,7 +65,7 @@ export function ExamsManager() {
           </thead>
           <tbody>
             {exams.data.map((exam) => (
-              <tr key={exam.id} className="border-b border-slate-100">
+              <tr key={exam.id} className="border-b border-border">
                 <td className="py-2 font-mono text-xs">{exam.code}</td>
                 <td className="py-2">{exam.name}</td>
                 <td className="py-2">{exam.status}</td>
@@ -83,6 +84,7 @@ export function ExamsManager() {
             ))}
           </tbody>
         </table>
+</div>
       ) : null}
     </section>
   );

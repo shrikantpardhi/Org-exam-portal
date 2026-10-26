@@ -19,7 +19,7 @@ export function PurchaseHistory({ purchases }: { purchases: Purchase[] }) {
       <table className="w-full text-left text-sm">
         <caption className="sr-only">Purchase history</caption>
         <thead>
-          <tr className="border-b border-slate-200">
+          <tr className="border-b border-border">
             <th scope="col" className="py-2 pr-3">
               Purchased
             </th>
@@ -39,7 +39,7 @@ export function PurchaseHistory({ purchases }: { purchases: Purchase[] }) {
         </thead>
         <tbody>
           {purchases.map((purchase) => (
-            <tr key={purchase.id} className="border-b border-slate-100">
+            <tr key={purchase.id} className="border-b border-border">
               <th scope="row" className="py-2 pr-3 font-normal">
                 {formatDate(purchase.purchaseDate) ?? "Not available"}
               </th>

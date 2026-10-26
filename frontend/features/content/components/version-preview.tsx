@@ -10,7 +10,7 @@
  */
 export function VersionPreview({ html }: { html: string | null | undefined }) {
   if (!html) {
-    return <p className="text-sm text-slate-500">No rendered content.</p>;
+    return <p className="text-sm text-muted-foreground">No rendered content.</p>;
   }
   return (
     <div

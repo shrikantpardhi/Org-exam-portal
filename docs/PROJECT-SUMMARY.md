@@ -10,7 +10,7 @@ Detailed material lives elsewhere — this document points at it rather than rep
 |---|---|
 | [`docs/implementation-status.md`](implementation-status.md) | The per-task, per-phase status tables and the release decision |
 | [`docs/known-gaps.md`](known-gaps.md) | The register of every open gap, deferred item and by-design limitation |
-| [`docs/decisions/`](decisions/) | Architecture Decision Records (ADR-0001 … ADR-0031) |
+| [`docs/decisions/`](decisions/) | Architecture Decision Records (ADR-0001 … ADR-0037) |
 | [`docs/testing/`](testing/) | Per-phase testing notes and the P12 rehearsal evidence package |
 | [`docs/runbooks/`](runbooks/) | Operational runbooks (local setup, and others as they land) |
 | [`specs/`](../specs) | The frozen V1.5 specification package — the source of truth |
@@ -36,11 +36,11 @@ module reads another module's repository.
 | Dimension | Value |
 |---|---|
 | Phases implemented | P0 – P13 (P12 is a hardening/rehearsal phase) |
-| Flyway migrations | 28 (`V1` … `V28`), no gaps, no duplicated versions |
-| Controllers / endpoint mappings | 56 / 237 |
-| Backend tests | **477 passing, 0 failures, 2 skipped** |
-| Frontend tests | 71 files / **429 tests passing**; lint clean; production build succeeds (59 routes) |
-| Tracked gaps | 166 rows, 42 open (see `docs/known-gaps.md` for the register) |
+| Flyway migrations | 36 (`V1` … `V36`), no gaps, no duplicated versions |
+| Controllers / endpoint mappings | 63 / 251 |
+| Backend tests | **603 tests, 0 failures, 2 skipped** |
+| Frontend tests | **521 tests, 0 failures (93 files)** |
+| Tracked gaps | 195 rows, 11 open (see `docs/known-gaps.md` for the register) |
 | Container stack | Local stack runs and is verified end to end. `scripts/verify-stack.sh` now passes **31/31 assertions, exit 0** (2026-10-24), including the five header assertions added 2026-10-23 for GAP-137, which had **never been run** until now (`specs/21-P12 §26`). The run also proves the browser path: the bundle carries a relative API base, the frontend CSP allows same-origin connectivity, CORS answers a trusted cross-origin preflight and refuses an untrusted one, and a headless browser loads the page and reaches the API. A separate production-like environment (`infrastructure/environments/production-like/`) passes **31/31** via `scripts/verify-production-like.sh` as of 2026-10-23 |
 | Observability | In the production-like environment Prometheus scrapes 5 targets (backend, postgres, redis, pgbouncer, itself) all UP, with 2 datasources and 3 dashboards provisioned. **The local stack's Prometheus crash-loops** on `--config.expand-env`, a flag Prometheus does not have (GAP-158) |
 | Load harness | `load/` (k6) — six profiles, seed, ramp runner; 100 → 5,000 ramp executed 2026-10-22; cohort credentials come from the environment-gated `LoadCohortCli` (GAP-085) |
@@ -111,7 +111,644 @@ Gates that *were* closed by the 2026-10-19 rehearsal: **GAP-131** (logical backu
 integrity checks) and **GAP-132** (rollback, 12/12 checks). PITR is deliberately **not** claimed
 (`scripts/backup/pitr.md`).
 
-## 5. The most recent change — the frontend could not reach the API from a browser, and the cause was two layers deep (GAP-164, GAP-165)
+## 4a. The most recent change — permission model hardening, tasks 1-6
+
+**What changed.** Seven of the twelve permission defects identified in the hardening mission's
+pre-work are closed. Two migrations, four new ADRs, one ADR amendment, three service changes, and 29
+tests.
+
+| Defect | What it was | Fix |
+|---|---|---|
+| D-01 | `SUPER_ADMIN` returned 403 on `GET /roles` and `GET /permissions`, so both platform seeds screens were broken | `V32` grants `ROLE_VIEW` + `PERMISSION_VIEW`; ADR-0032's scope sentence clarified |
+| D-02 | an `ADMIN` could strip the `SUPER_ADMIN` role's permissions (200) and lock the installation owner out | `RoleService` refuses every mutation of a contract-fixed role — 409 `ROLE_IMMUTABLE` (ADR-0038) |
+| D-03 | an `ADMIN` could place `PLATFORM_*` on any role (200) | reserved set declared as the `RESERVED_PERMISSIONS` business rule (`V33`), bypass granted to nobody — 403 `RESERVED_PERMISSION_DENIED` (ADR-0039) |
+| D-04, D-09 | `ROLE_PERMISSION_ASSIGN` was a god mode: a caller could grant codes it did not hold | bounded delegation — 403 `PERMISSION_NOT_HELD` (ADR-0040) |
+| D-07 | `PUT /roles/{id}` had no self-guard, so an `ADMIN` deactivated its own role and locked itself out | status changes on a role the caller holds are refused — 403 `SELF_PERMISSION_MODIFICATION` (ADR-0043) |
+| D-12 | no test referenced a `PLATFORM_*` code, so the owner's capability could drift silently | `SuperAdminPermissionCatalogueTest` pins the exact 10-code set and its absences |
+
+**Why.** The pre-work reproduced all twelve defects against the live stack and the decision matrix was
+approved for tasks 1-6. Two of them (D-02, D-07) *damaged* the running deployment during
+reproduction, which is why the guards are in the service layer rather than in the controllers: the
+same paths will be reused.
+
+**How it was verified.** 29 new integration tests, all passing; the full backend suite is green; no
+existing test was modified, weakened, or deleted. One new test failed on its first full-suite run
+because these tests share one non-rollback database, and was scoped to the seeded catalogue rather
+than relaxed.
+
+**What is still open.** Requirement **R2 is not met**. D-05 (roles are globally scoped; `role` has no
+`organization_id`), D-10 (`GET /users` returns 5,010 users across both organizations to a
+single-organization `ADMIN`) and D-11 (`audit_log` has no organization attribute) remain, all behind
+Gate B. D-06 (no `SUPER_ADMIN` recovery path for a locked-out `ADMIN`) and D-08 (two-step escalation
+through a created role) remain behind Gate A. The pre-work, the decision matrix, and the per-defect
+reproductions live under `docs/testing/security/permission-hardening/`.
+
+**Correction to the pre-work.** The D-03 record claimed `GET /permissions` concealed `PLATFORM_*` from
+an `ADMIN`. It does not — the earlier reading was a single page of 100 against a 163-code catalogue
+sorted by `code`. The `ADMIN` can discover **and** assign every reserved code, which makes D-03 worse
+than recorded, not better. The record is corrected in place.
+
+## 4b. The most recent change — permission model hardening, tasks 7-8 (Gate A)
+
+**What changed.** Gate A was approved on 2026-10-26 with four answers, and three of them widened the
+platform tier. `V34`, two new endpoints, one new read surface, two ADRs, and 15 tests.
+
+| Decision | What it means | Implemented as |
+|---|---|---|
+| **A1** | a locked-out ADMIN can be recovered through the API | `POST /platform/organizations/{orgId}/admins/{userId}/reset-password` and `.../unlock-sessions`, `PLATFORM_ADMIN_RECOVER`, ADR-0042 |
+| **A2** | SUPER_ADMIN authors roles — **create, then assign** | `ROLE_CREATE`, `ROLE_UPDATE`, `ROLE_PERMISSION_ASSIGN` granted in `V34`; `CreateRoleRequest` unchanged, so no contract amendment |
+| **A2b** | SUPER_ADMIN holds the reserved-set bypass | `UNBOUNDED_PERMISSION_ASSIGN` granted, otherwise authoring could not build any role carrying a `PLATFORM_*` code |
+| **A3** | D-08 Rule A | `RolePermissionPolicy.checkAssignable` → 403 `ROLE_ESCALATION_DETECTED`, ADR-0044 |
+| **A4** | build the cross-organization user list | `GET /platform/users`, `PLATFORM_ADMIN_VIEW`, read-only, includes the `PLATFORM` organization |
+
+**Why.** D-06 is new scope, not a bug fix, and the record says so: `10-P1` §63 deliberately placed
+administrator recovery outside the API. That decision was taken when several ADMINs could share an
+organization; ADR-0032's `MAX_ADMINS_PER_ORG = 1` removed the replacement path and left a database
+session — plus, as D-07 showed, a manual Redis key deletion — as the only recovery.
+
+**How it was verified.** 15 new integration tests; the full backend suite is green at **566 tests, 0
+failures, 2 skipped**. Five pre-existing tests pinned the pre-Gate-A contract and were updated — that
+is the intended consequence, recorded per test. Three defects in
+my own first draft were found by those tests and fixed: a wrong eviction method (`evict` instead of
+`evictAfterCommit`), a refusal order that reported the installation owner as `NOT_AN_ADMIN` instead of
+`SUPER_ADMIN_IMMUTABLE`, and a PLATFORM-organization assertion that would have passed for the wrong
+reason against a fixture with no resident.
+
+**What this costs.** `SuperAdminPermissionCatalogueTest` was edited from 10 pinned codes to 16, `RoleImmutabilityIntegrationTest`'s
+count from 10 to 16, and `SuperAdminCatalogueReadIntegrationTest`'s authoring-refusal pin was inverted.
+That
+edit is the forcing function Task 6 existed to provide — widening the owner's capability now requires
+a reviewer to see it in a file whose only purpose is to be read. Separately, D-05 gets **more**
+urgent: `SUPER_ADMIN` and every organization's `ADMIN` now write the same global role rows.
+
+**What is still open.** Requirement **R2 is still not met** (D-05, D-10, D-11 — all behind Gate B).
+D-08's Rule A is closed; nothing remains at Gate A.
+
+## 4c. Permission model hardening, tasks 9-11 (Gate B) — D-05, D-10, D-11
+
+Gate B was approved 2026-10-26 with five decisions. The three remaining defects are now implemented,
+and **R2 is recorded as PARTIALLY met, not met** — that distinction is the most important line in this
+section.
+
+### What changed
+
+| Task | Defect | Change | Migration |
+|---|---|---|---|
+| 9 | D-05 | roles are organization-owned (`organization_id`; NULL = platform-wide) | `V35` |
+| 10 | D-10 | `GET /users` and `GET /users/{id}` scoped to the caller's organization | none |
+| 11 | D-11 | `audit_log.organization_id`, written at write time, read scoped | `V36` |
+
+Four ADRs were added: **ADR-0045** (organization-owned roles), **ADR-0046** (audit trail carries an
+organization), **ADR-0047** (the two frozen-schema amendments — **Proposed, awaiting sign-off**), and
+ADR-0044 (role escalation) from Gate A.
+
+### Why R2 is *partially* met
+
+Gate B chose shape **S2** over the recommended **S1**: the seven seeded roles stay platform-wide. So:
+
+| Behaviour | R2 |
+|---|---|
+| An `ADMIN` reads or edits a role **its organization created** | met |
+| An `ADMIN` reads another organization's **users** or **audit trail** | met — those paths are closed |
+| An `ADMIN` edits `STAFF` / `STUDENT` / `REVIEWER` / `SUPPORT` / `FINANCE` / `ADMIN` | **not met** — affects every organization |
+
+This is documented in ADR-0045, in `gate-b-memo.md` §8, and as **GAP-184**. It is not softened
+anywhere, because an `ADMIN` renaming `STAFF` still changes what every organization sees.
+
+### The frozen-schema problem, and why it is an ADR rather than a test edit
+
+`V35` and `V36` change two frozen tables. Two exhaustive schema pins caught both —
+`IdentityMigrationIntegrationTest` (`uk_role_code should exist`) and `P11MigrationIntegrationTest`
+(`unexpected: [organization_id]`). Neither pin was relaxed silently: both now name the addition and
+cite ADR-0047, and both still fail on any column or index that is in neither the frozen spec nor the
+ADR. **ADR-0047 is Proposed, not Accepted** — the amendments are implemented and tested but await
+product/architecture sign-off, and `specs/04` §25.3/§34.4 have not been edited to match. **GAP-185**
+tracks it.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| New tests | 18 (7 role scoping, 5 user scoping, 4 audit scoping, 2 platform-tier visibility) |
+| Identity package | 165 tests across 32 classes, 0 failures |
+| Full backend suite | **584 tests, 0 failures, 0 errors, 2 skipped — BUILD SUCCESS** |
+| Live stack | re-verified at migration 35 then 36 |
+
+### The regression this pass introduced, and caught
+
+The first version of Task 9 scoped **every** caller to its own organization — including `SUPER_ADMIN`.
+Once a tenant created a role, the system administrator could no longer see it. That is a regression
+against **R1**, introduced by the fix for D-05.
+
+**The suite passed with the bug in place.** Every fixture role was platform-wide, and in that state the
+buggy and correct code return the same list. Live probing is what exposed it, by creating a
+tenant-owned role and comparing the two catalogues:
+
+~~~text
+ADMIN       visible roles: ... ,LIVE_T9_PROBE2
+SUPER_ADMIN visible roles: ...          <- the tenant's role is missing
+~~~
+
+Fixed by `RoleService.isSystemAdministrator`, keyed on holding the `SUPER_ADMIN` role rather than on
+`PLATFORM`-organization residence. Pinned by `PlatformRoleVisibilityIntegrationTest` (2 tests) and
+recorded as **GAP-186**. Recorded here rather than quietly fixed, because "the tests were green" was
+true and misleading at the same time.
+
+### Two tests that would have passed for the wrong reason
+
+Both were fixed at the fixture, not the assertion:
+
+1. **Audit scoping.** The first draft asserted audit rows existed for users the fixture created. The
+   base class writes users straight through the repository, so no audit row is emitted. Two of three
+   tests failed against an empty expectation; the fix was to drive the real `SecurityEventLogger`.
+2. **Platform organization list.** My new tests create organizations, which pushed the target
+   organization off page 1 of an unfiltered list. The test now scopes by `search`.
+
+### Residuals
+
+| Residual | Register |
+|---|---|
+| The seeded roles are still shared across organizations (S2) | GAP-184 |
+| `V35`/`V36` amend frozen tables and `specs/04` has not been edited | GAP-185 |
+| `RESERVED_PERMISSIONS` is still editable via `PUT /business-rules/{id}` | GAP-183 |
+
+## 4d. Local mail delivery — SMTP gateway and Mailpit (ADR-0048)
+
+The stack had no way to deliver real email: only `FakeEmailGateway` shipped, which records messages in
+memory. A developer could trigger a password reset and find the mail nowhere. `specs/19-P10` §29 already
+names an SMTP client as a legitimate provider, so this needed no frozen-contract change.
+
+### What was added
+
+| Change | File |
+|---|---|
+| `SmtpEmailGateway` — an `EmailGateway` adapter over `JavaMailSender` | `communication/gateway/SmtpEmailGateway.java` |
+| `mailpit` compose service (SMTP `1025`, UI `8025`) | `docker-compose.yml` |
+| `spring-boot-starter-mail`, confined to the adapter | `backend/pom.xml` |
+| `app.communication.smtp.from` and `spring.mail.*` transport | `application.yml` |
+| 6 unit tests for failure classification and the boundary | `SmtpEmailGatewayTest` |
+
+No migration, no endpoint, no schema change. The `EmailGateway` contract is unchanged — this is a
+second implementation of it.
+
+### Two defaults, deliberately different
+
+| Layer | Default | Why |
+|---|---|---|
+| Application (`application.yml`) | `FAKE` | a host-run backend and every test must send nothing |
+| Compose backend | `SMTP` | `SPRING_MAIL_HOST` is pinned to the `mailpit` container |
+
+The compose default is `SMTP` *because* the transport is pinned to a container that is not a relay.
+Defaulting it to `FAKE` would mean mail silently goes nowhere, which is the gap this closed. The
+application default stays `FAKE`, and `SmtpEmailGateway` is `@ConditionalOnProperty(havingValue =
+"SMTP")`, so a bare test or host run cannot emit SMTP traffic.
+
+### Failure classification
+
+`MailException`/`MessagingException` → retryable (relay down, auth, 4xx/5xx). A missing recipient →
+**permanent**, because retrying an invalid address fails identically five times and only delays the
+operator seeing it. This is the §34 split, and it is what the 6 tests pin.
+
+### Verified end to end
+
+Against the running stack, not just in unit tests:
+
+| Step | Result |
+|---|---|
+| `POST /auth/forgot-password` | HTTP 200 |
+| Worker picks up the queued `EMAIL_DELIVERY` job | delivered within the interval |
+| Mailpit inbox | **1 message**, `To: demo.student@example.test`, `Subject: Reset your password` |
+| Envelope sender | `no-reply@exam-platform.local` |
+| Body | 583 chars of HTML containing `reset-password?token=` |
+| Backend log grep for `token=` / `reset-password?token=` | **no match** — the reset token is not logged (§27) |
+
+### Residuals
+
+| Residual | Note |
+|---|---|
+| Mailpit is a sink, not a relay | it never delivers to real recipients; that is the intent |
+| `angus-mail` is a runtime dependency | `mvnw -o` fails on a clean machine until one online build runs |
+| Ports on loopback only | nothing off-host can inject mail into the dev stack |
+
+## 4e. Any provider, by configuration — the generic HTTP adapter (ADR-0049)
+
+SMTP (ADR-0048) covers self-hosted relays, Mailpit, and every hosted provider that exposes an SMTP
+endpoint. It does not cover providers whose only integration is a JSON API. This adds one adapter for
+that shape, so **changing email provider is a configuration change, not a code change.**
+
+### The shape almost every provider shares
+
+POST JSON to a URL with the key in a header. Everything variable is a setting:
+
+| Setting | Example |
+|---|---|
+| `provider` | `HTTP_API` |
+| `url` | `https://api.sendgrid.com/v3/mail/send` |
+| `auth-scheme` | `BEARER`, `X_API_KEY`, `API_KEY`, `NONE` |
+| `api-key-env` | `SENDGRID_API_KEY` — the **name**, never the key |
+| `body-template` | the JSON payload, with `{to}` `{from}` `{subject}` `{html}` `{text}` |
+| `success-field` | `status`, for providers that answer 2xx with an error envelope |
+| `reference-field` | `data.id`, where the provider's message id lives |
+
+### Two decisions worth naming
+
+**The key is never configuration.** `api-key-env` names an environment variable; the value is read at
+send time. A key therefore cannot reach a config file, a compose file, a log line or an actuator
+response.
+
+**A half-configured adapter refuses to start.** A missing `url` or `body-template` throws at
+construction rather than spending the retry budget discovering an operator mistake.
+
+### Retry classification (§34)
+
+| Response | Retryable |
+|---|---|
+| 2xx | no |
+| 2xx with a failing `success-field` | no |
+| 408, 429, 5xx | **yes** |
+| other 4xx | no |
+| transport error, timeout | **yes** |
+| missing key, bad template, no URL | no |
+
+### Verified end to end
+
+A stub provider was attached to the compose network and the backend pointed at it **by configuration
+only**. A real `POST /auth/forgot-password` produced:
+
+| Observed | Value |
+|---|---|
+| method / path | `POST /send` |
+| auth header | `Bearer live-stub-key-abc123` |
+| body `to` / `from` | `demo.student@example.test` / `no-reply@exam-platform.local` |
+| body `subject` | `Reset your password` |
+| body `html` | 581 chars, contains `reset-password?token=` |
+
+13 unit tests cover the wire format against a real `HttpServer` — auth schemes, the retry split, the
+2xx-error case, JSON escaping of quotes and HTML, and the fail-fast checks.
+
+### Where the three adapters now stand
+
+| Provider | Use it for | Default |
+|---|---|---|
+| `FAKE` | tests; records in memory | **yes** |
+| `SMTP` | Mailpit locally, any relay, hosted SMTP | compose stack |
+| `HTTP_API` | any JSON-over-HTTP provider | no |
+
+`provider: FAKE` remains the application default, so no test run or host-run backend can emit real
+traffic.
+
+
+## 4f. Frontend UI modernization (light-only design system)
+
+Full audit in [`docs/frontend/ui-audit-2026-10-26.md`](frontend/ui-audit-2026-10-26.md).
+
+| Change | Detail |
+|---|---|
+| Semantic design tokens | `globals.css` now defines surface/border/muted/primary/success/warning/danger/info in one place; `tailwind.config.ts` maps them |
+| Light-only | 168 `dark:` variants removed from 19 files, `ThemeToggle` deleted, the root dark bootstrap script removed. `specs/Design-Theme.md` §21 says "no dark mode until validated" — this ships only the validated mode |
+| UI primitives | `components/ui/` grew from 2 to 12: input, label, textarea, select, badge, alert, empty-state, spinner, page-header, table |
+| Student workspace | New `WorkspaceShell` + `StudentShell` + `STUDENT_MENU` + `app/student/layout.tsx`. The student area had **no shell at all** — ten pages each rendered their own `<main>` |
+| Staff area gate | `StaffAreaLayout` + layouts for `academic/*` and `question-templates/*`, which previously rendered outside any guard and any shell |
+| Landing page | Rebuilt with real product content, a working sign-in action and three portal entries. No testimonials, statistics, or gradients |
+| Responsive | 13 raw tables wrapped in scrollable keyboard-reachable containers; shell offsets derive from a single constant pair |
+
+**Verified:** lint pass, type-check pass, **513/513 tests** (was 487), production build compiled successfully.
+Live stack re-checked after redeploy; `/`, `/student`, `/academic`, `/docs` and the three login portals all serve.
+
+**Not done, deliberately:** ~800 module-level colour literals remain (mechanical, high-diff, zero functional
+gain, deferred so it can be done per module); no browser/axe run because Playwright and axe-core are not
+installed — accessibility was verified structurally at the DOM level instead.
+
+
+## 4g. Workspace consistency and organization profile (2026-10-26)
+
+Follow-up to the light-theme work, driven by a per-portal review of what each role could actually
+reach and understand. No business rule, examination behaviour, or authorization decision changed; the
+changes are navigation, presentation, and one additive schema migration.
+
+| Area | Change |
+|---|---|
+| Cross-role pages | `/account` and `/change-password` were the only authenticated screens with no workspace chrome. `RoleShell` now renders the shell matching the signed-in role; `/results` runs in `StudentShell`. Change-password keeps a focused single-card layout because the backend blocks every other endpoint until the flag clears |
+| SUPER_ADMIN lookups | `GET /api/v1/lookups` required `LOOKUP_VIEW`, which `V29`/`V32` never granted, so the read-only seeds screen 403'd. `V38` grants it (read-only, mirroring `V32`) and `SuperAdminPermissionCatalogueTest` is updated — the pinned-set test is the forcing function |
+| Org admin scope | `SUPER_ADMIN` removed from the users role filter and the roles list; a role the administrator holds is read-only in the permissions panel (escalation guard); permissions catalogue gained a search/status filter; Cancel added next to Save |
+| System health | Removed from the organization administrator entirely (page, screen, menu entry). `/platform/system` still reports dependency health to the platform owner |
+| Business rules | List now explains each rule and offers View before Edit; create and edit moved to dedicated pages; explanation registry is written against the enforcing code (`MAX_ADMINS_PER_ORG`, `RESERVED_PERMISSIONS`) |
+| Dashboard | Recent activity from the audit trail, per-module card provenance, and a link to organization analytics |
+| Organization profile | **`V37`** adds ten nullable profile columns (address, contact, website, logo) to `organization`; `PUT /api/v1/admin/organization-config/profile` writes them, scoped to the caller's organization and gated on `ORGANIZATION_SETTING_UPDATE`; editable from `/admin/settings` and visible to the platform owner. Recorded in **ADR-0051** because it amends a frozen table |
+| Student | Home lists examinations actually available via access grants (assigned or purchased) instead of a link grid; Store renamed **Explore**; Reports removed from student navigation; menu entry renamed Profile |
+| Post-creation handover | Creating an organization lands on its detail page with an explicit "one step remains: create the administrator" cue |
+
+**Verified:** frontend `lint` 0 errors / 0 warnings, `type-check` clean, **521/521 tests (93 files)**,
+production build compiled. Backend **603/603, `BUILD SUCCESS`**. Live stack re-checked: `/`,
+`/student`, `/results`, `/account`, `/change-password`, `/admin/settings`, `/admin/business-rules`,
+`/analytics/organization` all 200; `/admin/system-health` now 404; organization profile persists across
+reads; business rules, audit log, and organization analytics return real data; SUPER_ADMIN lookups
+grant applied by `V38`.
+
+**Open:** ~800 module-level palette literals (GAP-189) and no browser/axe run (GAP-190) remain as
+recorded. `specs/04` §25.2 and `specs/05` still need to record `V37`/`V38` before V1.5 is re-frozen.
+
+
+## 4h. Reports for the organization administrator, and the layout sweep (2026-10-26)
+
+Two parts: a missing navigation entry, and a systematic audit of how every page gets its workspace.
+
+### Reports
+
+`/admin/reports` already existed, was already wrapped in `AuthenticatedGuard` with
+`permission="REPORT_EXECUTIVE_READ"`, and the `ADMIN` role already held all eight `REPORT_*` grants
+(`V24`). **The screen was simply not in the sidebar**, so it was reachable only by typing the URL.
+Added to `ADMIN_MENU` beside Analytics, and converted from a hand-rolled `<main>` to `AdminShell` like
+every other administrative screen.
+
+### Layout sweep
+
+Audited all 98 `page.tsx` files for how each obtains its chrome (own shell, inherited `layout.tsx`, or
+its own `<main>`), and found three distinct defects:
+
+| Defect | Pages | Fix |
+|---|---|---|
+| **Two `main` landmarks** — page rendered `<main>` inside `AppShell`/`AdminShell`, which already emits one | 7 (`/admin/commerce`, `/admin/communication/**`) | Page `<main>` becomes `<div>`; the shell keeps the landmark |
+| **No chrome at all** — guarded, but no sidebar, so no way back | 25 across `/finance`, `/questions`, `/assessments`, `/blueprints`, `/collections`, `/schedules`, `/staff`, `/attempts` | Added `layout.tsx` per tree using the existing `StaffAreaLayout`, which was built for exactly this problem (`specs/20-P11` §63) |
+| **Mixed-role tree** — `/analytics` belongs to students *and* staff | 4 | `RoleShell` at the tree root, with `/analytics/organization` exempt because it supplies its own `AdminShell` |
+
+`/exam/**` stays deliberately shell-less (full-screen attempt), and `/login/**`, `/`, `/forgot-password`,
+`/reset-password` keep `PublicLayout` — those are correct, not defects.
+
+Also migrated the four most palette-heavy pages reached during the sweep (`/analytics`, `/blueprints`,
+`/blueprints/[id]`, `/admin/communication`) from `slate-*`/`bg-white` literals to semantic tokens.
+
+**Verified:** frontend `lint` 0 errors / 0 warnings, `type-check` clean, **521/521 tests (93 files)**.
+Live: `/api/v1/reports/catalog` and `/reports/history` both **200** for the organization administrator;
+`ADMIN` holds all eight `REPORT_*` permissions in `role_permission`.
+
+## 5. The most recent change — final verification (Step 8)
+
+**What changed.** No code. The complete nine-step mission was verified end to end one final time.
+
+- Backend: mvnw -q clean verify — 522 tests, 0 failures, 0 errors, 2 skipped; the Spring Boot jar
+  repackages successfully.
+- Frontend: npm run lint and npx tsc --noEmit clean; npm test -- --run — 86 files / 487 tests;
+  npm run build succeeds and emits every public, portal, /platform and /admin route plus the /docs
+  section.
+
+**Why.** Step 8 is the closing gate: confirm the whole delivery — landing page, three login portals,
+the SUPER_ADMIN and ADMIN UIs, the /docs site and the supporting backend — still passes after the
+docs-content step.
+
+**How it was verified.** Fresh, clean runs of the standard verify commands above; no migration,
+endpoint, or permission was added or modified.
+
+**Step 8 follow-up — browser test.** The full Docker stack (core + app + edge) was built and started; all six containers reach healthy. A real headless-browser smoke test (Chrome over CDP) loaded the landing page through the Nginx edge and reached the API (401 for the unauthenticated probe, as expected). It surfaced a landing-footer defect: the Terms and Privacy links pointed at `/terms` and `/privacy` (404) instead of the actual docs pages, and the footer omitted the `/support` link the design listed. Fixed in `frontend/components/public/public-layout.tsx` to `/docs/terms`, `/docs/privacy`, `/docs/support`, and the design docs (`docs/frontend/public-landing.md`, `docs/frontend/navigation.md`) were aligned. Re-verified: frontend lint + tsc clean, 85 files / 483 tests, build succeeds; the frontend image was rebuilt and the re-run browser smoke test now reports only the expected 401 (unauthenticated) and a cosmetic 404 favicon.
+
+## 5a-1. The most recent change — the three portals are provable end to end
+
+**What changed.** Two delivered screens did not survive a signed-in browser pass, and both are now fixed.
+
+- **The student home page did not exist (GAP-171).** `lib/auth/role-home.ts` and
+  `docs/frontend/navigation.md` both name `/student` as the STUDENT post-login destination, but the
+  App Router had no `app/student/page.tsx`: every student authenticated successfully (200 from
+  `/auth/login`, 200 from `/me`) and was then sent to a 404. The missing page now exists, listing the
+  student-owned screens that already shipped (results, own analytics, own reports, store, access,
+  purchases, announcements, notifications). It adds no endpoint, permission, or query.
+- **A regression test now catches this class of defect.** `frontend/lib/auth/role-home-routes.test.ts`
+  resolves every `roleHome` destination against the filesystem and fails when the matching
+  `app/<route>/page.tsx` is absent, so a future role-home change cannot ship a 404 landing.
+- **The smoke driver can test a portal, not just `/login`.** `scripts/smoke-frontend.mjs` gained
+  `--path` (default `/login`) and now logs the path the app actually landed on, failing when a
+  successful-looking login never navigates away. Previously it could only exercise the student portal,
+  so the failure above was invisible to it.
+
+**Provisioning an account per portal.** No account is seeded by design, so a fresh stack has no
+working login at all — 5,008 users existed before this pass and not one password was recoverable
+(every credential is bcrypt-hashed and the stack runs `FakeEmailGateway`, so a reset link is enqueued
+and never delivered). Getting in therefore means provisioning, using the same audited mechanisms a
+real installation uses, in this order:
+
+| Portal | Provisioned with | Account created |
+|---|---|---|
+| System admin (`/login/admin`) | `scripts/bootstrap/bootstrap-super-admin.sh` (ADR-0032/0033/0034) | `superadmin@platform.test` |
+| Organization admin (`/login/organization`) | `LoadCohortCli` for the account, then the ADR-0014 `user_role` grant for `ADMIN` | `demo.admin2@example.test` |
+| Student (`/login` or `/login/student`) | `LoadCohortCli` (grants `STUDENT`) | `demo.student@example.test` |
+
+`ADMIN` needs the separate grant because `ADMIN_ROLE_ASSIGN` is deliberately withheld from every role
+(V3, ADR-0014, GAP-116), so no API call can create an administrator; the `user_role` insert is the
+documented operational step, the same one `load/seed.mjs` performs.
+
+The bootstrap password is never usable indefinitely: the owner starts with `must_change_password`,
+so the first sign-in is forced through `/change-password` before `/platform` — which is what the
+browser pass exercised.
+
+**The live local passwords are not in this repository.** They are written to
+`load/out/local-portal-credentials.md`, which `.gitignore` excludes (`load/out/`) alongside the P7
+load-cohort manifests, precisely because it holds credentials. Regenerating any of them is
+re-running the command above; `LoadCohortCli` re-issues a fresh password for an existing `.test`
+account and refuses to touch a non-`.test` one.
+
+**Why.** The browser pass is only meaningful if it signs in. Until now the stack had 5,008 users and
+not one recoverable password — every account is bcrypt-hashed, and the stack runs `FakeEmailGateway`,
+so a reset link is enqueued and never delivered. Rather than weaken anything to get in, the owner
+account was created through the audited bootstrap CLI and the other two through the audited cohort
+CLI, which is exactly how a real installation is provisioned.
+
+**How it was verified.** A headless Chrome session drove the real login form on each portal through
+the edge, and every one reached its own home with no console errors, no CSP or CORS violation and no
+blocked request:
+
+| Portal | Landed on | API calls after sign-in |
+|---|---|---|
+| SUPER_ADMIN | `/change-password` → `/platform` once rotated | `/auth/login`, `/me`, `/platform/status`, `/platform/system` |
+| ADMIN | `/admin` | `/auth/login`, `/me`, two `/notifications`, `/admin/organization-config`, `/admin/dashboard` |
+| STUDENT | `/student` | `/auth/login`, `/me` |
+
+The only remaining `>= 400` response on any portal is the cosmetic `404 /favicon.ico`. Frontend
+verification after the change: `npm run lint` and `npx tsc --noEmit` clean, `npm test -- --run` —
+**86 files / 487 tests** (was 85 / 483; the four new assertions are the route-existence guard),
+`npm run build` succeeds and now emits `/student`. Backend was untouched by this change, so its
+522-test result stands.
+
+## 5b. The most recent change — the public docs are complete (Step 7)
+
+**What changed.** The in-product /docs site now has its full content and a build-time-generated API
+reference, closing GAP-170.
+
+- **API reference from OpenAPI.** The backend now retains its OpenAPI document as a build artifact:
+  a new integration test writes /v3/api-docs to target/generated/openapi.json during verify. The
+  frontend flattens that document at build time into a browsable, searchable endpoint list: every
+  operation is grouped by tag and expandable to show its parameters and request body, and a filter
+  narrows the list by path, method, summary or description. /docs/api therefore always matches the
+  running contracts instead of drifting as prose (ADR-0036, docs-site §35–36).
+- **Content.** The nine curated pages are completed: the getting-started page names the three
+  portals (/login/student, /login/organization, /login/admin) and the first-sign-in password change;
+  the roles page maps each role to its portal and records the one-admin-per-organization cap; and
+  the configuration page documents the MAX_ADMINS_PER_ORG business rule.
+
+The backend change is test-only (no endpoint, schema, or permission change); the frontend change is
+content plus the generation pipeline (no new endpoint).
+
+**Why.** GAP-170 (the /docs/api reference shipped as static prose instead of a build-time-generated
+OpenAPI document) was deferred to this step, and the curated content had to reflect the now-shipped
+SUPER_ADMIN and ADMIN surfaces from Steps 5–6.
+
+**How it was verified.** Backend mvnw clean verify (522 tests, 0 failures, 2 skipped) including the
+new OpenAPI-generation test; frontend npm run lint, npx tsc --noEmit, npm test -- --run (85 files /
+483 tests) and npm run build all clean. The generated reference is rendered from the 211 KB
+OpenAPI document captured from /v3/api-docs.
+
+## 5c. The most recent change — the ADMIN screens complete (Step 6)
+
+**What changed.** The ADMIN /admin tree is complete for user management (the priority) and the
+redundant second navigation is gone.
+
+- **Shell cleanup.** AdminShell no longer renders the old horizontal AdminNav or its own main
+  element and padding — it now wraps just the page heading and the per-screen PermissionGuard,
+  mirroring the Step 5 PlatformShell. admin-nav.tsx is deleted and /admin now renders the real
+  dashboard instead of a navigation-only entry page, so the Step 4 sidebar is the single nav.
+- **Create user** (/admin/users/new) — a Zod-validated form (firstName/lastName/email/mobile plus a
+  role multi-select) posting POST /users. The role options are capped to the creatable set (ADMIN
+  and SUPER_ADMIN excluded) and the frozen body carries no status and no password (onboarding
+  assigns a non-usable credential; activation flows through reset, 10-P1 §56/§58).
+- **User detail** (/admin/users/[id]) — name/email/mobile/roles/status with an Edit CTA.
+- **Edit user** (/admin/users/[id]/edit) — firstName/lastName/mobile plus roles (SUPER_ADMIN
+  excluded; self-role editing disabled). Email is shown read-only (it is the immutable login
+  identifier) and status is not editable (it changes only through archive). Posts PUT /users/{id}.
+- **Users list** — a "+ New user" CTA (gated on USER_CREATE) and a View link per row, alongside the
+  existing server-paginated/filtered table and archive dialog.
+
+The backend enforces the ADMIN role cap (MAX_ADMINS_PER_ORG), the last-ADMIN invariant, and
+ADMIN_ROLE_ASSIGN for ADMIN-role changes; the frontend only hides non-creatable roles as a UX
+affordance. The backend is unchanged.
+
+**Why.** Steps 1–5 are approved; Step 6 delivers the priority ADMIN surface (user management) the
+admin-flow.md §3–§8 specifies, and removes the duplicate AdminNav the Step 4 shell made redundant.
+
+**How it was verified.** Frontend npm run lint (clean), npx tsc --noEmit (clean),
+npm test -- --run (83 files / 479 tests, 0 failures), and npm run build (emits the new
+/admin/users/new, /admin/users/[id] and /admin/users/[id]/edit routes). The backend is unchanged
+from Step 3 (521 tests). No migration, endpoint, or permission was added.
+
+## 5d. The most recent change — the SUPER_ADMIN screens complete (Step 5)
+
+**What changed.** The SUPER_ADMIN /platform business screens now bind to the Step 3 platform API,
+under the Step 4 AppShell:
+
+- **Dashboard** (/platform) — the empty-state prompt ("No business organization yet" + create CTA)
+  or live organization/administrator/user counts from GET /platform/status, plus a system summary
+  card (version, migration, seeds, health) from GET /platform/system.
+- **Organizations** (/platform/organizations) — a server-paginated, server-filtered, allow-listed
+  sorted DataTable (code/name/status) over GET /platform/organizations, with a create action.
+- **Create organization** (/platform/organizations/new) — a Zod-validated form posting
+  POST /platform/organizations, then landing on the new detail.
+- **Organization detail** (/platform/organizations/[id]) — code/name/description/status plus
+  admin/user counts, with the one-ADMIN handover prompt when adminCount is 0.
+- **Create administrator** (/platform/organizations/[id]/admins/new) — posts
+  POST /platform/organizations/{id}/admins and confirms the invitation.
+- **Providers** (/platform/providers) — read-only, masked email/payment configuration (configured,
+  providerName, fromAddress / webhookSecretSet); secrets are never shown.
+- **System info** (/platform/system) — build/migration/uptime from GET /platform/system and a
+  dependency-health table.
+- **Seeds** (/platform/seeds/roles, /platform/seeds/permissions, /platform/seeds/lookups) —
+  read-only catalogues reusing the existing shared administration hooks (useRoles / usePermissions /
+  useLookups); no endpoint or permission was invented.
+
+Each screen is wrapped in PlatformShell (platform page heading + PermissionGuard) and gated by the
+frozen PLATFORM_* permission it calls. The frontend binds through
+frontend/features/platform/{schemas,api,hooks,query-keys,components}; the backend is unchanged from
+Step 3.
+
+**Why.** Steps 1–4 are approved; Step 5 delivers the install-owner surface the Step 3 contracts were
+written for, reusing the Step 4 shell and the shared administration data-table/form/sorting
+primitives instead of re-implementing them.
+
+**How it was verified.** Frontend npm run lint (clean), npx tsc --noEmit (clean),
+npm test -- --run (80 files / 474 tests, 0 failures — 14 new platform tests: 7 API, 4 schema,
+3 dashboard), and npm run build (emits all /platform routes including /platform/organizations/[id]
+and /platform/organizations/[id]/admins/new). The backend is unchanged from Step 3 (521 tests). No
+migration, endpoint, or permission was added.
+
+## 5e. The most recent change — the SUPER_ADMIN / ADMIN UI frontend complete (Step 4)
+
+**What changed.** The mission's frontend half now exists end to end, on top of the Step 3 backend:
+
+- The public landing page (`/`) — ten sections (Hero, What we do, Who it is for, Capabilities,
+  How it works, Pricing, FAQ, Contact) under a scroll-aware header/footer, with a working
+  `POST /public/contact` form (name/email/message validation, per-IP 429 surfaced as a friendly
+  message).
+- The three split login portals (`/login/student`, `/login/organization`, `/login/admin`, with
+  `/login` redirecting to `/login/student`) — one `LoginForm` sends the ADR-0035 `portal`
+  discriminator, renders `PORTAL_MISMATCH` generically, cross-links the other two portals, and
+  routes each role to its home (`roleHome`, honoring `mustChangePassword`).
+- The authenticated shell (`AppShell`) — collapsible 264px/56px sidebar, fixed 64px header, mobile
+  drawer, breadcrumbs, global search, notification bell, theme toggle and avatar menu — gated
+  client-side in the order token → `mustChangePassword` → role → permission, and wired into
+  `app/admin/layout.tsx` and `app/platform/layout.tsx` with role menus (`SUPER_ADMIN_MENU`,
+  `ADMIN_MENU`).
+- The change-password screen (`/change-password`) — current/new/confirm, then routes home.
+- The in-UI `/docs` skeleton (ADR-0036) — a safe prose-only Markdown renderer (no raw HTML/MDX,
+  rule 17), server-side loading from `frontend/content/docs/` (9 pages), sidebar + scroll-spy TOC,
+  and `generateStaticParams` for `/docs/[slug]`.
+- Light/dark/system theme persistence with a no-FOUC inline script (the full semantic-token
+  system from `design/Design-Theme.md` is not yet implemented; components use Tailwind utilities
+  with `dark:` variants).
+
+**Why.** Steps 1–3 are approved; Step 4 gives Steps 5 (SUPER_ADMIN screens) and 6 (ADMIN screens)
+a real shell and public surface to build inside, and closes the landing, split-login and
+change-password scope the ADRs opened.
+
+**How it was verified.** Frontend `npm run lint` (clean), `npx tsc --noEmit` (clean),
+`npm test -- --run` (77 files / 460 tests, 0 failures), and `npm run build` (emits `/`,
+`/login/{student,organization,admin}`, `/change-password`, `/platform`, the `/admin` sub-routes,
+and `/docs` + `/docs/[slug]` as static/SSG pages). The backend is unchanged from Step 3 (521 tests).
+
+## 5z. The most recent change — the SUPER_ADMIN / ADMIN UI backend complete (Step 3)
+
+**What changed.** The SUPER_ADMIN and ADMIN UI mission reached Step 3 and the backend is now complete
+end to end. Eleven endpoints exist:
+
+- `POST /api/v1/auth/change-password` (authenticated) — verifies the current password, enforces the
+  platform `PasswordPolicy`, clears `must_change_password`, keeps the caller's own session while
+  expiring every other session, and audits `PASSWORD_CHANGE`.
+- `POST /api/v1/platform/organizations`, `GET /api/v1/platform/organizations`,
+  `GET /api/v1/platform/organizations/{id}`, `POST /api/v1/platform/organizations/{id}/admins` — the
+  SUPER_ADMIN business-organization lifecycle (ADR-0032, ADR-0033), with `PLATFORM` excluded from
+  list/detail and the data-driven `MAX_ADMINS_PER_ORG=1` cap enforced.
+- `GET /api/v1/platform/status`, `GET /api/v1/platform/system` — platform counts, seed status,
+  migration/version/uptime and dependency health, with no container inventory (C6).
+- `GET /api/v1/platform/providers`, `PUT /api/v1/platform/providers` — masked provider configuration
+  stored in `organization_setting.configuration` for the PLATFORM org (C5, GAP-099/108).
+- `GET /api/v1/admin/organization-config` (ADR-0037, ADMIN role only) — the caller's organization
+  `{name, code, timezone}`, feature flags, masked provider status, migration version and app version;
+  never installation-level detail or provider secrets.
+- `POST /api/v1/public/contact` (ADR-0037, public) — validated, per-IP rate-limited (in-memory fixed
+  window, tunable via `app.contact.rate-limit.*`), and recorded as a `CONTACT_REQUEST` background job
+  (no user, no business data).
+
+The login `portal` discriminator (ADR-0035) now enforces the split login: an absent portal keeps the
+pre-existing behavior, an unknown portal is `INVALID_PORTAL` (400), and a wrong portal is a generic
+`PORTAL_MISMATCH` (401) that never names the correct one. Two invariants land in `UserService`: the
+SUPER_ADMIN owner cannot be archived or have its roles modified (`SUPER_ADMIN_IMMUTABLE`, ADR-0032
+§18) and an organization accepts at most one ADMIN (`ADMIN_CAP_EXCEEDED`, data-driven through
+`MAX_ADMINS_PER_ORG=1`, ADR-0032 C3), enforced on both the create and role-replacement paths.
+
+Supporting machinery: `MustChangePasswordFilter` (server-side forced first-login gate, ADR-0034),
+`EmailPasswordResetDelivery` (`@Primary`, wires reset and first-password links through the
+Communication email pipeline, closing GAP-112), `SuperAdminBootstrapService` +
+`SuperAdminBootstrapCli` (environment-gated, idempotent, off-HTTP installation-owner creation), and
+migrations V29 (SUPER_ADMIN role + PLATFORM org + PLATFORM_* permissions + MAX_ADMINS_PER_ORG), V30
+(`user.must_change_password`), V31 (`{{resetLink}}` in the PASSWORD_RESET template). No migration was
+needed for Step 3's remaining deltas: `CONTACT_REQUEST` reuses the frozen `background_job` table's
+`VARCHAR` `job_type`.
+
+**Why.** Steps 1 (ADR-0032/0033/0034/0035/0036/0037) and 2 (design docs) were approved; Step 3
+implements the eleven contracts in `specs/05-API-Contract-V1.5.md §72/§73` so Steps 5/6 (the
+SUPER_ADMIN and ADMIN UIs) have an authoritative backend to bind to.
+
+**How it was verified.** `backend/mvnw.cmd clean verify` — BUILD SUCCESS, **521 tests, 0 failures,
+2 skipped** (14 added in five classes: `LoginPortalIntegrationTest`, `SuperAdminImmutabilityIntegrationTest`,
+`AdminCapIntegrationTest`, `AdminOrgConfigIntegrationTest`, `PublicContactIntegrationTest`; the P11
+multiple-admin test in `IdentityRoleApiIntegrationTest` was rewritten to assert the cap).
+
+## 5x. The most recent change — the frontend could not reach the API from a browser, and the cause was two layers deep (GAP-164, GAP-165)
 
 **The report.** A user opened the frontend, the page rendered, and every API call failed with
 *"Unable to reach the server. Check your connection and try again."* That message comes from exactly

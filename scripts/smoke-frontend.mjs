@@ -24,6 +24,9 @@ function parseArgs(argv) {
 
 const args = parseArgs(process.argv.slice(2));
 const EDGE_URL = (args.url || "http://localhost:8081").replace(/\/$/, "");
+// The three portals live on different paths, so the landing path is an argument rather than a
+// constant: testing only `/login` can never prove the platform or organization portal works.
+const LOGIN_PATH = args.path || "/login";
 const CHROME = args.chrome;
 const ARTIFACTS = args.artifacts || join(tmpdir(), "smoke");
 const EMAIL = args.email || "";
@@ -187,8 +190,8 @@ async function main() {
     await cdp.send("Page.enable");
 
     // ---------------------------------------------------------- load the app
-    log(`loading ${EDGE_URL}/login`);
-    await cdp.send("Page.navigate", { url: `${EDGE_URL}/login` });
+    log(`loading ${EDGE_URL}${LOGIN_PATH}`);
+    await cdp.send("Page.navigate", { url: `${EDGE_URL}${LOGIN_PATH}` });
     await sleep(5000);
 
     const titleResult = await cdp.send("Runtime.evaluate", {
@@ -253,6 +256,28 @@ async function main() {
         failures.push("login form fields were not found in the rendered page");
       }
       await sleep(6000);
+      // Where the app actually sent the user is the observable that proves the post-login
+      // redirect resolved to a real screen rather than a 404.
+      const landed = await cdp.send("Runtime.evaluate", {
+        expression: "location.pathname",
+        returnByValue: true,
+      });
+      log(`landed on: ${landed.result.value}`);
+      if (landed.result.value === "/login" || landed.result.value === LOGIN_PATH) {
+        failures.push(
+          `the login did not navigate away from ${LOGIN_PATH}; the credentials were rejected or the redirect is broken`,
+        );
+      }
+      // The authenticated screen must actually render content, not just resolve its route: an
+      // empty <main> would still be a 200 and still satisfy the redirect assertion above.
+      const signedIn = await cdp.send("Runtime.evaluate", {
+        expression: "document.body.innerText.replace(/\\s+/g, ' ').trim().slice(0, 300)",
+        returnByValue: true,
+      });
+      log(`signed-in body: ${JSON.stringify(signedIn.result.value)}`);
+      if (String(signedIn.result.value || "").length < 60) {
+        failures.push("the signed-in page rendered almost no text: the destination screen is empty");
+      }
     } else {
       // No account available (a fresh stack provisions none). Still prove the browser can reach
       // the API from this page's origin: a fetch that resolves to an HTTP status means DNS, TCP,
@@ -337,6 +362,16 @@ async function main() {
       failures,
     };
     writeFileSync(join(ARTIFACTS, "report.json"), JSON.stringify(report, null, 2));
+
+    // A screenshot is the only artifact that shows what the user actually sees; keep one so a
+    // passing run can still be reviewed by eye.
+    try {
+      const shot = await cdp.send("Page.captureScreenshot", { format: "png" });
+      writeFileSync(join(ARTIFACTS, "final.png"), Buffer.from(shot.data, "base64"));
+      log(`screenshot: ${join(ARTIFACTS, "final.png")}`);
+    } catch (error) {
+      log(`screenshot failed: ${error.message}`);
+    }
 
     if (networkFailures.length > 0) {
       log(`network failures: ${networkFailures.length}`);

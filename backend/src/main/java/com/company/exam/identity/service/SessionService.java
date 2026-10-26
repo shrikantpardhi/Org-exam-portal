@@ -62,6 +62,21 @@ public class SessionService {
                 .isPresent();
     }
 
+    /**
+     * Resolves the user's {@code must_change_password} flag for an ACTIVE session in one query.
+     * The JWT filter uses this instead of a second user lookup so authentication stays a single
+     * read per request (ADR-0034).
+     *
+     * @return the flag when the session is active and belongs to the user; empty otherwise
+     */
+    @Transactional(readOnly = true)
+    public Optional<Boolean> mustChangePasswordForActiveSession(UUID sessionId, UUID userId) {
+        if (sessionId == null || userId == null) {
+            return Optional.empty();
+        }
+        return repository.findMustChangePasswordByActiveSession(sessionId, userId);
+    }
+
     @Transactional(readOnly = true)
     public Optional<LoginSession> find(UUID sessionId) {
         return repository.findById(sessionId);
@@ -106,6 +121,12 @@ public class SessionService {
     @Transactional
     public int expireAllForUser(UUID userId) {
         return repository.expireActiveSessionsForUser(userId);
+    }
+
+    /** Marks every ACTIVE session of a user EXPIRED except the one being kept (change-password). */
+    @Transactional
+    public int expireAllExceptForUser(UUID userId, UUID sessionId) {
+        return repository.expireActiveSessionsForUserExcept(userId, sessionId);
     }
 
     /** Sweeps sessions whose absolute lifetime has elapsed. */

@@ -329,7 +329,7 @@ export function ExamRuntime({ attemptId }: { attemptId: string }) {
 
   if (attempt.isLoading || questionsQuery.isLoading) {
     return (
-      <p role="status" aria-live="polite" className="text-sm text-slate-600">
+      <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
         Loading your examination…
       </p>
     );
@@ -357,7 +357,7 @@ export function ExamRuntime({ attemptId }: { attemptId: string }) {
           <p className="font-medium">Your examination has been submitted.</p>
           <p>You can no longer change your answers.</p>
         </div>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           {counts.answered} of {counts.total} questions were answered.
         </p>
       </div>
@@ -385,7 +385,7 @@ export function ExamRuntime({ attemptId }: { attemptId: string }) {
       {severity === "expired" ? <ExpiredNotice submitted={submit.isSuccess} /> : null}
 
       <header className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           Question {index + 1} of {list.length}
           {current.sectionName ? ` · ${current.sectionName}` : ""}
         </p>
@@ -422,7 +422,7 @@ export function ExamRuntime({ attemptId }: { attemptId: string }) {
       ) : null}
 
       <div className="flex flex-col gap-4 md:flex-row">
-        <article className="flex-1 rounded border border-slate-200 p-4">
+        <article className="flex-1 rounded border border-border p-4">
           <p data-testid="question-content" className="text-base">
             {current.renderedContent ?? current.content}
           </p>

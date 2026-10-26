@@ -1,5 +1,6 @@
 package com.company.exam.identity.service;
 
+import com.company.exam.administration.api.BusinessRuleResolver;
 import com.company.exam.common.api.ApiError;
 import com.company.exam.common.enums.Status;
 import com.company.exam.common.exception.AuthorizationException;
@@ -14,8 +15,10 @@ import com.company.exam.identity.entity.Organization;
 import com.company.exam.identity.entity.Role;
 import com.company.exam.identity.entity.User;
 import com.company.exam.identity.entity.UserRole;
+import com.company.exam.identity.exception.AdminCapExceededException;
 import com.company.exam.identity.exception.LastAdminException;
 import com.company.exam.identity.exception.SelfRoleModificationException;
+import com.company.exam.identity.exception.SuperAdminImmutabilityException;
 import com.company.exam.identity.mapper.IdentityMapper;
 import com.company.exam.identity.repository.OrganizationRepository;
 import com.company.exam.identity.repository.RoleRepository;
@@ -62,14 +65,21 @@ public class UserService {
     private final IdentityNormalizer normalizer;
     private final IdentityMapper mapper;
     private final AuthorizationService authorizationService;
+    private final RolePermissionPolicy permissionPolicy;
     private final SessionService sessionService;
+    private final PasswordResetService passwordResetService;
+    private final BusinessRuleResolver ruleResolver;
     private final SecurityEventLogger securityEvents;
+
+    private static final String MAX_ADMINS_RULE = "MAX_ADMINS_PER_ORG";
+    private static final long DEFAULT_MAX_ADMINS = 1;
 
     public UserService(UserRepository userRepository, RoleRepository roleRepository,
             UserRoleRepository userRoleRepository, OrganizationRepository organizationRepository,
             PasswordEncoder passwordEncoder, IdentityNormalizer normalizer, IdentityMapper mapper,
             AuthorizationService authorizationService, SessionService sessionService,
-            SecurityEventLogger securityEvents) {
+            PasswordResetService passwordResetService, BusinessRuleResolver ruleResolver,
+            SecurityEventLogger securityEvents, RolePermissionPolicy permissionPolicy) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userRoleRepository = userRoleRepository;
@@ -79,7 +89,10 @@ public class UserService {
         this.mapper = mapper;
         this.authorizationService = authorizationService;
         this.sessionService = sessionService;
+        this.passwordResetService = passwordResetService;
+        this.ruleResolver = ruleResolver;
         this.securityEvents = securityEvents;
+        this.permissionPolicy = permissionPolicy;
     }
 
     @Transactional
@@ -94,6 +107,12 @@ public class UserService {
         }
         Organization organization = activeOrganization();
         List<Role> roles = requireActiveRoles(request.roles());
+        // D-08 Rule A (ADR-0044) also covers creation. Guarding only replaceRoles would leave the
+        // original escalation reachable through POST /users, which is the path a caller with
+        // USER_CREATE would actually use.
+        if (actorId != null) {
+            permissionPolicy.checkAssignable(roles.stream().map(Role::getId).toList(), actorId);
+        }
 
         User user = new User();
         user.setOrganizationId(organization.getId());
@@ -104,6 +123,9 @@ public class UserService {
         // Onboarding policy (§56, §58): the API never accepts a password. The account starts with a
         // non-usable credential and is activated through password reset.
         user.setPassword(passwordEncoder.encode(randomSecret()));
+        // First password is delivered as a reset link; the owner must choose it before anything
+        // else is reachable (ADR-0034).
+        user.setMustChangePassword(true);
         user.setStatus(Status.ACTIVE);
 
         User saved;
@@ -115,13 +137,20 @@ public class UserService {
         } catch (DataIntegrityViolationException race) {
             throw new ConflictException("A user with this email or mobile already exists");
         }
+        passwordResetService.deliverFirstPasswordInvitation(saved);
         securityEvents.roleChanged(actorId, saved.getId(), "USER_CREATE", "Created user " + saved.getEmail());
         return mapper.toDetail(saved, roles.stream().map(Role::getCode).toList());
     }
 
+    /**
+     * A user's detail, scoped to the caller's organization (D-10, R2).
+     *
+     * <p>A user in another organization returns 404, not 403: 403 would confirm that the id exists,
+     * which is the disclosure rule {@code 10-P1} §25 already applies to password reset.
+     */
     @Transactional(readOnly = true)
-    public UserDtos.UserDetail get(UUID id) {
-        User user = requireUser(id);
+    public UserDtos.UserDetail get(UUID id, UUID actorId) {
+        User user = requireUserInActorScope(id, actorId);
         return mapper.toDetail(user, roleRepository.findEffectiveRoleCodes(id));
     }
 
@@ -132,12 +161,23 @@ public class UserService {
         return new CurrentUserDtos.CurrentUserResponse(
                 user.getId(), user.getFirstName(), user.getLastName(), user.getEmail(),
                 roleRepository.findEffectiveRoleCodes(userId),
-                authorizationService.effectivePermissions(userId));
+                authorizationService.effectivePermissions(userId),
+                user.isMustChangePassword());
     }
 
+    /**
+     * The caller's organization's users (D-10, R2).
+     *
+     * <p>Before this, a {@code DEFAULT}-organization ADMIN received all 5,010 users of a
+     * two-organization deployment, including the installation owner. The scope is derived from the
+     * actor, never from a request parameter: a client-supplied organization id would be an
+     * authorization decision taken by the caller.
+     */
     @Transactional(readOnly = true)
-    public Page<UserDtos.UserSummary> list(Status status, UUID roleId, String search, Pageable pageable) {
-        Page<User> page = userRepository.findAll(userSpecification(status, roleId, search), pageable);
+    public Page<UserDtos.UserSummary> list(Status status, UUID roleId, String search, Pageable pageable,
+            UUID actorId) {
+        Page<User> page = userRepository.findAll(
+                userSpecification(status, roleId, search, organizationOf(actorId)), pageable);
         Map<UUID, List<String>> rolesByUser = roleCodesForUsers(page.getContent());
         return page.map(user -> mapper.toSummary(user, rolesByUser.getOrDefault(user.getId(), List.of())));
     }
@@ -168,6 +208,7 @@ public class UserService {
     @Transactional
     public void archive(UUID id, UUID actorId) {
         User user = requireUser(id);
+        guardSuperAdminImmutability(id);
         guardLastAdminRemoval(id);
         user.setStatus(Status.ARCHIVED);
         userRepository.save(user);
@@ -176,12 +217,35 @@ public class UserService {
         securityEvents.roleChanged(actorId, id, "USER_ARCHIVE", "Archived user " + user.getEmail());
     }
 
+    /**
+     * The acting user's organization id, or {@code null} when it cannot be resolved.
+     *
+     * <p>Callers treat {@code null} as "see nothing" (fail closed), never as "see everything".
+     */
+    private UUID organizationOf(UUID actorId) {
+        if (actorId == null) {
+            return null;
+        }
+        return userRepository.findById(actorId).map(User::getOrganizationId).orElse(null);
+    }
+
+    /** Loads a user, refusing one outside the actor's organization with 404 (D-10). */
+    private User requireUserInActorScope(UUID id, UUID actorId) {
+        User user = requireUser(id);
+        UUID organizationId = organizationOf(actorId);
+        if (organizationId == null || !organizationId.equals(user.getOrganizationId())) {
+            throw NotFoundException.of("User", id);
+        }
+        return user;
+    }
+
     @Transactional(readOnly = true)
     public User requireUser(UUID id) {
         return userRepository.findById(id).orElseThrow(() -> NotFoundException.of("User", id));
     }
 
     private void assignRole(UUID userId, UUID roleId) {
+        guardAdminCap(userId, roleId);
         UserRole userRole = new UserRole();
         userRole.setUserId(userId);
         userRole.setRoleId(roleId);
@@ -190,15 +254,23 @@ public class UserService {
     }
 
     private void replaceRoles(User user, List<UUID> desiredRoleIds, UUID actorId) {
+        guardSuperAdminImmutability(user.getId());
         if (actorId != null && actorId.equals(user.getId())) {
             throw new SelfRoleModificationException();
         }
         List<Role> desiredRoles = requireActiveRoles(desiredRoleIds);
+        // D-08 Rule A (ADR-0044): a caller may not assign a role carrying a permission it does not
+        // hold. Checked on the desired set, so "assign this role" cannot become a quieter way to
+        // grant authority than naming the permission directly. Runs after the self-guard above so
+        // SELF_PERMISSION_MODIFICATION keeps precedence.
+        if (actorId != null) {
+            permissionPolicy.checkAssignable(desiredRoles.stream().map(Role::getId).toList(), actorId);
+        }
         Set<UUID> desired = desiredRoles.stream().map(Role::getId).collect(Collectors.toSet());
 
         List<UserRole> current = userRoleRepository.findByUserIdAndStatus(user.getId(), Status.ACTIVE);
         Set<UUID> currentIds = current.stream().map(UserRole::getRoleId).collect(Collectors.toSet());
-        Optional<UUID> adminRoleId = roleRepository.findByCode(IdentityConstants.ADMIN_ROLE_CODE).map(Role::getId);
+        Optional<UUID> adminRoleId = roleRepository.findByCodeAndOrganizationIdIsNull(IdentityConstants.ADMIN_ROLE_CODE).map(Role::getId);
 
         boolean grantingAdmin = adminRoleId.isPresent() && desired.contains(adminRoleId.get())
                 && !currentIds.contains(adminRoleId.get());
@@ -208,6 +280,10 @@ public class UserService {
             if (actorId == null || !authorizationService.hasPermission(actorId, IdentityConstants.ADMIN_ROLE_ASSIGN)) {
                 throw new AuthorizationException("Admin role assignment requires " + IdentityConstants.ADMIN_ROLE_ASSIGN);
             }
+        }
+        if (grantingAdmin && userRoleRepository.countActiveAssignmentsByRoleCodeInOrganization(
+                IdentityConstants.ADMIN_ROLE_CODE, user.getOrganizationId()) >= maxAdminsPerOrg()) {
+            throw new AdminCapExceededException();
         }
         if (revokingAdmin && userRoleRepository.countActiveAssignmentsByRoleCode(IdentityConstants.ADMIN_ROLE_CODE) <= 1) {
             throw new LastAdminException();
@@ -242,7 +318,7 @@ public class UserService {
     }
 
     private void guardLastAdminRemoval(UUID userId) {
-        Optional<UUID> adminRoleId = roleRepository.findByCode(IdentityConstants.ADMIN_ROLE_CODE).map(Role::getId);
+        Optional<UUID> adminRoleId = roleRepository.findByCodeAndOrganizationIdIsNull(IdentityConstants.ADMIN_ROLE_CODE).map(Role::getId);
         if (adminRoleId.isEmpty()) {
             return;
         }
@@ -253,6 +329,40 @@ public class UserService {
                 && userRoleRepository.countActiveAssignmentsByRoleCode(IdentityConstants.ADMIN_ROLE_CODE) <= 1) {
             throw new LastAdminException();
         }
+    }
+
+    private void guardAdminCap(UUID userId, UUID roleId) {
+        Optional<UUID> adminRoleId = roleRepository.findByCodeAndOrganizationIdIsNull(IdentityConstants.ADMIN_ROLE_CODE).map(Role::getId);
+        if (adminRoleId.isEmpty() || !adminRoleId.get().equals(roleId)) {
+            return;
+        }
+        User user = requireUser(userId);
+        if (userRoleRepository.countActiveAssignmentsByRoleCodeInOrganization(
+                IdentityConstants.ADMIN_ROLE_CODE, user.getOrganizationId()) >= maxAdminsPerOrg()) {
+            throw new AdminCapExceededException();
+        }
+    }
+
+    private void guardSuperAdminImmutability(UUID userId) {
+        if (isSuperAdmin(userId)) {
+            throw new SuperAdminImmutabilityException();
+        }
+    }
+
+    private boolean isSuperAdmin(UUID userId) {
+        return roleRepository.findByCodeAndOrganizationIdIsNull(IdentityConstants.SUPER_ADMIN_ROLE_CODE)
+                .map(role -> userRoleRepository.findByUserIdAndRoleId(userId, role.getId())
+                        .filter(userRole -> userRole.getStatus() == Status.ACTIVE)
+                        .isPresent())
+                .orElse(false);
+    }
+
+    private long maxAdminsPerOrg() {
+        return ruleResolver.resolve(MAX_ADMINS_RULE)
+                .flatMap(rule -> rule.decimal("maxAdmins"))
+                .map(java.math.BigDecimal::longValue)
+                .filter(value -> value >= 0)
+                .orElse(DEFAULT_MAX_ADMINS);
     }
 
     private Map<UUID, String> roleCodeMap(Set<UUID> currentIds, Set<UUID> desired) {
@@ -300,9 +410,18 @@ public class UserService {
                         Collectors.toList())));
     }
 
-    private Specification<User> userSpecification(Status status, UUID roleId, String search) {
+    private Specification<User> userSpecification(Status status, UUID roleId, String search, UUID organizationId) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            // Organization scope first: it is the one predicate that must never be optional.
+            if (organizationId != null) {
+                predicates.add(cb.equal(root.get("organizationId"), organizationId));
+            } else {
+                // Fail closed (G-10): an actor with no resolvable organization sees nothing rather
+                // than everything. A null here means the caller could not be attributed, which is a
+                // refusal case, not a licence to read the installation.
+                predicates.add(cb.disjunction());
+            }
             if (status != null) {
                 predicates.add(cb.equal(root.get("status"), status));
             }

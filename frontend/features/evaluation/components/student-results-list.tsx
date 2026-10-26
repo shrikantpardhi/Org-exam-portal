@@ -43,7 +43,7 @@ export function StudentResultsList() {
 
   return (
     <section aria-label="Published results" className="space-y-3">
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-muted-foreground">
         {items.length} published {items.length === 1 ? "result" : "results"}
       </p>
       <ul className="grid gap-4 sm:grid-cols-2">

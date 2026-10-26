@@ -117,6 +117,36 @@ WHERE u.email = 'me@example.test'
 ON CONFLICT (user_id, role_id) DO UPDATE SET status = 'ACTIVE';
 ```
 
+That still leaves the **system-admin portal** (`/login/admin`) with no account, because
+`LoadCohortCli` only ever grants `STUDENT` and the installation owner is not a business-org user.
+Bootstrap it with the dedicated CLI, which is the same mechanism a real installation uses
+(ADR-0032/0033/0034):
+
+```bash
+SUPER_ADMIN_EMAIL=superadmin@platform.test \
+SUPER_ADMIN_PASSWORD='<at least 12 characters, not the email>' \
+ALLOW_SUPER_ADMIN_BOOTSTRAP=true \
+./scripts/bootstrap/bootstrap-super-admin.sh
+```
+
+It prints a `SUPER_ADMIN_BOOTSTRAP_RESULT` line and is idempotent: re-running reports
+`ALREADY_EXISTS` and changes nothing. The owner is created in the `PLATFORM` system organization
+with `must_change_password = true`, so the first sign-in is forced through `/change-password` before
+it reaches `/platform`. The script refuses to run against the `production` profile at all; the
+`ALLOW_SUPER_ADMIN_BOOTSTRAP=true` acknowledgement is what permits a non-production environment.
+
+All three accounts are then reachable at their own portals, through the edge only:
+
+| Portal | URL | Provisioned by |
+|---|---|---|
+| System admin | `http://localhost:8081/login/admin` | `scripts/bootstrap/bootstrap-super-admin.sh` |
+| Organization admin | `http://localhost:8081/login/organization` | `LoadCohortCli` + the ADR-0014 `ADMIN` grant |
+| Student | `http://localhost:8081/login` | `LoadCohortCli` |
+
+The password each mechanism prints is shown once. Nothing in the repository stores it: keep it in a
+git-ignored location (the P7 harness uses `load/out/`, which `.gitignore` excludes) or a password
+manager.
+
 ### Verification
 
 ```bash

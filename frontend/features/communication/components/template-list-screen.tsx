@@ -64,12 +64,12 @@ export function TemplateListScreen() {
             id="template-search"
             value={draftSearch}
             onChange={(event) => setDraftSearch(event.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           />
         </div>
         <button
           type="submit"
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+          className="rounded bg-primary px-4 py-2 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
         >
           Search
         </button>
@@ -86,7 +86,7 @@ export function TemplateListScreen() {
             <table className="w-full text-left text-sm">
               <caption className="sr-only">Email templates</caption>
               <thead>
-                <tr className="border-b border-slate-200">
+                <tr className="border-b border-border">
                   <th scope="col" className="py-2 pr-3">Code</th>
                   <th scope="col" className="py-2 pr-3">Name</th>
                   <th scope="col" className="py-2 pr-3">Subject</th>
@@ -96,7 +96,7 @@ export function TemplateListScreen() {
               </thead>
               <tbody>
                 {templates.map((template) => (
-                  <tr key={template.id} className="border-b border-slate-100">
+                  <tr key={template.id} className="border-b border-border">
                     <th scope="row" className="py-2 pr-3 font-mono text-xs">{template.code}</th>
                     <td className="py-2 pr-3">{template.name}</td>
                     <td className="py-2 pr-3">{template.subject ?? "Not set"}</td>

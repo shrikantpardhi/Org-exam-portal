@@ -12,10 +12,10 @@ import { ReviewQueue } from "@/features/content/components/review-queue";
 export default function ReviewQueuePage() {
   return (
     <AuthenticatedGuard permission="QUESTION_REVIEW">
-      <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-16">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-16">
         <h1 className="text-2xl font-semibold tracking-tight">Review queue</h1>
         <ReviewQueue />
-      </main>
+      </div>
     </AuthenticatedGuard>
   );
 }

@@ -110,11 +110,11 @@ export function ReportFilterForm({
     <form
       aria-label={`Generate ${entry.displayName}`}
       onSubmit={submit}
-      className="space-y-3 rounded-lg border border-slate-200 bg-white p-4"
+      className="space-y-3 rounded-lg border border-border bg-surface p-4"
     >
       <div>
         <h2 className="text-lg font-semibold tracking-tight">{entry.displayName}</h2>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           {entry.description ?? "No description was provided for this report."}
         </p>
       </div>
@@ -145,7 +145,7 @@ export function ReportFilterForm({
                   aria-describedby={error ? `${id}-error` : undefined}
                   onChange={(event) => setValue(key, event.target.value)}
                   className={`w-full rounded-md border px-3 py-2 text-sm ${
-                    error ? "border-red-400" : "border-slate-300"
+                    error ? "border-red-400" : "border-input"
                   }`}
                 />
                 {error ? (
@@ -158,7 +158,7 @@ export function ReportFilterForm({
           })}
         </div>
       ) : (
-        <p className="text-sm text-slate-500">This report takes no filters.</p>
+        <p className="text-sm text-muted-foreground">This report takes no filters.</p>
       )}
 
       <div className="space-y-1">
@@ -169,7 +169,7 @@ export function ReportFilterForm({
           id={`${idPrefix}-format`}
           value={format}
           onChange={(event) => setFormat(event.target.value === "PDF" ? "PDF" : "CSV")}
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm sm:w-48"
+          className="w-full rounded-md border border-input px-3 py-2 text-sm sm:w-48"
         >
           {formats.map((value) => (
             <option key={value} value={value}>
@@ -188,11 +188,11 @@ export function ReportFilterForm({
         <button
           type="submit"
           disabled={busy}
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+          className="rounded bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
         >
           {busy ? "Generating…" : "Generate report"}
         </button>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted-foreground">
           Small reports return immediately; large reports are queued and polled until complete.
         </p>
       </div>

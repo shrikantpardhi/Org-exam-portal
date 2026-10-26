@@ -23,9 +23,14 @@ public interface AuditTrail {
      * @param action     a stable business action such as CREATE, UPDATE, PUBLISH, REFUND
      * @param entityName the affected entity type
      * @param entityId   the affected record, when there is a single one
-     * @param remarks    a short, secret-free description
+     * @param remarks        a short, secret-free description
+     * @param organizationId the organization the event belongs to, or {@code null} when it is
+     *                       platform-wide (system actor, scheduler, worker). Recorded at write time
+     *                       so the ADMIN explorer can be scoped without deriving it at read time
+     *                       (ADR-0046, D-11)
      */
-    record Entry(UUID actorId, String action, String entityName, UUID entityId, String remarks) {
+    record Entry(UUID actorId, String action, String entityName, UUID entityId, String remarks,
+            UUID organizationId) {
     }
 
     void record(Entry entry);

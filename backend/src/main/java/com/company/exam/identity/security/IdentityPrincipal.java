@@ -11,10 +11,12 @@ import java.util.UUID;
  * request by the authorization service. Implementing {@link Principal} makes
  * {@code Authentication.getName()} return the user's UUID, which the JPA audit provider consumes.
  *
- * @param userId    the authenticated user's id
- * @param sessionId the login session id, or {@code null} for a session-less token
+ * @param userId             the authenticated user's id
+ * @param sessionId          the login session id, or {@code null} for a session-less token
+ * @param mustChangePassword whether the account must change its password before reaching other
+ *                           resources
  */
-public record IdentityPrincipal(UUID userId, UUID sessionId) implements Principal {
+public record IdentityPrincipal(UUID userId, UUID sessionId, boolean mustChangePassword) implements Principal {
 
     @Override
     public String getName() {

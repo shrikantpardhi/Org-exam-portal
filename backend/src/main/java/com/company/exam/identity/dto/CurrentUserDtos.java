@@ -17,7 +17,8 @@ public final class CurrentUserDtos {
             String lastName,
             String email,
             List<String> roles,
-            List<String> permissions) {
+            List<String> permissions,
+            boolean mustChangePassword) {
     }
 
     public record CurrentPermissionsResponse(List<String> permissions) {

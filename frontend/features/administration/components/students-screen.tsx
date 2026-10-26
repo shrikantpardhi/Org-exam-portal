@@ -33,7 +33,7 @@ export function StudentsScreen() {
   }
 
   if (rolesQuery.isPending) {
-    return <p role="status" className="text-sm text-slate-500">Loading students…</p>;
+    return <p role="status" className="text-sm text-muted-foreground">Loading students…</p>;
   }
 
   if (rolesQuery.isError) {
@@ -46,7 +46,7 @@ export function StudentsScreen() {
 
   if (!studentRole) {
     return (
-      <p role="note" className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+      <p role="note" className="rounded-lg border border-dashed border-input bg-muted p-4 text-sm text-foreground">
         No STUDENT role is configured, so there are no students to show.
       </p>
     );

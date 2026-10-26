@@ -73,7 +73,7 @@ export function ResetPasswordForm({ initialToken = "" }: { initialToken?: string
                 autoComplete="new-password"
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-input px-3 py-2 text-sm"
               />
             </div>
 
@@ -88,7 +88,7 @@ export function ResetPasswordForm({ initialToken = "" }: { initialToken?: string
                 autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-input px-3 py-2 text-sm"
               />
             </div>
 

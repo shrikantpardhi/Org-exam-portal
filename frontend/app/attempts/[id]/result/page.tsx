@@ -11,15 +11,15 @@ export default function AttemptResultPage() {
   const attemptId = params?.id ?? "";
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-16">
+    <div className="flex w-full max-w-4xl flex-col gap-6">
       <header className="space-y-1">
-        <p className="text-sm text-slate-500">Results</p>
+        <p className="text-sm text-muted-foreground">Results</p>
         <h1 className="text-2xl font-semibold tracking-tight">Attempt result</h1>
-        <p className="font-mono text-xs text-slate-500">{attemptId}</p>
+        <p className="font-mono text-xs text-muted-foreground">{attemptId}</p>
       </header>
       <AuthenticatedGuard>
         <AttemptResultView attemptId={attemptId} />
       </AuthenticatedGuard>
-    </main>
+    </div>
   );
 }

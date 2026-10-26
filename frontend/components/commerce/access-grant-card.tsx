@@ -17,16 +17,16 @@ export function AccessGrantCard({ grant }: { grant: AccessGrant }) {
   return (
     <article
       aria-label={grant.packageName}
-      className="space-y-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+      className="space-y-2 rounded-lg border border-border bg-surface p-4 shadow-sm"
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <h3 className="text-base font-semibold text-slate-900">{grant.packageName}</h3>
+        <h3 className="text-base font-semibold text-foreground">{grant.packageName}</h3>
         <span
           data-active={grant.active}
           className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
             grant.active
               ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-slate-200 bg-slate-100 text-slate-600"
+              : "border-border bg-muted text-muted-foreground"
           }`}
         >
           {grant.active
@@ -38,13 +38,13 @@ export function AccessGrantCard({ grant }: { grant: AccessGrant }) {
       </div>
       <dl className="grid grid-cols-2 gap-3 text-sm">
         <div>
-          <dt className="text-xs text-slate-500">Starts</dt>
+          <dt className="text-xs text-muted-foreground">Starts</dt>
           <dd className="mt-0.5">
             {starts ? <time dateTime={grant.startDate ?? undefined}>{starts}</time> : "Not available"}
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-slate-500">Ends</dt>
+          <dt className="text-xs text-muted-foreground">Ends</dt>
           <dd className="mt-0.5">
             {ends ? (
               <time dateTime={grant.endDate ?? undefined}>{ends}</time>

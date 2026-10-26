@@ -7,12 +7,12 @@ import { NotificationInbox } from "@/features/communication/components/notificat
 /** The student notification center ({@code specs/19-P10-Communication-V1.5.md §104-§107}). */
 export default function StudentNotificationsPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-16">
+    <div className="flex w-full max-w-3xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <p className="text-sm text-slate-500">Student</p>
+          <p className="text-sm text-muted-foreground">Student</p>
           <h1 className="text-2xl font-semibold tracking-tight">Notifications</h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Your in-app notifications. Marking read is optimistic and rolls back if the server
             rejects the change.
           </p>
@@ -24,6 +24,6 @@ export default function StudentNotificationsPage() {
       <AuthenticatedGuard>
         <NotificationInbox />
       </AuthenticatedGuard>
-    </main>
+    </div>
   );
 }

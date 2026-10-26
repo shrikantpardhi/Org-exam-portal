@@ -30,7 +30,7 @@ export function SystemInfoCard() {
 
       <CardContent>
         {isPending && (
-          <p role="status" aria-live="polite" className="text-sm text-slate-500">
+          <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
             Loading application information…
           </p>
         )}
@@ -39,22 +39,22 @@ export function SystemInfoCard() {
           <div role="alert" className="space-y-1 text-sm text-red-600">
             <p className="font-medium">{error.message}</p>
             {error.requestId ? (
-              <p className="text-slate-500">Reference: {error.requestId}</p>
+              <p className="text-muted-foreground">Reference: {error.requestId}</p>
             ) : null}
           </div>
         )}
 
         {data && (
           <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-            <dt className="text-slate-500">Application</dt>
+            <dt className="text-muted-foreground">Application</dt>
             <dd className="font-medium">{data.application}</dd>
-            <dt className="text-slate-500">Version</dt>
+            <dt className="text-muted-foreground">Version</dt>
             <dd className="font-medium">{data.version}</dd>
-            <dt className="text-slate-500">Environment</dt>
+            <dt className="text-muted-foreground">Environment</dt>
             <dd className="font-medium">{data.environment}</dd>
-            <dt className="text-slate-500">Server time</dt>
+            <dt className="text-muted-foreground">Server time</dt>
             <dd className="font-medium">{data.timestamp}</dd>
-            <dt className="text-slate-500">Request id</dt>
+            <dt className="text-muted-foreground">Request id</dt>
             <dd className="font-mono text-xs">{data.requestId ?? "—"}</dd>
           </dl>
         )}

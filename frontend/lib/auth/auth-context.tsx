@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import {
+  changePassword as changePasswordRequest,
   getCurrentUser,
   login as loginRequest,
   logout as logoutRequest,
@@ -20,7 +21,7 @@ import { setUnauthorizedHandler } from "@/lib/api-client";
 import { can as canPermission } from "@/lib/auth/permission";
 import { clearAccessToken, getAccessToken, setAccessToken } from "@/lib/auth/token-storage";
 import type { ApiClientError } from "@/lib/errors";
-import type { CurrentUser } from "@/schemas/auth";
+import type { CurrentUser, LoginPortal, LoginResult } from "@/schemas/auth";
 
 /**
  * Application authentication state ({@code specs/10-P1-Identity-V1.5.md §100, §156}).
@@ -37,7 +38,8 @@ export interface AuthContextValue {
   user: CurrentUser | null;
   permissions: string[];
   error: ApiClientError | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, portal?: LoginPortal) => Promise<LoginResult>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
   can: (permission: string) => boolean;
 }
@@ -66,10 +68,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const login = useCallback(
-    async (username: string, password: string) => {
-      const result = await loginRequest(username, password);
+    async (username: string, password: string, portal?: LoginPortal) => {
+      const result = await loginRequest(username, password, portal);
       setAccessToken(result.accessToken);
       setHasToken(true);
+      await queryClient.invalidateQueries({ queryKey: ["auth"] });
+      return result;
+    },
+    [queryClient],
+  );
+
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string) => {
+      await changePasswordRequest(currentPassword, newPassword);
+      // Refetch /me so the must_change_password gate lifts as soon as the flag clears.
       await queryClient.invalidateQueries({ queryKey: ["auth"] });
     },
     [queryClient],
@@ -107,10 +119,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       permissions,
       error: (userQuery.error as ApiClientError | null) ?? null,
       login,
+      changePassword,
       logout,
       can: (permission: string) => canPermission(permissions, permission),
     };
-  }, [hasToken, userQuery.data, userQuery.isPending, userQuery.isError, userQuery.error, login, logout]);
+  }, [hasToken, userQuery.data, userQuery.isPending, userQuery.isError, userQuery.error, login, changePassword, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

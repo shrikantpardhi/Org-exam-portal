@@ -1,5 +1,6 @@
 package com.company.exam.administration.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
@@ -66,6 +67,39 @@ public final class AdministrationDtos {
     }
 
     public record DashboardCardSource(String card, String owner) {
+    }
+
+    // ------------------------------------------------------------------ organization configuration
+
+    /**
+     * The caller's organization identity plus its editable profile (V37, ADR-0051).
+     *
+     * <p>The profile fields are returned here rather than through a separate endpoint so the settings
+     * screen makes one request, not two. Every field is nullable: an organization that has not filled in
+     * its profile yet returns nulls, and the UI renders an empty state.
+     */
+    public record OrganizationConfigOrganization(String name, String code, String timezone,
+            String description, String addressLine1, String addressLine2, String city, String stateRegion,
+            String postalCode, String country, String contactEmail, String contactPhone, String websiteUrl,
+            String logoUrl) {
+    }
+
+    /** {@code PUT /api/v1/admin/organization-config/profile} request (ADR-0051). */
+    public record UpdateOrganizationProfileRequest(@Size(max = 150) String name,
+            @Size(max = 4000) String description, @Size(max = 200) String addressLine1,
+            @Size(max = 200) String addressLine2, @Size(max = 100) String city,
+            @Size(max = 100) String stateRegion, @Size(max = 20) String postalCode,
+            @Size(max = 100) String country, @Email @Size(max = 254) String contactEmail,
+            @Size(max = 32) String contactPhone, @Size(max = 500) String websiteUrl,
+            @Size(max = 500) String logoUrl) {
+    }
+
+    public record OrganizationConfigProviders(boolean emailConfigured, boolean paymentConfigured) {
+    }
+
+    public record OrganizationConfigResponse(OrganizationConfigOrganization organization,
+            Map<String, Object> featureFlags, OrganizationConfigProviders providerStatus,
+            Integer lastMigrationVersion, String appVersion) {
     }
 
     // ------------------------------------------------------------------ system health

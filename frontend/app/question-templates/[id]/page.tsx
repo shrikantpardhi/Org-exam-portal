@@ -18,12 +18,12 @@ export default function QuestionTemplatePage() {
 
   return (
     <AuthenticatedGuard permission="QUESTION_TEMPLATE_VIEW">
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-16">
+      <div className="flex w-full flex-col gap-6">
         <h1 className="text-2xl font-semibold tracking-tight">Question template</h1>
-        <p className="font-mono text-xs text-slate-500">{id}</p>
+        <p className="font-mono text-xs text-muted-foreground">{id}</p>
 
         {template.isPending ? (
-          <p role="status" className="text-sm text-slate-500">
+          <p role="status" className="text-sm text-muted-foreground">
             Loading template…
           </p>
         ) : null}
@@ -57,7 +57,7 @@ export default function QuestionTemplatePage() {
             </div>
           </dl>
         ) : null}
-      </main>
+      </div>
     </AuthenticatedGuard>
   );
 }

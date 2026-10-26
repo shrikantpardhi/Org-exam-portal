@@ -46,7 +46,7 @@ export function ReportHistory({
 
   if (loading) {
     return (
-      <p role="status" aria-live="polite" className="text-sm text-slate-500">
+      <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
         Loading report history…
       </p>
     );
@@ -60,7 +60,7 @@ export function ReportHistory({
           <button
             type="button"
             onClick={onRetry}
-            className="mt-2 rounded border border-red-300 bg-white px-3 py-1 text-sm font-medium text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+            className="mt-2 rounded border border-red-300 bg-surface px-3 py-1 text-sm font-medium text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
           >
             Try again
           </button>
@@ -71,20 +71,20 @@ export function ReportHistory({
 
   if (entries.length === 0) {
     return (
-      <p role="note" className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+      <p role="note" className="rounded-lg border border-dashed border-input bg-muted p-4 text-sm text-foreground">
         No report history yet.
       </p>
     );
   }
 
   return (
-    <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
+    <div className="space-y-2 rounded-lg border border-border bg-surface p-4">
       <h2 className="text-lg font-semibold tracking-tight">Report history</h2>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <caption className="sr-only">Report history</caption>
           <thead>
-            <tr className="border-b border-slate-200">
+            <tr className="border-b border-border">
               <th scope="col" className="py-2 pr-3 font-medium">Report</th>
               <th scope="col" className="py-2 pr-3 font-medium">Status</th>
               <th scope="col" className="py-2 pr-3 font-medium">Queued</th>
@@ -97,10 +97,10 @@ export function ReportHistory({
                 entry.status === "COMPLETED" || entry.status === "COMPLETED_WITH_ERRORS";
               const available = completed && Boolean(entry.downloadUrl);
               return (
-                <tr key={entry.jobId} data-job-id={entry.jobId} className="border-b border-slate-100 align-top">
+                <tr key={entry.jobId} data-job-id={entry.jobId} className="border-b border-border align-top">
                   <td className="py-2 pr-3">
                     <span className="font-medium">{entry.reportType}</span>
-                    <span className="block text-xs text-slate-500">{entry.jobId}</span>
+                    <span className="block text-xs text-muted-foreground">{entry.jobId}</span>
                   </td>
                   <td className="py-2 pr-3">
                     <span
@@ -110,7 +110,7 @@ export function ReportHistory({
                       {reportStatusLabel(entry.status)}
                     </span>
                   </td>
-                  <td className="py-2 pr-3 text-slate-600">{formatReportDateTime(entry.queuedOn)}</td>
+                  <td className="py-2 pr-3 text-muted-foreground">{formatReportDateTime(entry.queuedOn)}</td>
                   <td className="py-2 pr-3">
                     {available ? (
                       <a
@@ -124,7 +124,7 @@ export function ReportHistory({
                         {downloading === entry.jobId ? "Downloading…" : "Download"}
                       </a>
                     ) : (
-                      <span className="text-xs text-slate-500">Not available</span>
+                      <span className="text-xs text-muted-foreground">Not available</span>
                     )}
                   </td>
                 </tr>

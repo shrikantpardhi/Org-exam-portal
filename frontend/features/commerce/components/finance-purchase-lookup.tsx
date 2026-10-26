@@ -50,19 +50,19 @@ export function FinancePurchaseLookup({ mode }: { mode: "purchases" | "payments"
             value={draftId}
             onChange={(event) => setDraftId(event.target.value)}
             placeholder="Paste a purchase UUID"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           />
         </div>
         <button
           type="submit"
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+          className="rounded bg-primary px-4 py-2 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
         >
           Load purchase
         </button>
       </form>
 
       {purchaseId.length === 0 ? (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Load a purchase by its identifier. The backend enforces the finance permission and the
           ownership scope; this workspace never widens either.
         </p>
@@ -92,19 +92,19 @@ export function FinancePurchaseLookup({ mode }: { mode: "purchases" | "payments"
             amountLabel="Purchase amount (recorded by the server)"
           />
 
-          <dl className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 text-sm sm:grid-cols-2">
+          <dl className="grid gap-3 rounded-lg border border-border bg-surface p-4 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-xs text-slate-500">Purchased</dt>
+              <dt className="text-xs text-muted-foreground">Purchased</dt>
               <dd className="mt-0.5">
                 {formatDateTime(purchaseQuery.data.purchaseDate) ?? "Not available"}
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-slate-500">Purchase id</dt>
+              <dt className="text-xs text-muted-foreground">Purchase id</dt>
               <dd className="mt-0.5 break-all font-mono text-xs">{purchaseQuery.data.id}</dd>
             </div>
             <div>
-              <dt className="text-xs text-slate-500">Amount</dt>
+              <dt className="text-xs text-muted-foreground">Amount</dt>
               <dd className="mt-0.5 tabular-nums">
                 {formatAmount(purchaseQuery.data.amount) ?? "Not available"}
               </dd>
@@ -117,7 +117,7 @@ export function FinancePurchaseLookup({ mode }: { mode: "purchases" | "payments"
                 Payment
               </h2>
               <PaymentStatus status={purchaseQuery.data.paymentStatus} />
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 The provider detail is restricted to the purchase owner. The status above is the
                 authoritative purchase status returned by the server.
               </p>
@@ -130,11 +130,11 @@ export function FinancePurchaseLookup({ mode }: { mode: "purchases" | "payments"
                 Refund
               </h2>
               {purchaseQuery.data.paymentStatus === "REFUNDED" ? (
-                <p role="status" className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                <p role="status" className="rounded-lg border border-border bg-muted p-4 text-sm text-muted-foreground">
                   This purchase is already refunded.
                 </p>
               ) : purchaseQuery.data.paymentStatus !== "SUCCESS" ? (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-muted-foreground">
                   Only a successful payment can be refunded. The backend validates the current
                   payment state before calling the provider.
                 </p>
@@ -148,8 +148,8 @@ export function FinancePurchaseLookup({ mode }: { mode: "purchases" | "payments"
                   <p>The purchase is now {refund.data.paymentStatus} and its access was revoked.</p>
                 </div>
               ) : (
-                <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
-                  <p className="text-sm text-slate-600">
+                <div className="space-y-2 rounded-lg border border-border bg-surface p-4">
+                  <p className="text-sm text-muted-foreground">
                     A refund calls the payment provider and revokes the access grant created by this
                     purchase. The effect is applied by the server.
                   </p>
@@ -171,7 +171,7 @@ export function FinancePurchaseLookup({ mode }: { mode: "purchases" | "payments"
                       <button
                         type="button"
                         onClick={() => setConfirmingRefund(false)}
-                        className="rounded border border-slate-300 bg-white px-4 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                        className="rounded border border-input bg-surface px-4 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                       >
                         Cancel
                       </button>
@@ -180,7 +180,7 @@ export function FinancePurchaseLookup({ mode }: { mode: "purchases" | "payments"
                     <button
                       type="button"
                       onClick={() => setConfirmingRefund(true)}
-                      className="rounded border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+                      className="rounded border border-red-300 bg-surface px-4 py-2 text-sm font-medium text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
                     >
                       Refund purchase
                     </button>

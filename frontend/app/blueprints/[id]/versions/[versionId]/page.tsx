@@ -17,10 +17,10 @@ export default function BlueprintVersionPage() {
   const versionId = params?.versionId ?? "";
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-16">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-16">
       <AuthenticatedGuard permission="BLUEPRINT_VIEW">
         <BlueprintBuilder blueprintId={blueprintId} versionId={versionId} />
       </AuthenticatedGuard>
-    </main>
+    </div>
   );
 }

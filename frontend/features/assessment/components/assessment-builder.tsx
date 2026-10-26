@@ -171,26 +171,26 @@ export function AssessmentBuilder({
     <div className="space-y-10">
       <section aria-labelledby="builder-heading" className="space-y-3">
         <div>
-          <p className="text-sm text-slate-500">Assessment builder</p>
+          <p className="text-sm text-muted-foreground">Assessment builder</p>
           <h1 id="builder-heading" className="text-2xl font-semibold tracking-tight">
             {assessment.data?.name ?? "Assessment"}
           </h1>
         </div>
         <dl className="grid gap-2 text-sm sm:grid-cols-4">
           <div>
-            <dt className="text-slate-500">Code</dt>
+            <dt className="text-muted-foreground">Code</dt>
             <dd className="font-mono text-xs">{assessment.data?.code ?? assessmentId}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Version</dt>
+            <dt className="text-muted-foreground">Version</dt>
             <dd>{version.data?.version ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Blueprint version</dt>
+            <dt className="text-muted-foreground">Blueprint version</dt>
             <dd className="font-mono text-xs">{version.data?.blueprintVersionId ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">State</dt>
+            <dt className="text-muted-foreground">State</dt>
             <dd>{published ? "PUBLISHED (immutable)" : "DRAFT"}</dd>
           </div>
         </dl>
@@ -223,15 +223,15 @@ export function AssessmentBuilder({
         </h2>
         <dl className="grid gap-3 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-slate-500">Engine type</dt>
+            <dt className="text-muted-foreground">Engine type</dt>
             <dd>{version.data?.engineType ?? "Not set"}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Duration (minutes)</dt>
+            <dt className="text-muted-foreground">Duration (minutes)</dt>
             <dd>{version.data?.durationMinutes ?? "Not set"}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Delivery policy</dt>
+            <dt className="text-muted-foreground">Delivery policy</dt>
             <dd className="font-mono text-xs">{version.data?.deliveryPolicyId ?? "Not set"}</dd>
           </div>
         </dl>
@@ -241,7 +241,7 @@ export function AssessmentBuilder({
           screen shows the values rather than pretending to edit a resource the API cannot write. A new
           version is the supported way to change them.
         */}
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted-foreground">
           Engine type, duration, and delivery policy are fixed when a version is created: the frozen
           contract exposes no version-update route and no endpoint lists delivery policies. Create a new
           version to change them.

@@ -77,7 +77,7 @@ export function CommerceForm<S extends ZodTypeAny>({
             <select
               id={field.name}
               {...register(field.name)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm"
             >
               <option value="">Select…</option>
               {(field.options ?? []).map((option) => (
@@ -93,7 +93,7 @@ export function CommerceForm<S extends ZodTypeAny>({
               step={field.step}
               placeholder={field.placeholder}
               {...register(field.name)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm"
             />
           )}
           {errors[field.name] ? (
@@ -113,7 +113,7 @@ export function CommerceForm<S extends ZodTypeAny>({
       <button
         type="submit"
         disabled={disabled || isSubmitting}
-        className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+        className="rounded bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
       >
         {isSubmitting ? "Saving…" : submitLabel}
       </button>

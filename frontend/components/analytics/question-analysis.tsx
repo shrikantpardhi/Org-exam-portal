@@ -34,7 +34,7 @@ export function QuestionAnalysis({
           <h2 id={headingId} className="text-xl font-semibold tracking-tight">
             {title}
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Question-level identity. The difficulty index and outcome shares use answered
             outcomes; skipped responses are reported separately.
           </p>

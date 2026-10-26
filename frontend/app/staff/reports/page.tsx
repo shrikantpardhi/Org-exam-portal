@@ -11,11 +11,11 @@ import { ReportingWorkspace } from "@/features/reporting/components/reporting-wo
  */
 export default function StaffReportsPage() {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-16">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-16">
       <header className="space-y-1">
-        <p className="text-sm text-slate-500">Staff</p>
+        <p className="text-sm text-muted-foreground">Staff</p>
         <h1 className="text-2xl font-semibold tracking-tight">Reporting workspace</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Generate operational reports, follow a queued job to completion, and download the artifact.
         </p>
       </header>
@@ -25,6 +25,6 @@ export default function StaffReportsPage() {
           scopeNote="Reports are scoped by the permissions the server reports for your account. A report type you are not permitted to request is never advertised here."
         />
       </AuthenticatedGuard>
-    </main>
+    </div>
   );
 }

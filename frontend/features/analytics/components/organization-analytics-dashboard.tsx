@@ -65,10 +65,10 @@ export function OrganizationAnalyticsDashboard() {
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="font-mono text-xs text-slate-500">
+          <p className="font-mono text-xs text-muted-foreground">
             {analytics.organizationId ?? "Current organization"}
           </p>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Organization-scoped aggregates. Access is limited to the organization and permissions
             assigned in Identity.
           </p>

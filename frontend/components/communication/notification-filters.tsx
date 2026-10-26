@@ -11,7 +11,7 @@ export function NotificationFilters({
   onChange: (filter: NotificationFilter) => void;
 }) {
   return (
-    <div role="group" aria-label="Filter notifications" className="inline-flex rounded-md border border-slate-300 p-0.5">
+    <div role="group" aria-label="Filter notifications" className="inline-flex rounded-md border border-input p-0.5">
       {(["ALL", "UNREAD"] as const).map((filter) => (
         <button
           key={filter}
@@ -19,7 +19,7 @@ export function NotificationFilters({
           aria-pressed={value === filter}
           onClick={() => onChange(filter)}
           className={`rounded px-3 py-1 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
-            value === filter ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+            value === filter ? "bg-primary text-white" : "text-foreground hover:bg-muted"
           }`}
         >
           {filter === "ALL" ? "All" : "Unread"}

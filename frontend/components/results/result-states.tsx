@@ -11,13 +11,13 @@ import type { ReactNode } from "react";
  * that ambiguity ({@code §39, §87}).
  */
 const BUTTON_CLASS =
-  "mt-2 rounded border border-red-300 bg-white px-3 py-1 text-sm font-medium text-red-700 " +
+  "mt-2 rounded border border-red-300 bg-surface px-3 py-1 text-sm font-medium text-red-700 " +
   "hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 " +
   "focus-visible:outline-red-600";
 
 export function ResultsLoading({ label = "Loading results…" }: { label?: string }) {
   return (
-    <p role="status" aria-live="polite" className="text-sm text-slate-500">
+    <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
       {label}
     </p>
   );
@@ -25,11 +25,11 @@ export function ResultsLoading({ label = "Loading results…" }: { label?: strin
 
 export function ResultsEmpty({ message, hint }: { message: string; hint?: ReactNode }) {
   return (
-    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
-      <p role="note" className="text-sm font-medium text-slate-700">
+    <div className="rounded-lg border border-dashed border-input bg-muted p-4">
+      <p role="note" className="text-sm font-medium text-foreground">
         {message}
       </p>
-      {hint ? <p className="mt-1 text-sm text-slate-500">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-sm text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }
@@ -54,11 +54,11 @@ export function ResultsError({ message, onRetry }: { message: string; onRetry?: 
 export function ResultVisibilityNotice({ status }: { status: string }) {
   const superseded = (status ?? "").toUpperCase() === "SUPERSEDED";
   return (
-    <div role="note" className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
-      <p className="text-sm font-medium text-slate-700">
+    <div role="note" className="rounded-lg border border-dashed border-input bg-muted p-4">
+      <p className="text-sm font-medium text-foreground">
         {superseded ? "This result has been superseded." : "This result is not published yet."}
       </p>
-      <p className="mt-1 text-sm text-slate-500">
+      <p className="mt-1 text-sm text-muted-foreground">
         {superseded
           ? "A newer published result replaced it. Only the current published result is shown."
           : "Unpublished results are not shown to students. A result appears here after it is published."}

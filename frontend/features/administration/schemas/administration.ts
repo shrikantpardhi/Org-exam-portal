@@ -48,6 +48,25 @@ export const userDetailSchema = userSummarySchema.extend({
   updatedOn: timestamp,
 });
 
+// The frozen create body carries no status (a new account is ACTIVE) and no password (onboarding
+// assigns a non-usable credential; activation flows through password reset — 10-P1 §56, §58).
+export const createUserSchema = z.object({
+  firstName: z.string().trim().min(1, "First name is required").max(100),
+  lastName: z.string().trim().min(1, "Last name is required").max(100),
+  email: z.string().trim().email("Enter a valid email address").max(255),
+  mobile: z.string().trim().max(20).optional(),
+  roles: z.array(z.string()).min(1, "Select at least one role"),
+});
+
+// Email is the immutable login identifier and status changes only through archive, so the frozen
+// update body carries neither (10-P1 §53, §68).
+export const updateUserSchema = z.object({
+  firstName: z.string().trim().min(1, "First name is required").max(100),
+  lastName: z.string().trim().min(1, "Last name is required").max(100),
+  mobile: z.string().trim().max(20).optional(),
+  roles: z.array(z.string()).min(1, "Select at least one role"),
+});
+
 export const roleSummarySchema = z.object({
   id: z.string(),
   code: z.string(),
@@ -137,6 +156,8 @@ export const systemHealthSchema = z.object({
 
 export type UserSummary = z.infer<typeof userSummarySchema>;
 export type UserDetail = z.infer<typeof userDetailSchema>;
+export type CreateUser = z.infer<typeof createUserSchema>;
+export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type RoleSummary = z.infer<typeof roleSummarySchema>;
 export type PermissionSummary = z.infer<typeof permissionSummarySchema>;
 export type SettingKeyDescriptor = z.infer<typeof settingKeyDescriptorSchema>;

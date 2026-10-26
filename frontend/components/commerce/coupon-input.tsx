@@ -68,7 +68,7 @@ export function CouponInput({
   };
 
   return (
-    <section aria-labelledby={`${inputId}-heading`} className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
+    <section aria-labelledby={`${inputId}-heading`} className="space-y-2 rounded-lg border border-border bg-surface p-4">
       <h3 id={`${inputId}-heading`} className="text-base font-semibold">
         Coupon
       </h3>
@@ -86,14 +86,14 @@ export function CouponInput({
               onValidationChange(null);
             }}
             disabled={subscriptionPlanId.length === 0}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
             autoComplete="off"
           />
         </div>
         <button
           type="submit"
           disabled={subscriptionPlanId.length === 0 || mutation.isPending}
-          className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          className="rounded border border-input bg-surface px-3 py-2 text-sm font-medium disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
           {mutation.isPending ? "Checking…" : "Apply coupon"}
         </button>
@@ -101,7 +101,7 @@ export function CouponInput({
           <button
             type="button"
             onClick={clear}
-            className="rounded border border-slate-300 bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            className="rounded border border-input bg-surface px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           >
             Remove
           </button>

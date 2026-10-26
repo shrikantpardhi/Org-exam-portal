@@ -1,10 +1,13 @@
 package com.company.exam.identity.service;
 
+import com.company.exam.common.api.ApiError;
 import com.company.exam.common.enums.Status;
 import com.company.exam.common.exception.AuthenticationException;
+import com.company.exam.common.exception.ValidationException;
 import com.company.exam.identity.IdentityConstants;
 import com.company.exam.identity.dto.AuthDtos;
 import com.company.exam.identity.entity.LoginSession;
+import com.company.exam.identity.exception.PortalMismatchException;
 import com.company.exam.identity.entity.Organization;
 import com.company.exam.identity.entity.User;
 import com.company.exam.identity.repository.OrganizationRepository;
@@ -14,6 +17,7 @@ import com.company.exam.identity.security.IdentityPrincipal;
 import com.company.exam.identity.security.JwtTokenIssuer;
 import com.company.exam.common.audit.SecurityEventLogger;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -82,11 +86,13 @@ public class AuthenticationService {
         }
 
         List<String> roles = roleRepository.findEffectiveRoleCodes(user.getId());
+        validatePortal(request.portal(), roles);
         LoginSession session = sessionService.create(user.getId(), ipAddress, deviceInfo);
         JwtTokenIssuer.IssuedToken token = tokenIssuer.issue(user.getId(), session.getId());
         securityEvents.loginSucceeded(user.getId());
         return new AuthDtos.LoginResponse(token.token(), "Bearer", token.expiresInSeconds(),
-                new AuthDtos.LoginUser(user.getId(), user.getFirstName(), user.getLastName(), roles));
+                new AuthDtos.LoginUser(user.getId(), user.getFirstName(), user.getLastName(), roles,
+                        user.isMustChangePassword()));
     }
 
     @Transactional
@@ -120,7 +126,8 @@ public class AuthenticationService {
         List<String> roles = roleRepository.findEffectiveRoleCodes(user.getId());
         JwtTokenIssuer.IssuedToken token = tokenIssuer.issue(user.getId(), principal.sessionId());
         return new AuthDtos.LoginResponse(token.token(), "Bearer", token.expiresInSeconds(),
-                new AuthDtos.LoginUser(user.getId(), user.getFirstName(), user.getLastName(), roles));
+                new AuthDtos.LoginUser(user.getId(), user.getFirstName(), user.getLastName(), roles,
+                        user.isMustChangePassword()));
     }
 
     private boolean isSystemActor(User user) {
@@ -130,5 +137,23 @@ public class AuthenticationService {
 
     private AuthenticationException genericFailure() {
         return new AuthenticationException(GENERIC_MESSAGE);
+    }
+
+    private void validatePortal(String portal, List<String> roles) {
+        if (portal == null || portal.isBlank()) {
+            return;
+        }
+        String normalized = portal.trim().toUpperCase(Locale.ROOT);
+        String requiredRole = switch (normalized) {
+            case "SYSTEM_ADMIN" -> IdentityConstants.SUPER_ADMIN_ROLE_CODE;
+            case "ORGANIZATION_ADMIN" -> IdentityConstants.ADMIN_ROLE_CODE;
+            case "STUDENT" -> "STUDENT";
+            default -> throw new ValidationException("Validation failed",
+                    List.of(ApiError.of("portal", "INVALID_PORTAL",
+                            "portal must be one of SYSTEM_ADMIN, ORGANIZATION_ADMIN, STUDENT")));
+        };
+        if (!roles.contains(requiredRole)) {
+            throw new PortalMismatchException();
+        }
     }
 }

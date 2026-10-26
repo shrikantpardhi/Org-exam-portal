@@ -6,6 +6,7 @@ import {
   archiveUser,
   createBusinessRule,
   createLookup,
+  createUser,
   deleteLookup,
   getAdminDashboard,
   getOrganizationSettings,
@@ -22,10 +23,17 @@ import {
   updateBusinessRule,
   updateLookup,
   updateOrganizationSettings,
+  updateUser,
   type AuditFilters,
   type UserFilters,
 } from "@/features/administration/api/administration-api";
+import {
+  getOrganizationProfile,
+  updateOrganizationProfile,
+  type OrganizationProfile,
+} from "@/features/administration/api/organization-config-api";
 import { adminKeys } from "@/features/administration/query-keys";
+import type { CreateUser, UpdateUser } from "@/features/administration/schemas/administration";
 import type { ApiClientError } from "@/lib/errors";
 
 export function useAdminDashboard() {
@@ -176,6 +184,27 @@ export function useArchiveUser() {
   });
 }
 
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateUser) => createUser(body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["administration", "users"] });
+    },
+  });
+}
+
+export function useUpdateUser(userId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdateUser) => updateUser(userId, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["administration", "user", userId] });
+      void queryClient.invalidateQueries({ queryKey: ["administration", "users"] });
+    },
+  });
+}
+
 export function useReplaceRolePermissions(roleId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -183,6 +212,26 @@ export function useReplaceRolePermissions(roleId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["administration", "roles"] });
       void queryClient.invalidateQueries({ queryKey: ["auth"] });
+    },
+  });
+}
+
+/** The caller's editable organization profile ({@code specs/20-P11} §8; ADR-0051). */
+export function useOrganizationProfile() {
+  return useQuery({
+    queryKey: adminKeys.organizationProfile(),
+    queryFn: () => getOrganizationProfile(),
+  });
+}
+
+/** Saves the organization profile and refreshes the cached copy. */
+export function useUpdateOrganizationProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Partial<OrganizationProfile>) => updateOrganizationProfile(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: adminKeys.organizationProfile() });
+      void queryClient.invalidateQueries({ queryKey: adminKeys.settings() });
     },
   });
 }

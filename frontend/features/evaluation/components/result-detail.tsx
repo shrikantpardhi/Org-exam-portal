@@ -49,25 +49,25 @@ export function ResultDetail({ result }: { result: ResultResponse }) {
 
       <section
         aria-labelledby={identifiersId}
-        className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+        className="space-y-3 rounded-lg border border-border bg-surface p-4 shadow-sm"
       >
         <h2 id={identifiersId} className="text-base font-semibold">
           Result identifiers
         </h2>
         <dl className="grid gap-4 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-xs text-slate-500">Result</dt>
+            <dt className="text-xs text-muted-foreground">Result</dt>
             <dd className="mt-1 break-all font-mono text-xs">{result.id}</dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-500">Assessment version</dt>
+            <dt className="text-xs text-muted-foreground">Assessment version</dt>
             <dd className="mt-1 break-all font-mono text-xs">
               {result.assessmentVersionId ?? "Not available"}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-500">Evaluation</dt>
-            <dd className="mt-1 text-slate-600">Evaluation internals are not exposed.</dd>
+            <dt className="text-xs text-muted-foreground">Evaluation</dt>
+            <dd className="mt-1 text-muted-foreground">Evaluation internals are not exposed.</dd>
           </div>
         </dl>
       </section>

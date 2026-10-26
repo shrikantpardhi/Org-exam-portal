@@ -84,7 +84,7 @@ export function ReportingWorkspace({
       <section className="space-y-3">
         <h2 className="text-lg font-semibold tracking-tight">{heading}</h2>
         {catalog.isPending ? (
-          <p role="status" aria-live="polite" className="text-sm text-slate-500">
+          <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
             Loading the report catalog…
           </p>
         ) : catalog.isError ? (
@@ -95,7 +95,7 @@ export function ReportingWorkspace({
               onClick={() => {
                 void catalog.refetch();
               }}
-              className="mt-2 rounded border border-red-300 bg-white px-3 py-1 text-sm font-medium text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+              className="mt-2 rounded border border-red-300 bg-surface px-3 py-1 text-sm font-medium text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
             >
               Try again
             </button>
@@ -118,7 +118,7 @@ export function ReportingWorkspace({
           onSubmit={generate}
         />
       ) : (
-        <p role="note" className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+        <p role="note" className="rounded-lg border border-dashed border-input bg-muted p-4 text-sm text-foreground">
           Select a report to choose its filters and format.
         </p>
       )}
@@ -130,19 +130,19 @@ export function ReportingWorkspace({
       ) : null}
 
       {result ? (
-        <section aria-label="Report result" className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
+        <section aria-label="Report result" className="space-y-2 rounded-lg border border-border bg-surface p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold tracking-tight">Report result</h2>
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-muted-foreground">
               {result.rowCount === null ? "Row count unavailable" : `${result.rowCount} rows`} ·{" "}
               {result.format}
             </span>
           </div>
           {result.freshnessNote ? (
-            <p className="text-sm text-slate-600">{result.freshnessNote}</p>
+            <p className="text-sm text-muted-foreground">{result.freshnessNote}</p>
           ) : null}
           {result.artifactName ? (
-            <p className="text-xs text-slate-500">Artifact: {result.artifactName}</p>
+            <p className="text-xs text-muted-foreground">Artifact: {result.artifactName}</p>
           ) : null}
 
           {result.metrics.length > 0 ? (
@@ -150,12 +150,12 @@ export function ReportingWorkspace({
               {result.metrics.map((metric, index) => (
                 <div
                   key={`${metric.name}-${index}`}
-                  className="rounded border border-slate-200 bg-slate-50 p-3"
+                  className="rounded border border-border bg-muted p-3"
                 >
-                  <dt className="text-xs font-medium text-slate-500">{metric.name}</dt>
+                  <dt className="text-xs font-medium text-muted-foreground">{metric.name}</dt>
                   <dd className="text-lg font-semibold">{metric.value}</dd>
                   {metric.definition ? (
-                    <p className="mt-1 text-xs text-slate-500">{metric.definition}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{metric.definition}</p>
                   ) : null}
                 </div>
               ))}
@@ -167,7 +167,7 @@ export function ReportingWorkspace({
               <table className="w-full text-left text-sm">
                 <caption className="sr-only">Report rows</caption>
                 <thead>
-                  <tr className="border-b border-slate-200">
+                  <tr className="border-b border-border">
                     {Object.keys(result.rows[0] ?? {}).map((column) => (
                       <th key={column} scope="col" className="py-2 pr-3 font-medium">
                         {column}
@@ -177,7 +177,7 @@ export function ReportingWorkspace({
                 </thead>
                 <tbody>
                   {result.rows.map((row, index) => (
-                    <tr key={index} className="border-b border-slate-100">
+                    <tr key={index} className="border-b border-border">
                       {Object.keys(result.rows[0] ?? {}).map((column) => (
                         <td key={column} className="py-2 pr-3">
                           {row[column] ?? ""}
@@ -189,7 +189,7 @@ export function ReportingWorkspace({
               </table>
             </div>
           ) : (
-            <p role="note" className="text-sm text-slate-600">
+            <p role="note" className="text-sm text-muted-foreground">
               The report returned no rows for those filters.
             </p>
           )}

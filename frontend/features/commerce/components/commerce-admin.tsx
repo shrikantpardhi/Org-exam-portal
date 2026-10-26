@@ -90,7 +90,7 @@ export function CommerceAdmin() {
             <table className="w-full text-left text-sm">
               <caption className="sr-only">Access packages</caption>
               <thead>
-                <tr className="border-b border-slate-200">
+                <tr className="border-b border-border">
                   <th scope="col" className="py-2 pr-3">Code</th>
                   <th scope="col" className="py-2 pr-3">Name</th>
                   <th scope="col" className="py-2 pr-3">Status</th>
@@ -99,7 +99,7 @@ export function CommerceAdmin() {
               </thead>
               <tbody>
                 {packages.map((pkg) => (
-                  <tr key={pkg.id} className="border-b border-slate-100">
+                  <tr key={pkg.id} className="border-b border-border">
                     <th scope="row" className="py-2 pr-3 font-mono text-xs">{pkg.code}</th>
                     <td className="py-2 pr-3">{pkg.name}</td>
                     <td className="py-2 pr-3"><LifecycleBadge status={pkg.status} /></td>
@@ -144,7 +144,7 @@ export function CommerceAdmin() {
             <h2 id="collections-heading" className="text-lg font-semibold">
               Collection mapping
             </h2>
-            <p className="font-mono text-xs text-slate-500">{shortId(selectedPackageId)}</p>
+            <p className="font-mono text-xs text-muted-foreground">{shortId(selectedPackageId)}</p>
           </div>
           {collectionsQuery.isPending ? (
             <CommerceLoading label="Loading mappings…" />
@@ -165,7 +165,7 @@ export function CommerceAdmin() {
               {(collectionsQuery.data ?? []).map((mapping) => (
                 <li
                   key={mapping.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-white px-3 py-2"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded border border-border bg-surface px-3 py-2"
                 >
                   <code className="text-xs" title={mapping.assessmentCollectionId}>
                     {mapping.assessmentCollectionId}
@@ -222,7 +222,7 @@ export function CommerceAdmin() {
             />
           ) : reconciliationQuery.data ? (
             <>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 {reconciliationQuery.data.checked} payment(s) checked,{" "}
                 {reconciliationQuery.data.mismatches} mismatch(es).
               </p>
@@ -232,7 +232,7 @@ export function CommerceAdmin() {
                 <table className="w-full text-left text-sm">
                   <caption className="sr-only">Reconciliation findings</caption>
                   <thead>
-                    <tr className="border-b border-slate-200">
+                    <tr className="border-b border-border">
                       <th scope="col" className="py-2 pr-3">Reference</th>
                       <th scope="col" className="py-2 pr-3">Local</th>
                       <th scope="col" className="py-2 pr-3">Provider</th>
@@ -241,7 +241,7 @@ export function CommerceAdmin() {
                   </thead>
                   <tbody>
                     {reconciliationQuery.data.findings.map((finding, index) => (
-                      <tr key={`${finding.paymentReference ?? "finding"}-${index}`} className="border-b border-slate-100">
+                      <tr key={`${finding.paymentReference ?? "finding"}-${index}`} className="border-b border-border">
                         <th scope="row" className="py-2 pr-3 font-mono text-xs">
                           {finding.paymentReference ?? "Not available"}
                         </th>

@@ -41,7 +41,7 @@ export function ReportJobStatus({
         role="status"
         aria-live="polite"
         aria-label="Report job status"
-        className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500"
+        className="rounded-lg border border-border bg-surface p-4 text-sm text-muted-foreground"
       >
         Reading report job {jobId}…
       </section>
@@ -72,12 +72,12 @@ export function ReportJobStatus({
       role="status"
       aria-live="polite"
       aria-label="Report job status"
-      className="space-y-2 rounded-lg border border-slate-200 bg-white p-4"
+      className="space-y-2 rounded-lg border border-border bg-surface p-4"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Report job</h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             {job.reportType ?? "Report"} · {job.jobId}
           </p>
         </div>
@@ -90,10 +90,10 @@ export function ReportJobStatus({
       </div>
 
       {status === "QUEUED" ? (
-        <p className="text-sm text-slate-600">The report is queued and has not started yet.</p>
+        <p className="text-sm text-muted-foreground">The report is queued and has not started yet.</p>
       ) : null}
       {status === "RUNNING" ? (
-        <p className="text-sm text-slate-600">The report is running. This page updates itself.</p>
+        <p className="text-sm text-muted-foreground">The report is running. This page updates itself.</p>
       ) : null}
       {status === "UNKNOWN" ? (
         <p className="text-sm text-amber-700">
@@ -111,13 +111,13 @@ export function ReportJobStatus({
         </div>
       ) : null}
 
-      <dl className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+      <dl className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
         <div>
-          <dt className="text-xs font-medium text-slate-500">Queued</dt>
+          <dt className="text-xs font-medium text-muted-foreground">Queued</dt>
           <dd>{formatReportDateTime(job.queuedOn)}</dd>
         </div>
         <div>
-          <dt className="text-xs font-medium text-slate-500">Completed</dt>
+          <dt className="text-xs font-medium text-muted-foreground">Completed</dt>
           <dd>{formatReportDateTime(job.completedOn)}</dd>
         </div>
       </dl>
@@ -131,12 +131,12 @@ export function ReportJobStatus({
               event.preventDefault();
               void download();
             }}
-            className="inline-block rounded border border-slate-300 bg-white px-3 py-1 text-sm font-medium text-blue-700 underline hover:border-blue-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            className="inline-block rounded border border-input bg-surface px-3 py-1 text-sm font-medium text-blue-700 underline hover:border-blue-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           >
             {downloading ? "Downloading…" : "Download report"}
           </a>
           {job.artifactName ? (
-            <p className="text-xs text-slate-500">{job.artifactName}</p>
+            <p className="text-xs text-muted-foreground">{job.artifactName}</p>
           ) : null}
           {downloadError ? (
             <p role="alert" className="text-xs text-red-600">
@@ -147,7 +147,7 @@ export function ReportJobStatus({
       ) : null}
 
       {terminal && !completed ? (
-        <p className="text-sm text-slate-600">No artifact was produced for this job.</p>
+        <p className="text-sm text-muted-foreground">No artifact was produced for this job.</p>
       ) : null}
 
       {pollingStopped && !terminal ? (

@@ -66,12 +66,12 @@ export function AccessGrantAdmin() {
             value={draftUserId}
             onChange={(event) => setDraftUserId(event.target.value)}
             placeholder="Paste a user UUID"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           />
         </div>
         <button
           type="submit"
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+          className="rounded bg-primary px-4 py-2 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
         >
           Load grants
         </button>
@@ -82,7 +82,7 @@ export function AccessGrantAdmin() {
           Access grants
         </h2>
         {userId.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Enter a user id to review that user&apos;s grants. Staff visibility is limited by the
             backend permission and scope.
           </p>

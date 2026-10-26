@@ -64,9 +64,9 @@ export function AnnouncementEditScreen({ announcementId }: { announcementId: str
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <p className="font-mono text-xs text-slate-500">{announcement.id}</p>
+        <p className="font-mono text-xs text-muted-foreground">{announcement.id}</p>
         <h2 className="text-xl font-semibold tracking-tight">{announcement.title}</h2>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Status: {announcementStatusLabel(announcement.status)}
         </p>
       </header>
@@ -120,8 +120,8 @@ export function AnnouncementEditScreen({ announcementId }: { announcementId: str
       ) : null}
 
       {can("ANNOUNCEMENT_PUBLISH") && announcement.status !== "ARCHIVED" ? (
-        <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
-          <p className="text-sm text-slate-600">
+        <div className="space-y-2 rounded-lg border border-border bg-surface p-4">
+          <p className="text-sm text-muted-foreground">
             Publishing makes the announcement visible in its window and queues the notification
             fan-out. It does not send notifications synchronously.
           </p>
@@ -161,7 +161,7 @@ export function AnnouncementEditScreen({ announcementId }: { announcementId: str
           onClick={() => {
             archive.mutate(announcement.id);
           }}
-          className="rounded border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+          className="rounded border border-red-300 bg-surface px-4 py-2 text-sm font-medium text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
         >
           Archive announcement
         </button>

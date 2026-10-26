@@ -805,6 +805,14 @@ All role and permission changes are audited.
 Two-person approval is not required.
 ```
 
+SUPER_ADMIN rules (ADR-0032, V29):
+
+```text
+SUPER_ADMIN cannot be demoted.
+SUPER_ADMIN cannot be archived.
+The last active SUPER_ADMIN is a protected invariant.
+```
+
 Emergency path.
 
 ```text

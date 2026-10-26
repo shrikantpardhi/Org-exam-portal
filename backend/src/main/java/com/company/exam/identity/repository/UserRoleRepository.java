@@ -35,4 +35,20 @@ public interface UserRoleRepository extends JpaRepository<UserRole, UUID> {
               and ur.status = com.company.exam.common.enums.Status.ACTIVE
             """)
     long countActiveAssignmentsByRoleCode(@Param("roleCode") String roleCode);
+
+    /**
+     * Counts active assignments for a role code within one organization. Backs the one-admin-per-org
+     * cap (ADR-0032, {@code MAX_ADMINS_PER_ORG}) and the platform org detail admin count.
+     */
+    @Query("""
+            select count(ur)
+            from UserRole ur, Role r, User u
+            where r.id = ur.roleId
+              and u.id = ur.userId
+              and r.code = :roleCode
+              and u.organizationId = :organizationId
+              and ur.status = com.company.exam.common.enums.Status.ACTIVE
+            """)
+    long countActiveAssignmentsByRoleCodeInOrganization(@Param("roleCode") String roleCode,
+            @Param("organizationId") UUID organizationId);
 }

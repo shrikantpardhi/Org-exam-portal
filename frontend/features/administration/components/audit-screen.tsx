@@ -118,7 +118,7 @@ export function AuditScreen() {
             value={draft.userId}
             onChange={(event) => setDraft({ ...draft, userId: event.target.value })}
             placeholder="UUID"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           />
         </div>
         <div className="space-y-1">
@@ -128,7 +128,7 @@ export function AuditScreen() {
             value={draft.entityName}
             onChange={(event) => setDraft({ ...draft, entityName: event.target.value })}
             placeholder="For example User"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           />
         </div>
         <div className="space-y-1">
@@ -138,7 +138,7 @@ export function AuditScreen() {
             value={draft.entityId}
             onChange={(event) => setDraft({ ...draft, entityId: event.target.value })}
             placeholder="UUID"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           />
         </div>
         <div className="space-y-1">
@@ -148,7 +148,7 @@ export function AuditScreen() {
             value={draft.action}
             onChange={(event) => setDraft({ ...draft, action: event.target.value })}
             placeholder="For example CREATE"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           />
         </div>
         <div className="space-y-1">
@@ -158,7 +158,7 @@ export function AuditScreen() {
             type="datetime-local"
             value={draft.from}
             onChange={(event) => setDraft({ ...draft, from: event.target.value })}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           />
         </div>
         <div className="space-y-1">
@@ -168,7 +168,7 @@ export function AuditScreen() {
             type="datetime-local"
             value={draft.to}
             onChange={(event) => setDraft({ ...draft, to: event.target.value })}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           />
         </div>
       </FilterBar>

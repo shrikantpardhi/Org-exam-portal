@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * login -> protected content -> logout -> protected content denied.
  * The backend contract for the same flow is proven by the backend integration tests.
  */
-const fake = vi.hoisted(() => ({ authenticated: false }));
+const fake = vi.hoisted(() => ({ authenticated: false, push: vi.fn() }));
 
 vi.mock("@/lib/api-client", () => ({
   apiPost: vi.fn(async (url: string) => {
@@ -50,6 +50,11 @@ vi.mock("@/lib/api-client", () => ({
     };
   }),
   setUnauthorizedHandler: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: fake.push, replace: vi.fn(), refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 import { LoginForm } from "@/features/auth/components/login-form";

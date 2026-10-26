@@ -3,7 +3,9 @@ package com.company.exam.config;
 import com.company.exam.common.security.JwtTokenValidator;
 import com.company.exam.common.security.RestAccessDeniedHandler;
 import com.company.exam.common.security.RestAuthenticationEntryPoint;
+import com.company.exam.common.security.SecurityResponseWriter;
 import com.company.exam.identity.security.IdentityJwtAuthenticationFilter;
+import com.company.exam.identity.security.MustChangePasswordFilter;
 import com.company.exam.identity.service.SessionService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -86,6 +88,8 @@ public class SecurityConfig {
             "/api/v1/auth/login",
             "/api/v1/auth/forgot-password",
             "/api/v1/auth/reset-password",
+            // Public landing-page contact form: rate-limited per source IP (ADR-0037).
+            "/api/v1/public/contact",
             // Provider-facing payment callback: authenticated by the provider signature, never a JWT
             // (specs/18-P9-Commerce-V1.5.md §69).
             "/api/v1/payments/callback"
@@ -99,7 +103,8 @@ public class SecurityConfig {
             RestAuthenticationEntryPoint authenticationEntryPoint,
             RestAccessDeniedHandler accessDeniedHandler,
             CorsConfigurationSource corsConfigurationSource,
-            SecurityExposurePolicy exposurePolicy) throws Exception {
+            SecurityExposurePolicy exposurePolicy,
+            SecurityResponseWriter securityResponseWriter) throws Exception {
 
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -151,7 +156,12 @@ public class SecurityConfig {
                 .addFilterBefore(new MonitoringTokenAuthenticationFilter(exposurePolicy),
                         UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(new IdentityJwtAuthenticationFilter(jwtTokenValidator, sessionService),
-                        MonitoringTokenAuthenticationFilter.class);
+                        MonitoringTokenAuthenticationFilter.class)
+                // Forced first-login change: runs after authentication is established so it can see
+                // the IdentityPrincipal, and refuses everything but the change/logout/me endpoints
+                // while must_change_password is set (ADR-0034).
+                .addFilterAfter(new MustChangePasswordFilter(securityResponseWriter),
+                        IdentityJwtAuthenticationFilter.class);
 
         return http.build();
     }

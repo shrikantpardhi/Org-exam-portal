@@ -25,11 +25,11 @@ export default function GlobalError({
   return (
     <main className="mx-auto flex w-full max-w-xl flex-col items-start gap-4 px-6 py-24">
       <h1 className="text-xl font-semibold">Something went wrong</h1>
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-muted-foreground">
         The page could not be displayed. You can try again.
       </p>
       {error.digest ? (
-        <p className="font-mono text-xs text-slate-500">Reference: {error.digest}</p>
+        <p className="font-mono text-xs text-muted-foreground">Reference: {error.digest}</p>
       ) : null}
       <Button onClick={reset}>Try again</Button>
     </main>

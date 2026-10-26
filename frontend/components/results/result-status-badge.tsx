@@ -16,8 +16,8 @@ const LABELS: Record<string, string> = {
 const STYLES: Record<string, string> = {
   PUBLISHED: "border-emerald-200 bg-emerald-50 text-emerald-700",
   READY_FOR_PUBLICATION: "border-amber-200 bg-amber-50 text-amber-800",
-  CALCULATED: "border-slate-200 bg-slate-100 text-slate-600",
-  SUPERSEDED: "border-slate-200 bg-slate-100 text-slate-600",
+  CALCULATED: "border-border bg-muted text-muted-foreground",
+  SUPERSEDED: "border-border bg-muted text-muted-foreground",
 };
 
 export function ResultStatusBadge({ status }: { status: string }) {
@@ -26,7 +26,7 @@ export function ResultStatusBadge({ status }: { status: string }) {
     <span
       data-status={key || "UNKNOWN"}
       className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
-        STYLES[key] ?? "border-slate-200 bg-slate-100 text-slate-600"
+        STYLES[key] ?? "border-border bg-muted text-muted-foreground"
       }`}
     >
       {LABELS[key] ?? "Unknown"}

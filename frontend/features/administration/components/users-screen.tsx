@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
 import { DangerActionDialog } from "@/components/admin/danger-action-dialog";
@@ -70,18 +71,22 @@ export function UsersScreen() {
     {
       key: "actions",
       header: "Actions",
-      render: (user) =>
-        canArchive && user.status !== "ARCHIVED" ? (
-          <button
-            type="button"
-            onClick={() => setTarget(user)}
-            className="rounded text-sm font-medium text-red-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
-          >
-            Archive
-          </button>
-        ) : (
-          <span className="text-xs text-slate-500">{canArchive ? "Archived" : "View only"}</span>
-        ),
+      render: (user) => (
+        <div className="flex items-center gap-3">
+          <Link href={"/admin/users/" + user.id} className="font-medium text-blue-600 hover:underline">
+            View
+          </Link>
+          {canArchive && user.status !== "ARCHIVED" ? (
+            <button
+              type="button"
+              onClick={() => setTarget(user)}
+              className="rounded text-sm font-medium text-red-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+            >
+              Archive
+            </button>
+          ) : null}
+        </div>
+      ),
     },
   ];
 
@@ -94,7 +99,7 @@ export function UsersScreen() {
             id="user-status"
             value={statusDraft}
             onChange={(event) => setStatusDraft(event.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           >
             <option value="">All</option>
             <option value="ACTIVE">Active</option>
@@ -109,12 +114,20 @@ export function UsersScreen() {
             value={roleDraft}
             onChange={(event) => setRoleDraft(event.target.value)}
             disabled={rolesQuery.isPending}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           >
             <option value="">All roles</option>
-            {(rolesQuery.data?.items ?? []).map((role) => (
-              <option key={role.id} value={role.id}>{role.name}</option>
-            ))}
+            {/*
+              SUPER_ADMIN is a platform role: it never belongs to this organization and cannot be
+              assigned from here, so offering it as a filter can only ever return an empty list.
+              The backend catalogue is the source of truth; this is the same exclusion the create and
+              edit user forms already apply.
+            */}
+            {(rolesQuery.data?.items ?? [])
+              .filter((role) => role.code !== "SUPER_ADMIN")
+              .map((role) => (
+                <option key={role.id} value={role.id}>{role.name}</option>
+              ))}
           </select>
         </div>
         <div className="space-y-1">
@@ -124,7 +137,7 @@ export function UsersScreen() {
             value={searchDraft}
             onChange={(event) => setSearchDraft(event.target.value)}
             placeholder="Name or email"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           />
         </div>
       </FilterBar>
@@ -179,7 +192,7 @@ export function UsersScreen() {
           {describeAdminError(archive.error, "The user could not be archived.")}
         </p>
       ) : null}
-      <p className="text-xs text-slate-500">Admin actions are audited by the backend.</p>
+      <p className="text-xs text-muted-foreground">Admin actions are audited by the backend.</p>
     </div>
   );
 }

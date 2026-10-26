@@ -2,7 +2,7 @@
 # Smart Competitive Examination Platform - local stack
 #
 # Profiles (specs/09-P0-Foundation-V1.5.md section 51):
-#   core          postgres, redis
+#   core          postgres, redis, mailpit
 #   app           backend, frontend
 #   edge          nginx, pgbouncer
 #   observability prometheus, grafana, loki, promtail
@@ -72,6 +72,29 @@ services:
       start_period: 10s
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    restart: unless-stopped
+    networks: [exam-net]
+
+  mailpit:
+    profiles: ["core"]
+    image: axllent/mailpit
+    ports:
+      # SMTP is the backend's intake. Loopback only: nothing outside this host should be able to
+      # inject mail into the development stack.
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
+      # The web UI is for whoever is developing. Bound to loopback for the same reason.
+      - "127.0.0.1:${MAILPIT_HTTP_PORT:-8025}:8025"
+    environment:
+      # Bounded retention so a long-running dev stack does not grow without limit.
+      MP_MAX_MESSAGES: "5000"
+      TZ: UTC
+    healthcheck:
+      # Mailpit serves /livez for exactly this purpose; a redirect would make a plain GET unreliable.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8025/livez || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     restart: unless-stopped
     networks: [exam-net]
 
@@ -193,6 +216,38 @@ services:
       DELIVERY_WORKER_INTERVAL: ${DELIVERY_WORKER_INTERVAL:-PT30S}
       STORAGE_PROVIDER: local
       STORAGE_LOCAL_ROOT: /app/data/uploads
+      # Email delivery (ADR-0048). Defaults to SMTP because SPRING_MAIL_HOST below is pinned to the
+      # mailpit container: this stack cannot reach a real recipient even if it wanted to, so routing
+      # mail where someone can read it is strictly better than discarding it. The application default
+      # stays FAKE (application.yml), which is what keeps a host-run backend and every test from
+      # sending anything.
+      # Read delivered mail at http://localhost:8025.
+      COMMUNICATION_PROVIDER: ${COMMUNICATION_PROVIDER:-SMTP}
+      COMMUNICATION_SMTP_FROM: ${COMMUNICATION_SMTP_FROM:-no-reply@exam-platform.local}
+      # Generic JSON-over-HTTP provider (ADR-0049). To adopt a hosted provider, set
+      # COMMUNICATION_PROVIDER=HTTP_API, COMMUNICATION_HTTP_URL, the body template, and the API key
+      # in the variable NAMED by COMMUNICATION_HTTP_API_KEY_ENV (below, EMAIL_API_KEY). The key value
+      # is never written in this file; Compose forwards it from the host or from .env.
+      COMMUNICATION_HTTP_URL: ${COMMUNICATION_HTTP_URL:-}
+      COMMUNICATION_HTTP_PROVIDER_ID: ${COMMUNICATION_HTTP_PROVIDER_ID:-HTTP_API}
+      COMMUNICATION_HTTP_AUTH_SCHEME: ${COMMUNICATION_HTTP_AUTH_SCHEME:-BEARER}
+      COMMUNICATION_HTTP_AUTH_HEADER: ${COMMUNICATION_HTTP_AUTH_HEADER:-}
+      COMMUNICATION_HTTP_API_KEY_ENV: ${COMMUNICATION_HTTP_API_KEY_ENV:-EMAIL_API_KEY}
+      COMMUNICATION_HTTP_BODY_TEMPLATE: ${COMMUNICATION_HTTP_BODY_TEMPLATE:-}
+      COMMUNICATION_HTTP_SUCCESS_FIELD: ${COMMUNICATION_HTTP_SUCCESS_FIELD:-}
+      COMMUNICATION_HTTP_SUCCESS_VALUE: ${COMMUNICATION_HTTP_SUCCESS_VALUE:-success}
+      COMMUNICATION_HTTP_REFERENCE_FIELD: ${COMMUNICATION_HTTP_REFERENCE_FIELD:-}
+      COMMUNICATION_HTTP_ERROR_FIELD: ${COMMUNICATION_HTTP_ERROR_FIELD:-message}
+      COMMUNICATION_HTTP_CONNECT_TIMEOUT_MS: ${COMMUNICATION_HTTP_CONNECT_TIMEOUT_MS:-5000}
+      COMMUNICATION_HTTP_REQUEST_TIMEOUT_MS: ${COMMUNICATION_HTTP_REQUEST_TIMEOUT_MS:-10000}
+      # The provider credential itself, forwarded from the host environment. Empty when unset, which
+      # the adapter treats as a permanent misconfiguration rather than retrying.
+      EMAIL_API_KEY: ${EMAIL_API_KEY:-}
+      # Service name, never localhost, inside the container network.
+      SPRING_MAIL_HOST: mailpit
+      SPRING_MAIL_PORT: "1025"
+      SPRING_MAIL_SMTP_AUTH: "false"
+      SPRING_MAIL_SMTP_STARTTLS: "false"
       TZ: UTC
     ports:
       - "127.0.0.1:${BACKEND_HOST_PORT:-8080}:8080"
@@ -203,6 +258,8 @@ services:
       pgbouncer:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      mailpit:
         condition: service_healthy
     healthcheck:
       # A port probe with the JRE's own tooling: the runtime image carries no HTTP

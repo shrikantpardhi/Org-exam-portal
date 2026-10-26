@@ -17,6 +17,17 @@ public final class IdentityConstants {
     /** Role code of the administrator role ({@code §64}). */
     public static final String ADMIN_ROLE_CODE = "ADMIN";
 
+    /** Role code of the installation-owner role (ADR-0032). */
+    public static final String SUPER_ADMIN_ROLE_CODE = "SUPER_ADMIN";
+
+    /**
+     * Role codes whose shape is fixed by the deployment contract and which no caller may rename,
+     * inactivate, or re-permission ({@code 20-P11} §18, ADR-0032, ADR-0038 / D-02).
+     *
+     * <p>Resolved by code rather than by seeded UUID so the rule survives a re-seed (G-02).
+     */
+    public static final java.util.Set<String> IMMUTABLE_ROLE_CODES = java.util.Set.of(SUPER_ADMIN_ROLE_CODE);
+
     private IdentityConstants() {
     }
 }

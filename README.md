@@ -213,10 +213,25 @@ Profile reference:
 
 | Profile | Services | When |
 |---|---|---|
-| `core` | postgres, redis | Always; this is also all a host-run backend needs |
+| `core` | postgres, redis, mailpit | Always; this is also all a host-run backend needs |
 | `app` | backend, frontend | To run the application in containers |
 | `edge` | nginx, pgbouncer | With `app`: the edge and the database connection path |
 | `observability` | prometheus, grafana, loki, promtail | Operator tooling |
+
+**The email provider is configuration.** Three adapters ship: `FAKE` (in memory, the application
+default), `SMTP` (Mailpit locally, or any relay / hosted SMTP endpoint) and `HTTP_API` (any
+JSON-over-HTTP provider — SendGrid, Mailgun, Postmark, Brevo, Resend). Adopting a provider means
+setting `COMMUNICATION_PROVIDER`, `COMMUNICATION_HTTP_URL`, `COMMUNICATION_HTTP_BODY_TEMPLATE` and
+the name of the environment variable holding the key — no code change (`ADR-0049`). The API key is
+never a configuration value: `COMMUNICATION_HTTP_API_KEY_ENV` names the variable, and the value is
+read from the environment at send time.
+
+**Mail is delivered to Mailpit, not to real recipients.** The containerised backend runs with
+`COMMUNICATION_PROVIDER=SMTP` and `SPRING_MAIL_HOST=mailpit`, so every rendered email — password
+resets, first-password invitations, announcements — lands in the Mailpit web UI at
+<http://localhost:8025> instead of going nowhere. The application default remains `FAKE`, so a
+host-run backend and every test send nothing. Both ports are published on loopback only
+(`ADR-0048`).
 
 **PgBouncer is in the backend's database path.** The backend runs the `staging`
 profile, which resolves its datasource to `pgbouncer:6432` rather than to
@@ -267,7 +282,7 @@ npm run build
 
 ```bash
 docker compose --env-file .env.example config --quiet   # validate the Compose model
-docker compose --profile core up -d postgres redis       # core services only
+docker compose --profile core up -d postgres redis mailpit   # core services only
 bash scripts/verify-stack.sh                             # full-stack verification
 ```
 

@@ -36,13 +36,13 @@ export function ProgressView({
   return (
     <section
       aria-labelledby={headingId}
-      className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+      className="space-y-3 rounded-lg border border-border bg-surface p-4 shadow-sm"
     >
       <div>
-        <h3 id={headingId} className="text-base font-semibold text-slate-900">
+        <h3 id={headingId} className="text-base font-semibold text-foreground">
           {title}
         </h3>
-        <p className="text-sm text-slate-500">{description}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
 
       {total === 0 ? (
@@ -56,11 +56,11 @@ export function ProgressView({
             aria-valuemax={total}
             aria-valuenow={completed}
             aria-valuetext={`${completed} of ${total} ${unitLabel}`}
-            className="h-2 w-full overflow-hidden rounded bg-slate-100"
+            className="h-2 w-full overflow-hidden rounded bg-muted"
           >
             <div className="h-full rounded bg-blue-600" style={{ width: `${percent}%` }} />
           </div>
-          <p className="text-sm text-slate-700">
+          <p className="text-sm text-foreground">
             <span className="font-semibold">{completed}</span> of {total} {unitLabel} ({percent}%)
           </p>
         </>

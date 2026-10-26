@@ -36,7 +36,7 @@ export function ValidationSummary({ result }: { result: ValidationResult }) {
             <ul className="mt-1 space-y-1">
               {group.issues.map((issue, index) => (
                 <li key={`${issue.code}-${index}`} className="text-sm">
-                  <span className="font-mono text-xs text-slate-500">{issue.code}</span> — {issue.message}
+                  <span className="font-mono text-xs text-muted-foreground">{issue.code}</span> — {issue.message}
                 </li>
               ))}
             </ul>

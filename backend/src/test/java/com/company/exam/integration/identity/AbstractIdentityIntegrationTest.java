@@ -68,6 +68,9 @@ public abstract class AbstractIdentityIntegrationTest extends AbstractIntegratio
     @Autowired
     protected JwtTokenIssuer tokenIssuer;
 
+    @Autowired
+    protected com.company.exam.administration.repository.AuditLogRepository auditLogRepository;
+
     protected UUID defaultOrganizationId() {
         return organizationRepository.findByCode("DEFAULT").orElseThrow().getId();
     }
@@ -93,7 +96,10 @@ public abstract class AbstractIdentityIntegrationTest extends AbstractIntegratio
     }
 
     protected Role role(String code) {
-        return roleRepository.findByCode(code).orElseThrow(() -> new IllegalStateException("missing role " + code));
+        // The seeded roles are platform-wide after V35 (ADR-0045), so the code-only lookup every test
+        // used is now explicitly the platform-wide one.
+        return roleRepository.findByCodeAndOrganizationIdIsNull(code)
+                .orElseThrow(() -> new IllegalStateException("missing role " + code));
     }
 
     protected Permission permission(String code) {

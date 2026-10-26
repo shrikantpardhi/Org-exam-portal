@@ -28,7 +28,7 @@ export function NotificationPopover({
           onClose();
         }
       }}
-      className="absolute right-0 z-20 mt-2 w-80 space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-lg"
+      className="absolute right-0 z-20 mt-2 w-80 space-y-3 rounded-lg border border-border bg-surface p-4 shadow-lg"
     >
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">Notifications</h2>
@@ -36,7 +36,7 @@ export function NotificationPopover({
           type="button"
           onClick={onClose}
           aria-label="Close notifications"
-          className="rounded px-2 py-1 text-sm text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          className="rounded px-2 py-1 text-sm text-muted-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
           Close
         </button>

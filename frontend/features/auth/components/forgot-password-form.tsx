@@ -58,7 +58,7 @@ export function ForgotPasswordForm() {
                 autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-input px-3 py-2 text-sm"
               />
             </div>
             <Button type="submit" disabled={submitting} className="w-full">

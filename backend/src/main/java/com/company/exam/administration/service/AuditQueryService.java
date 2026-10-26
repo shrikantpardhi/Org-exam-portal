@@ -24,15 +24,31 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuditQueryService {
 
     private final AuditLogRepository auditLogRepository;
+    private final com.company.exam.common.audit.SecurityEventLogger.UserOrganizationLookup lookup;
 
-    public AuditQueryService(AuditLogRepository auditLogRepository) {
+    public AuditQueryService(AuditLogRepository auditLogRepository,
+            com.company.exam.common.audit.SecurityEventLogger.UserOrganizationLookup lookup) {
         this.auditLogRepository = auditLogRepository;
+        this.lookup = lookup;
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Scoped search (ADR-0046, D-11).
+     *
+     * <p>Before this, the explorer returned every row of a two-organization deployment to any caller
+     * holding {@code AUDIT_LOG_VIEW}. The scope is the caller's organization, plus rows with a NULL
+     * organization (platform-wide activity: the system actor, scheduled jobs, workers) only when the
+     * caller is the platform tier. An organization ADMIN never sees another organization's history,
+     * and never sees platform-wide rows either — those belong to the platform, not to a tenant.
+     */
     public Page<AdministrationDtos.AuditLogResponse> search(UUID userId, String entityName, UUID entityId,
-            String action, Instant from, Instant to, Pageable pageable) {
-        return auditLogRepository.findAll(specification(userId, entityName, entityId, action, from, to), pageable)
+            String action, Instant from, Instant to, Pageable pageable, UUID actorId) {
+        UUID actorOrganizationId = actorId == null ? null
+                : lookup.organizationOf(actorId).orElse(null);
+        return auditLogRepository.findAll(
+                        specification(userId, entityName, entityId, action, from, to, actorOrganizationId),
+                        pageable)
                 .map(this::toResponse);
     }
 
@@ -43,9 +59,16 @@ public class AuditQueryService {
 
     /** Filters exactly as frozen; the actor id is never taken from the client for attribution. */
     private Specification<AuditLog> specification(UUID userId, String entityName, UUID entityId, String action,
-            Instant from, Instant to) {
+            Instant from, Instant to, UUID actorOrganizationId) {
         return (root, query, builder) -> {
             List<Predicate> predicates = new ArrayList<>();
+            // Organization scope first, and fail closed (G-10): an unattributable caller sees
+            // nothing rather than the installation's trail.
+            if (actorOrganizationId == null) {
+                predicates.add(builder.disjunction());
+            } else {
+                predicates.add(builder.equal(root.get("organizationId"), actorOrganizationId));
+            }
             if (userId != null) {
                 predicates.add(builder.equal(root.get("userId"), userId));
             }

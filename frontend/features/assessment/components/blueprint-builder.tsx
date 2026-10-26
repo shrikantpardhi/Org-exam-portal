@@ -108,19 +108,19 @@ export function BlueprintBuilder({
         </h1>
         <dl className="grid gap-2 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-slate-500">Code</dt>
+            <dt className="text-muted-foreground">Code</dt>
             <dd className="font-mono text-xs">{blueprint.data?.code ?? blueprintId}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Status</dt>
+            <dt className="text-muted-foreground">Status</dt>
             <dd>{blueprint.data?.status ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Version</dt>
+            <dt className="text-muted-foreground">Version</dt>
             <dd>{version.data?.version ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Version state</dt>
+            <dt className="text-muted-foreground">Version state</dt>
             <dd>{published ? "PUBLISHED (immutable)" : "DRAFT"}</dd>
           </div>
         </dl>

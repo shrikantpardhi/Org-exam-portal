@@ -37,32 +37,32 @@ export function AssessmentPreview({
     <div className="space-y-6">
       <section className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Authoring preview</h1>
-        <p role="note" className="rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+        <p role="note" className="rounded border border-border bg-muted p-3 text-sm text-foreground">
           This is an authoring preview. It creates no runtime session and persists nothing. Correct
           answers are never shown here.
         </p>
         <dl className="grid gap-2 text-sm sm:grid-cols-4">
           <div>
-            <dt className="text-slate-500">Questions</dt>
+            <dt className="text-muted-foreground">Questions</dt>
             <dd>{data?.totalQuestions ?? version?.totalQuestions ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Total marks</dt>
+            <dt className="text-muted-foreground">Total marks</dt>
             <dd>{data?.totalMarks ?? version?.totalMarks ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Duration</dt>
+            <dt className="text-muted-foreground">Duration</dt>
             <dd>{data?.durationMinutes ?? version?.durationMinutes ?? "—"} minutes</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Engine</dt>
+            <dt className="text-muted-foreground">Engine</dt>
             <dd>{data?.engineType ?? version?.engineType ?? "—"}</dd>
           </div>
         </dl>
       </section>
 
       {data && data.sections.length === 0 ? (
-        <p role="note" className="text-sm text-slate-500">
+        <p role="note" className="text-sm text-muted-foreground">
           This version has no configured questions yet.
         </p>
       ) : null}
@@ -74,8 +74,8 @@ export function AssessmentPreview({
           </h2>
           <ol className="space-y-3">
             {section.questions.map((question) => (
-              <li key={question.assessmentQuestionId} className="rounded-lg border border-slate-200 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+              <li key={question.assessmentQuestionId} className="rounded-lg border border-border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                   <span>Question {question.displayOrder}</span>
                   <span>
                     +{question.marks} / -{question.negativeMarks}

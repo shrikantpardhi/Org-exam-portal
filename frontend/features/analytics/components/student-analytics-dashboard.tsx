@@ -89,7 +89,7 @@ export function StudentAnalyticsDashboard() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Your performance</h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Derived from your evaluated attempts. Only published and authorized result data is
             used.
           </p>
@@ -169,7 +169,7 @@ export function StudentAnalyticsDashboard() {
                 <table className="w-full text-left text-sm">
                   <caption className="sr-only">Your evaluated attempts</caption>
                   <thead>
-                    <tr className="border-b border-slate-200">
+                    <tr className="border-b border-border">
                       <th scope="col" className="py-2 pr-3">
                         Assessment
                       </th>
@@ -192,10 +192,10 @@ export function StudentAnalyticsDashboard() {
                   </thead>
                   <tbody>
                     {recentAssessments.map((assessment) => (
-                      <tr key={assessment.attemptId} className="border-b border-slate-100">
+                      <tr key={assessment.attemptId} className="border-b border-border">
                         <th scope="row" className="py-2 pr-3 font-normal">
                           <code
-                            className="rounded bg-slate-100 px-1 py-0.5 text-xs"
+                            className="rounded bg-muted px-1 py-0.5 text-xs"
                             title={assessment.assessmentId ?? undefined}
                           >
                             {shortId(assessment.assessmentId)}

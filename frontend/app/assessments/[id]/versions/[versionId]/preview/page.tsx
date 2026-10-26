@@ -15,10 +15,10 @@ export default function AssessmentPreviewPage() {
   const version = useAssessmentVersion(versionId);
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-16">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-16">
       <AuthenticatedGuard permission="ASSESSMENT_VERSION_VIEW">
         <AssessmentPreview versionId={versionId} version={version.data} />
       </AuthenticatedGuard>
-    </main>
+    </div>
   );
 }

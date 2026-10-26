@@ -23,7 +23,7 @@ export function PermissionGuard({
 
   if (status === "loading") {
     return (
-      <p role="status" aria-live="polite" className="text-sm text-slate-500">
+      <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
         Checking your permissions…
       </p>
     );

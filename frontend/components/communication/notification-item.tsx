@@ -22,32 +22,32 @@ export function NotificationItem({
     <li
       data-notification-status={notification.notificationStatus}
       className={`space-y-1 rounded border p-3 ${
-        unread ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-white"
+        unread ? "border-blue-200 bg-blue-50" : "border-border bg-surface"
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="text-sm font-semibold text-slate-900">
+        <p className="text-sm font-semibold text-foreground">
           {notification.title}
           {unread ? <span className="sr-only"> (unread)</span> : null}
         </p>
         <span
           className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
             unread
-              ? "border-blue-200 bg-white text-blue-700"
-              : "border-slate-200 bg-slate-100 text-slate-600"
+              ? "border-blue-200 bg-surface text-blue-700"
+              : "border-border bg-muted text-muted-foreground"
           }`}
         >
           {unread ? "Unread" : "Read"}
         </span>
       </div>
-      <p className="text-sm text-slate-600">{notification.message ?? "No message."}</p>
+      <p className="text-sm text-muted-foreground">{notification.message ?? "No message."}</p>
       <div className="flex flex-wrap items-center justify-between gap-2">
         {created ? (
-          <time dateTime={notification.createdOn ?? undefined} className="text-xs text-slate-500">
+          <time dateTime={notification.createdOn ?? undefined} className="text-xs text-muted-foreground">
             {created}
           </time>
         ) : (
-          <span className="text-xs text-slate-500">No timestamp</span>
+          <span className="text-xs text-muted-foreground">No timestamp</span>
         )}
         {unread ? (
           <MarkReadAction

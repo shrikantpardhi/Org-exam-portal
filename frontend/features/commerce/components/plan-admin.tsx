@@ -89,7 +89,7 @@ export function PlanAdmin() {
             <table className="w-full text-left text-sm">
               <caption className="sr-only">Subscription plans</caption>
               <thead>
-                <tr className="border-b border-slate-200">
+                <tr className="border-b border-border">
                   <th scope="col" className="py-2 pr-3">Code</th>
                   <th scope="col" className="py-2 pr-3">Name</th>
                   <th scope="col" className="py-2 pr-3">Package</th>
@@ -101,7 +101,7 @@ export function PlanAdmin() {
               </thead>
               <tbody>
                 {plans.map((plan) => (
-                  <tr key={plan.id} className="border-b border-slate-100">
+                  <tr key={plan.id} className="border-b border-border">
                     <th scope="row" className="py-2 pr-3 font-mono text-xs">{plan.code}</th>
                     <td className="py-2 pr-3">{plan.name}</td>
                     <td className="py-2 pr-3">
@@ -122,7 +122,7 @@ export function PlanAdmin() {
                           Archive
                         </button>
                       ) : (
-                        <span className="text-xs text-slate-500">Archived</span>
+                        <span className="text-xs text-muted-foreground">Archived</span>
                       )}
                     </td>
                   </tr>

@@ -83,7 +83,7 @@ export function LookupsScreen() {
             </button>
           ) : null}
           {!can("LOOKUP_UPDATE") && !can("LOOKUP_DELETE") ? (
-            <span className="text-xs text-slate-500">View only</span>
+            <span className="text-xs text-muted-foreground">View only</span>
           ) : null}
         </div>
       ),
@@ -99,7 +99,7 @@ export function LookupsScreen() {
             id="lookup-category-filter"
             value={categoryDraft}
             onChange={(event) => setCategoryDraft(event.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           />
         </div>
         <div className="space-y-1">
@@ -108,7 +108,7 @@ export function LookupsScreen() {
             id="lookup-status-filter"
             value={statusDraft}
             onChange={(event) => setStatusDraft(event.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm"
           >
             <option value="">All</option>
             <option value="ACTIVE">Active</option>
@@ -158,11 +158,11 @@ export function LookupsScreen() {
       ) : null}
 
       {editing ? (
-        <section aria-labelledby="edit-lookup-heading" className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
+        <section aria-labelledby="edit-lookup-heading" className="space-y-3 rounded-lg border border-border bg-surface p-4">
           <h2 id="edit-lookup-heading" className="text-base font-semibold">
             Edit {editing.code}
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Category and code are stable keys; the frozen update accepts name and display order.
             Activation is not exposed by this API.
           </p>
@@ -192,7 +192,7 @@ export function LookupsScreen() {
           <button
             type="button"
             onClick={() => setEditing(null)}
-            className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            className="rounded border border-input bg-surface px-4 py-2 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           >
             Cancel
           </button>

@@ -18,7 +18,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 
 /** Role administration and permission assignment ({@code specs/20-P11-Administration-V1.5.md §15, §16, §68}). */
 export function RolesScreen() {
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const [sort, setSort] = useState<SortState | null>(null);
   const rolesQuery = useRoles(true, toSortParam(sort, "roles"));
   const permissionsQuery = usePermissions(0);
@@ -39,6 +39,24 @@ export function RolesScreen() {
   }, [rolePermissionsQuery.data]);
 
   const selectedRole = rolesQuery.data?.items.find((role) => role.id === selectedRoleId);
+
+  /**
+   * True when the selected role is one the signed-in administrator actually holds.
+   *
+   * <p>Editing your own role's permissions is a privilege-escalation path: an administrator could
+   * grant themselves anything, and then the assignment is no longer reviewable by anyone with less
+   * access. The backend enforces the ceiling (ADR-0044), but the screen should not invite the action
+   * in the first place. The panel therefore renders read-only for the caller's own roles.
+   */
+  const editingOwnRole =
+    selectedRole !== undefined && (user?.roles ?? []).some((code) => code === selectedRole.code);
+
+  const closePanel = () => {
+    setSelectedRoleId("");
+    setSelectedIds([]);
+    setMessage(null);
+    setConfirmOpen(false);
+  };
 
   const toggle = (permissionId: string) => {
     setSelectedIds((current) =>
@@ -79,7 +97,7 @@ export function RolesScreen() {
             Manage permissions
           </button>
         ) : (
-          <span className="text-xs text-slate-500">View only</span>
+          <span className="text-xs text-muted-foreground">View only</span>
         ),
     },
   ];
@@ -89,7 +107,7 @@ export function RolesScreen() {
       <DataTable
         caption="Roles"
         columns={columns}
-        rows={rolesQuery.data?.items ?? []}
+        rows={(rolesQuery.data?.items ?? []).filter((role) => role.code !== "SUPER_ADMIN")}
         getRowKey={(role) => role.id}
         loading={rolesQuery.isPending}
         error={rolesQuery.isError ? describeAdminError(rolesQuery.error, "Roles could not be loaded.") : null}
@@ -102,19 +120,19 @@ export function RolesScreen() {
       />
 
       {selectedRoleId.length > 0 ? (
-        <section aria-labelledby="role-permissions-heading" className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
+        <section aria-labelledby="role-permissions-heading" className="space-y-3 rounded-lg border border-border bg-surface p-4">
           <div>
             <h2 id="role-permissions-heading" className="text-base font-semibold">
               Permissions for {selectedRole?.name ?? "role"}
             </h2>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               A full replacement is saved atomically. The confirmation is UX safety; the backend
               enforces the assignment permission.
             </p>
           </div>
 
           {rolePermissionsQuery.isPending ? (
-            <p role="status" className="text-sm text-slate-500">Loading role permissions…</p>
+            <p role="status" className="text-sm text-muted-foreground">Loading role permissions…</p>
           ) : null}
           {rolePermissionsQuery.isError ? (
             <p role="alert" className="text-sm text-red-600">
@@ -122,7 +140,7 @@ export function RolesScreen() {
             </p>
           ) : null}
           {permissionsQuery.isPending ? (
-            <p role="status" className="text-sm text-slate-500">Loading permission catalogue…</p>
+            <p role="status" className="text-sm text-muted-foreground">Loading permission catalogue…</p>
           ) : null}
           {permissionsQuery.isError ? (
             <p role="alert" className="text-sm text-red-600">
@@ -139,12 +157,12 @@ export function RolesScreen() {
                       type="checkbox"
                       checked={selectedIds.includes(permission.id)}
                       onChange={() => toggle(permission.id)}
-                      disabled={!canAssign}
+                      disabled={!canAssign || editingOwnRole}
                       className="mt-1"
                     />
                     <span>
                       <span className="font-mono text-xs">{permission.code}</span>
-                      <span className="block text-xs text-slate-500">{permission.name}</span>
+                      <span className="block text-xs text-muted-foreground">{permission.name}</span>
                     </span>
                   </label>
                 </li>
@@ -152,7 +170,12 @@ export function RolesScreen() {
             </ul>
           ) : null}
 
-          {canAssign ? (
+          {editingOwnRole ? (
+            <p className="text-xs text-muted-foreground">
+              This is one of your own roles, so its permissions are read-only here. Ask another
+              administrator to change it — that keeps every grant reviewable by a second person.
+            </p>
+          ) : canAssign ? (
             <button
               type="button"
               onClick={() => setConfirmOpen(true)}
@@ -162,10 +185,20 @@ export function RolesScreen() {
               Save permissions
             </button>
           ) : (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               You can view assignments but not change them.
             </p>
           )}
+
+          <div>
+            <button
+              type="button"
+              onClick={closePanel}
+              className="rounded-md border border-input bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              Cancel
+            </button>
+          </div>
 
           {message ? (
             <p role="status" className="text-sm text-emerald-700">{message}</p>

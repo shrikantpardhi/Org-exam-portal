@@ -34,7 +34,7 @@ export function TagsManager() {
       ) : null}
 
       {tags.isPending ? (
-        <p role="status" className="text-sm text-slate-500">
+        <p role="status" className="text-sm text-muted-foreground">
           Loading tags…
         </p>
       ) : null}
@@ -44,13 +44,14 @@ export function TagsManager() {
         </p>
       ) : null}
       {tags.data && tags.data.length === 0 ? (
-        <p className="text-sm text-slate-500">No tags yet.</p>
+        <p className="text-sm text-muted-foreground">No tags yet.</p>
       ) : null}
 
       {tags.data && tags.data.length > 0 ? (
-        <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto" role="region" aria-label="Scrollable table" tabIndex={0}>
+<table className="w-full min-w-[640px] text-left text-sm">
           <thead>
-            <tr className="border-b border-slate-200">
+            <tr className="border-b border-border">
               <th className="py-2">Code</th>
               <th className="py-2">Name</th>
               <th className="py-2">Status</th>
@@ -59,7 +60,7 @@ export function TagsManager() {
           </thead>
           <tbody>
             {tags.data.map((tag) => (
-              <tr key={tag.id} className="border-b border-slate-100">
+              <tr key={tag.id} className="border-b border-border">
                 <td className="py-2 font-mono text-xs">{tag.code}</td>
                 <td className="py-2">{tag.name}</td>
                 <td className="py-2">{tag.status}</td>
@@ -78,6 +79,7 @@ export function TagsManager() {
             ))}
           </tbody>
         </table>
+</div>
       ) : null}
     </section>
   );

@@ -52,7 +52,7 @@ export function DataTable<T>({
 }) {
   if (loading) {
     return (
-      <p role="status" aria-live="polite" className="text-sm text-slate-500">
+      <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
         Loading…
       </p>
     );
@@ -66,7 +66,7 @@ export function DataTable<T>({
           <button
             type="button"
             onClick={onRetry}
-            className="mt-2 rounded border border-red-300 bg-white px-3 py-1 text-sm font-medium text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+            className="mt-2 rounded border border-red-300 bg-surface px-3 py-1 text-sm font-medium text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
           >
             Try again
           </button>
@@ -77,7 +77,7 @@ export function DataTable<T>({
 
   if (rows.length === 0) {
     return (
-      <p role="note" className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+      <p role="note" className="rounded-lg border border-dashed border-input bg-muted p-4 text-sm text-foreground">
         {emptyMessage}
       </p>
     );
@@ -89,7 +89,7 @@ export function DataTable<T>({
         <table className="w-full text-left text-sm">
           <caption className="sr-only">{caption}</caption>
           <thead>
-            <tr className="border-b border-slate-200">
+            <tr className="border-b border-border">
               {columns.map((column) => {
                 const sortable = Boolean(column.sortField) && Boolean(onSortChange);
                 const active = sort && sort.field === column.sortField ? sort : null;
@@ -107,7 +107,7 @@ export function DataTable<T>({
                         className="inline-flex items-center gap-1 font-medium hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                       >
                         {column.header}
-                        <span aria-hidden="true" className="text-xs text-slate-500">
+                        <span aria-hidden="true" className="text-xs text-muted-foreground">
                           {active ? (active.direction === "asc" ? "▲" : "▼") : "↕"}
                         </span>
                       </button>
@@ -121,7 +121,7 @@ export function DataTable<T>({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={getRowKey(row)} className="border-b border-slate-100 align-top">
+              <tr key={getRowKey(row)} className="border-b border-border align-top">
                 {columns.map((column) => (
                   <td key={column.key} className={`py-2 pr-3 ${column.className ?? ""}`}>
                     {column.render(row)}
@@ -157,7 +157,7 @@ export function PaginationBar({
         type="button"
         disabled={page <= 0}
         onClick={() => onPageChange(page - 1)}
-        className="rounded border border-slate-300 bg-white px-3 py-1 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+        className="rounded border border-input bg-surface px-3 py-1 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
       >
         Previous
       </button>
@@ -168,7 +168,7 @@ export function PaginationBar({
         type="button"
         disabled={page >= totalPages - 1}
         onClick={() => onPageChange(page + 1)}
-        className="rounded border border-slate-300 bg-white px-3 py-1 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+        className="rounded border border-input bg-surface px-3 py-1 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
       >
         Next
       </button>

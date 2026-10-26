@@ -50,10 +50,12 @@ public class AuditLogController {
             @RequestParam(required = false) String action,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
-            @PageableDefault(size = 20) Pageable pageable) {
+            @PageableDefault(size = 20) Pageable pageable,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal
+            com.company.exam.identity.security.IdentityPrincipal principal) {
         PageResponse<AdministrationDtos.AuditLogResponse> page = PageResponse.from(
                 auditQueryService.search(userId, entityName, entityId, action, from, to,
-                        QuerySupport.sanitize(pageable, SORTABLE)),
+                        QuerySupport.sanitize(pageable, SORTABLE), principal.userId()),
                 entry -> entry);
         return ApiResponse.paged("Audit trail retrieved", page);
     }

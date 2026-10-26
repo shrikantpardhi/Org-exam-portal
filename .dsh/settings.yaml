@@ -17,3 +17,17 @@ llm-pi-ai:
         - id: deepseek-ai/deepseek-v4.1-flash-1017
           name: Deepseek 4.1 Flash 1017
           input: [text, image]
+agent-team:
+  members:
+    Planner:
+      provider: hive
+      model: deepseek-ai/deepseek-v4.1-flash-1017
+      reasoning: high   # Force deep thinking for planning
+    Engineer:
+      provider: hive
+      model: deepseek-ai/deepseek-v4.1-flash-1017
+      reasoning: low    # Faster generation for writing code
+    Reviewer:
+      provider: hive
+      model: deepseek-ai/deepseek-v4.1-flash-1017
+      reasoning: medium # Balanced approach for checking errors

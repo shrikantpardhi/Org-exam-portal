@@ -14,6 +14,24 @@ spring:
     # want. P1 Identity provides the real UserDetailsService.
     exclude:
       - org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+  # SMTP transport for the SMTP email gateway (ADR-0048). Unused while the active provider is FAKE,
+  # which is the default; nothing is sent unless COMMUNICATION_PROVIDER=SMTP.
+  mail:
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:1025}
+    # Mailpit accepts unauthenticated mail. A real relay sets these and STARTTLS.
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SPRING_MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${SPRING_MAIL_SMTP_STARTTLS:false}
+          # Bounded sockets: a hung relay must not pin a worker thread forever (§34 timeout).
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
   jackson:
     # Spring Boot 4 uses Jackson 3. Nulls are omitted so the standard envelopes keep
     # their documented shape; instants serialize as ISO-8601 by default.
@@ -65,6 +83,7 @@ app:
   environment: ${APP_ENVIRONMENT:local}
   info:
     version: "@project.version@"
+    frontend-version: ${FRONTEND_VERSION:1.5.0}
   security:
     jwt:
       issuer: ${JWT_ISSUER:exam-platform}
@@ -172,8 +191,38 @@ app:
     checkout-enabled: ${COMMERCE_CHECKOUT_ENABLED:false}
 
   communication:
-    # Only the reference fake email provider ships with the platform (specs/19-P10 §29, §86).
+    # The active EmailGateway (specs/19-P10 §29). FAKE records in memory and is the default; SMTP
+    # delivers to a relay (Mailpit locally, ADR-0048); HTTP_API posts JSON to any provider API
+    # (ADR-0049). Switching providers is configuration only — no code change.
     provider: ${COMMUNICATION_PROVIDER:FAKE}
+    smtp:
+      # Envelope sender. Mailpit accepts anything; a real relay rejects an unauthenticated one.
+      from: ${COMMUNICATION_SMTP_FROM:no-reply@exam-platform.local}
+    # Generic JSON-over-HTTP provider adapter (ADR-0049). Adopting a provider that offers a JSON API
+    # is configuration: set provider: HTTP_API, fill in url/body-template, and put the key in the
+    # environment variable named by api-key-env. The key itself is never written in this file.
+    #
+    # Example (SendGrid):
+    #   provider: HTTP_API
+    #   http-api:
+    #     url: https://api.sendgrid.com/v3/mail/send
+    #     auth-scheme: BEARER
+    #     api-key-env: SENDGRID_API_KEY
+    #     body-template: '{"personalizations":[{"to":[{"email":{to}}]}],"from":{"email":{from}},"subject":{subject},"content":[{"type":"text/html","value":{html}}]}'
+    http-api:
+      url: ${COMMUNICATION_HTTP_URL:}
+      provider-id: ${COMMUNICATION_HTTP_PROVIDER_ID:HTTP_API}
+      auth-scheme: ${COMMUNICATION_HTTP_AUTH_SCHEME:BEARER}
+      auth-header: ${COMMUNICATION_HTTP_AUTH_HEADER:}
+      # The NAME of the environment variable holding the key, never the key.
+      api-key-env: ${COMMUNICATION_HTTP_API_KEY_ENV:EMAIL_API_KEY}
+      body-template: ${COMMUNICATION_HTTP_BODY_TEMPLATE:}
+      success-field: ${COMMUNICATION_HTTP_SUCCESS_FIELD:}
+      success-value: ${COMMUNICATION_HTTP_SUCCESS_VALUE:success}
+      reference-field: ${COMMUNICATION_HTTP_REFERENCE_FIELD:}
+      error-field: ${COMMUNICATION_HTTP_ERROR_FIELD:message}
+      connect-timeout-ms: ${COMMUNICATION_HTTP_CONNECT_TIMEOUT_MS:5000}
+      request-timeout-ms: ${COMMUNICATION_HTTP_REQUEST_TIMEOUT_MS:10000}
     # Bounded retry with exponential backoff + jitter and a cap (specs/19-P10 §33, §35).
     max-attempts: ${COMMUNICATION_MAX_ATTEMPTS:5}
     backoff-base: ${COMMUNICATION_BACKOFF_BASE:PT1M}

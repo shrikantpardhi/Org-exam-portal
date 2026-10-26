@@ -45,6 +45,10 @@ public class AuditTrailService implements AuditTrail {
         auditLog.setEntityId(entry.entityId());
         auditLog.setAction(truncate(entry.action(), MAX_ACTION));
         auditLog.setRemarks(entry.remarks());
+        // Written, not derived (ADR-0046, D-11): derivation at read time reports nothing for entities
+        // that have no user, and this write is the only point where the actor's organization is known
+        // without a join.
+        auditLog.setOrganizationId(entry.organizationId());
         auditLog.setCreatedOn(Instant.now());
         auditLogRepository.saveAndFlush(auditLog);
     }

@@ -60,7 +60,7 @@ export function AssetPanel({
   return (
     <section aria-label="Assets" className="space-y-3">
       <h2 className="text-lg font-semibold">Assets</h2>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-muted-foreground">
         References are inserted as <code>[asset: &lt;uuid&gt;]</code>. A published version is immutable, so
         its assets cannot be changed.
       </p>
@@ -69,7 +69,7 @@ export function AssetPanel({
        * content/download route. Rather than invent an endpoint or a filesystem URL, the panel shows
        * the canonical shortcode, which is what the renderer resolves server-side.
        */}
-      <p role="note" className="text-xs text-slate-500">
+      <p role="note" className="text-xs text-muted-foreground">
         Inline preview is not offered: the frozen asset contract has no content route, so assets are
         identified by their canonical shortcode.
       </p>
@@ -84,7 +84,7 @@ export function AssetPanel({
           className="text-sm"
         />
         {upload.isPending ? (
-          <span role="status" className="text-sm text-slate-500">
+          <span role="status" className="text-sm text-muted-foreground">
             Uploading…
           </span>
         ) : null}
@@ -96,29 +96,29 @@ export function AssetPanel({
         </p>
       ) : null}
       {status ? (
-        <p role="status" className="text-sm text-slate-600">
+        <p role="status" className="text-sm text-muted-foreground">
           {status}
         </p>
       ) : null}
 
       {assets.isPending ? (
-        <p role="status" className="text-sm text-slate-500">
+        <p role="status" className="text-sm text-muted-foreground">
           Loading assets…
         </p>
       ) : null}
       {assets.data && assets.data.length === 0 ? (
-        <p className="text-sm text-slate-500">No assets on this version.</p>
+        <p className="text-sm text-muted-foreground">No assets on this version.</p>
       ) : null}
 
       {assets.data && assets.data.length > 0 ? (
         <ul aria-label="Asset list" className="space-y-2">
           {assets.data.map((asset) => (
-            <li key={asset.id} className="rounded border border-slate-200 p-3 text-sm">
+            <li key={asset.id} className="rounded border border-border p-3 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span>
                   <span className="font-medium">{asset.fileName}</span>{" "}
-                  <span className="text-slate-500">{asset.fileType}</span>{" "}
-                  <span className="text-slate-400">{asset.status}</span>
+                  <span className="text-muted-foreground">{asset.fileType}</span>{" "}
+                  <span className="text-muted-foreground">{asset.status}</span>
                 </span>
                 <span className="flex flex-wrap gap-2">
                   <Button
@@ -142,7 +142,7 @@ export function AssetPanel({
                   </Button>
                 </span>
               </div>
-              <p className="mt-1 font-mono text-xs text-slate-500">{assetReference(asset.id)}</p>
+              <p className="mt-1 font-mono text-xs text-muted-foreground">{assetReference(asset.id)}</p>
             </li>
           ))}
         </ul>

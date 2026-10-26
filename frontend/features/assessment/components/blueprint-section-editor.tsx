@@ -15,7 +15,7 @@ import {
 } from "@/features/assessment/schemas/blueprint-config";
 
 const fieldClass =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900";
+  "w-full rounded-md border border-input px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900";
 
 export function BlueprintSectionEditor({
   sections,
@@ -59,7 +59,7 @@ export function BlueprintSectionEditor({
           <h2 id="blueprint-sections-heading" className="text-lg font-semibold tracking-tight">
             Sections
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Names are free text and are shown to candidates exactly as typed.
           </p>
         </div>
@@ -69,7 +69,7 @@ export function BlueprintSectionEditor({
       </div>
 
       {sections.length === 0 ? (
-        <p role="note" className="rounded border border-dashed border-slate-300 bg-slate-50 p-4 text-sm">
+        <p role="note" className="rounded border border-dashed border-input bg-muted p-4 text-sm">
           No sections yet. A blueprint needs at least one section before publication.
         </p>
       ) : null}
@@ -79,7 +79,7 @@ export function BlueprintSectionEditor({
           <li
             key={section.key}
             data-testid="blueprint-section-row"
-            className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+            className="rounded-lg border border-border bg-surface p-4 shadow-sm"
           >
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
               <div className="lg:col-span-2">

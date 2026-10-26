@@ -19,18 +19,18 @@ export default function BlueprintDetailPage() {
   const versions = useBlueprintVersions(id);
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-16">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-16">
       <AuthenticatedGuard permission="BLUEPRINT_VIEW">
         <header className="space-y-1">
-          <p className="text-sm text-slate-500">Blueprint</p>
+          <p className="text-sm text-muted-foreground">Blueprint</p>
           <h1 className="text-2xl font-semibold tracking-tight">
             {blueprint.data?.name ?? "Loading blueprint…"}
           </h1>
-          <p className="font-mono text-xs text-slate-500">{blueprint.data?.code ?? id}</p>
+          <p className="font-mono text-xs text-muted-foreground">{blueprint.data?.code ?? id}</p>
           {blueprint.data?.description ? (
-            <p className="text-sm text-slate-600">{blueprint.data.description}</p>
+            <p className="text-sm text-muted-foreground">{blueprint.data.description}</p>
           ) : null}
-          <p className="text-sm text-slate-500">Status: {blueprint.data?.status ?? "—"}</p>
+          <p className="text-sm text-muted-foreground">Status: {blueprint.data?.status ?? "—"}</p>
         </header>
 
         {blueprint.isError ? (
@@ -42,17 +42,17 @@ export default function BlueprintDetailPage() {
         {versions.isPending ? <p role="status">Loading versions…</p> : null}
 
         {versions.data && versions.data.length === 0 ? (
-          <p role="note" className="text-sm text-slate-500">
+          <p role="note" className="text-sm text-muted-foreground">
             This blueprint has no versions yet.
           </p>
         ) : null}
 
         <ul className="space-y-3">
           {(versions.data ?? []).map((version) => (
-            <li key={version.id} className="rounded border border-slate-200 p-4">
+            <li key={version.id} className="rounded border border-border p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-medium">Version {version.version}</span>
-                <span className="text-sm text-slate-500">
+                <span className="text-sm text-muted-foreground">
                   {version.published ? "PUBLISHED (immutable)" : "DRAFT"}
                 </span>
               </div>
@@ -65,6 +65,6 @@ export default function BlueprintDetailPage() {
           ))}
         </ul>
       </AuthenticatedGuard>
-    </main>
+    </div>
   );
 }
