@@ -40,9 +40,9 @@ export function reportStatusTone(value: string | null | undefined): string {
     case "FAILED":
       return "border-destructive bg-destructive-subtle text-destructive";
     case "CANCELLED":
-      return "border-slate-200 bg-slate-100 text-slate-600";
+      return "border-border bg-muted text-foreground";
     default:
-      return "border-slate-200 bg-slate-100 text-slate-600";
+      return "border-border bg-muted text-foreground";
   }
 }
 

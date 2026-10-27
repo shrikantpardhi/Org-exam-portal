@@ -85,9 +85,12 @@ export function PublicLayout({ children }: { children: ReactNode }) {
             </div>
             <div className="space-y-2">
               <p className="font-medium text-foreground">Legal</p>
-              <p><Link className="text-muted-foreground hover:text-foreground" href="/docs/terms">Terms</Link></p>
-              <p><Link className="text-muted-foreground hover:text-foreground" href="/docs/privacy">Privacy</Link></p>
-              <p><Link className="text-muted-foreground hover:text-foreground" href="/docs/support">Support</Link></p>
+              {/* `/docs/terms`, `/docs/privacy` and `/docs/support` are not bundled pages: only the
+                  `/docs` index and its `[slug]` articles exist, so the three links pointed at 404s.
+                  They now all resolve to the docs index rather than to routes that do not exist. */}
+              <p><Link className="text-muted-foreground hover:text-foreground" href="/docs">Terms</Link></p>
+              <p><Link className="text-muted-foreground hover:text-foreground" href="/docs">Privacy</Link></p>
+              <p><Link className="text-muted-foreground hover:text-foreground" href="/docs">Support</Link></p>
             </div>
           </div>
         </div>

@@ -16,7 +16,7 @@ import { useQuestionSearch, useQuestionVersions } from "@/features/assessment/ho
 import type { Difficulty, VersionListItem } from "@/features/assessment/schemas/assessment-builder";
 
 const fieldClass =
-  "w-full rounded-md border border-input px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900";
+  "w-full rounded-md border border-input px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 const PAGE_SIZE = 10;
 

@@ -24,7 +24,7 @@ import type { Collection } from "@/features/assessment/schemas/assessment-builde
 import { ApiClientError } from "@/lib/errors";
 
 const fieldClass =
-  "w-full rounded-md border border-input px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900";
+  "w-full rounded-md border border-input px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 const statuses = ["ACTIVE", "INACTIVE", "ARCHIVED"] as const;
 
