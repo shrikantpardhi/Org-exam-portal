@@ -11,7 +11,7 @@ export default async function NewOrganizationAdminPage({
   return (
     <PlatformShell
       title="Create administrator"
-      description="Each organization accepts exactly one ADMIN."
+      description="Invite an administrator. Optionally designate them primary."
       permission="PLATFORM_ADMIN_CREATE"
     >
       <CreateAdminForm organizationId={id} />

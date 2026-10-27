@@ -621,6 +621,93 @@ pk_organization
 uk_organization_code
 ```
 
+> **Status semantics (ADR-0055).** `organization.status` is not a label. `AuthenticationService` refuses
+> a login whose organization is not `ACTIVE`, so a non-`ACTIVE` organization suspends **every** user in
+> the tenant. The check constraint permits `ACTIVE`, `INACTIVE` and `ARCHIVED`, but the platform API
+> (§72.16) accepts only the first two: the login gate collapses every non-`ACTIVE` value to the same
+> outcome, so `ARCHIVED` would add vocabulary without adding behaviour. No schema change accompanies
+> this note.
+
+### 25.1a Amendment — organization profile and primary administrator (ADR-0051, ADR-0052)
+
+> **Frozen-contract amendment.** The columns below are additions to the frozen table above. They are
+> additive and every one of them is NULLable, so an existing row stays valid with no backfill.
+> Recorded in ADR-0051 (profile) and ADR-0052 (primary administrator) and applied by
+> `V37`/`V38`/`V39`.
+
+```sql
+organization (added columns)
+---------------------------
+address_line1        VARCHAR(200)   -- V37, ADR-0051
+address_line2        VARCHAR(200)   -- V37
+city                 VARCHAR(100)   -- V37
+state_region         VARCHAR(100)   -- V37
+postal_code          VARCHAR(20)    -- V37
+country              VARCHAR(100)   -- V37
+contact_email        VARCHAR(254)   -- V37
+contact_phone        VARCHAR(32)    -- V37
+website_url          VARCHAR(500)   -- V37
+logo_url             VARCHAR(500)   -- V37
+primary_admin_user_id UUID          -- V39, ADR-0052
+```
+
+Additional constraints.
+
+```text
+FK(primary_admin_user_id) -> user(id) ON DELETE SET NULL
+```
+
+Additional indexes.
+
+```text
+idx_organization_primary_admin (primary_admin_user_id) WHERE primary_admin_user_id IS NOT NULL
+```
+
+`primary_admin_user_id` records which administrator may change other users' roles in the
+organization. It is a column on `organization` rather than a flag on `user_role` so that "at most one
+primary per organization" is a schema property instead of something every writer must remember.
+
+`NULL` means no primary is designated, and role editing is then refused for the whole organization
+(fail-closed, ADR-0052). Existing rows are deliberately **not** backfilled: inferring the primary from
+`created_on` would hand the authority to whoever happened to be oldest, which is precisely the
+escalation the column exists to prevent. The state is recoverable because creating an organization's
+first administrator designates it.
+
+No index is added for the profile columns: none is a lookup or sort key, and `organization` is a small
+table read by primary key.
+
+#### 25.1a.1 Amendment — archiving retains the role assignment (ADR-0054)
+
+ADR-0054 makes retiring an organization administrator an **archive** (`user.status = 'ARCHIVED'`) that
+can be reversed, rather than a one-way deactivation. No schema change accompanies it; the point of this
+note is an intentional invariant that a future reader could otherwise mistake for corruption:
+
+```text
+user.status          = 'ARCHIVED'    -- account archived
+user_role.status     = 'ACTIVE'      -- assignment deliberately retained
+organization.primary_admin_user_id   -- unchanged; an archived admin cannot be the primary
+```
+
+An archived account holding an ACTIVE `ADMIN` assignment is **correct by design**:
+
+- Restore is then a one-field write instead of a reconstruction, so no archive-history table is needed
+  (frozen rule 1 forbids inventing one for convenience).
+- Access is still revoked, because `PermissionRepository.findEffectivePermissionCodes` filters
+  `user.status = 'ACTIVE'`; an archived account resolves to no permissions. Session expiry and
+  permission-cache eviction are additionally required at archive time because authorization never
+  re-reads account status per request.
+- The administrator cap and the per-organization `adminCount` both exclude `ARCHIVED` accounts
+  (`UserRoleRepository.countActiveAssignmentsByRoleCodeInOrganization`,
+  `findActiveUserIdsByRoleCodeInOrganization`), so a retained assignment occupies no slot and archive
+  genuinely frees capacity for a replacement.
+
+`INACTIVE` is **not** excluded from those counts. An account deactivated by other means still occupies
+its slot; that is a state an operator must resolve, not capacity that can be silently reclaimed.
+
+`V42` (ADR-0054) raises the seeded `business_rule` value `MAX_ADMINS_PER_ORG` from `1` to `5`. It is a
+data `UPDATE` of an existing row, not a schema change, and not a new rule (`business_rule` has
+`UNIQUE(code)`).
+
 ### 25.2 Table: user
 
 ```sql

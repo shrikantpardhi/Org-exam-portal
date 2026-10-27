@@ -8,7 +8,7 @@ export default function OrganizationsPage() {
   return (
     <PlatformShell
       title="Organizations"
-      description="Business organizations registered on this installation. PLATFORM is not listed."
+      description="Business organizations. The PLATFORM tenant is not listed."
       permission="PLATFORM_ORGANIZATION_VIEW"
       actions={
         <Link

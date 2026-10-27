@@ -68,8 +68,16 @@ public class PlatformInfoService {
     @Transactional(readOnly = true)
     public PlatformDtos.PlatformSystemResponse system() {
         AdministrationDtos.SystemHealthResponse health = systemHealthService.check();
+        // Report every component the health service actually evaluates, in a stable order.
+        // Previously only POSTGRESQL and REDIS survived this filter, which showed an operator two
+        // green dots while the application itself, its cache fallback and its background workers were
+        // computed and discarded — "required service status" means the services the platform needs,
+        // not the two that happened to be listed first (ADR-0055).
+        List<String> reported = List.of("APPLICATION", "POSTGRESQL", "REDIS", "BACKGROUND_WORKERS");
         List<PlatformDtos.DependencyStatus> dependencies = health.components().stream()
-                .filter(component -> "POSTGRESQL".equals(component.name()) || "REDIS".equals(component.name()))
+                .filter(component -> reported.contains(component.name()))
+                .sorted(java.util.Comparator.comparingInt(
+                        component -> reported.indexOf(component.name())))
                 .map(component -> new PlatformDtos.DependencyStatus(component.name().toLowerCase(),
                         toUpDown(component.status())))
                 .toList();

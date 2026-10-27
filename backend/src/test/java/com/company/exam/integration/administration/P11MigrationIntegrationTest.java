@@ -85,6 +85,24 @@ class P11MigrationIntegrationTest extends AbstractIntegrationTest {
                 Integer.class);
         assertThat(adminPermissions).isEqualTo(6);
 
+        // V40 (2026-10-26): organization rules are authored by the installation owner only. The
+        // ADMIN role keeps VIEW — it can read what governs it — but must not be able to change a
+        // rule that expresses platform policy.
+        Integer adminRuleWrite = jdbcTemplate.queryForObject(
+                "select count(*) from role_permission rp join role r on r.id = rp.role_id "
+                        + "join permission p on p.id = rp.permission_id "
+                        + "where r.code = 'ADMIN' and rp.status = 'ACTIVE' "
+                        + "and p.code in ('BUSINESS_RULE_CREATE', 'BUSINESS_RULE_UPDATE')",
+                Integer.class);
+        assertThat(adminRuleWrite).as("ADMIN must not author business rules (V40, ADR-0052)").isZero();
+
+        Integer adminRuleView = jdbcTemplate.queryForObject(
+                "select count(*) from role_permission rp join role r on r.id = rp.role_id "
+                        + "join permission p on p.id = rp.permission_id "
+                        + "where r.code = 'ADMIN' and rp.status = 'ACTIVE' and p.code = 'BUSINESS_RULE_VIEW'",
+                Integer.class);
+        assertThat(adminRuleView).as("ADMIN keeps read access to the rules that govern it").isEqualTo(1);
+
         // P1 froze this invariant: ADMIN must not hold ADMIN_ROLE_ASSIGN (§18).
         Integer adminRoleAssign = jdbcTemplate.queryForObject(
                 "select count(*) from role_permission rp join role r on r.id = rp.role_id "
@@ -116,5 +134,31 @@ class P11MigrationIntegrationTest extends AbstractIntegrationTest {
                         + "or p.code = 'AUDIT_LOG_VIEW')",
                 Integer.class);
         assertThat(studentPermissions).isZero();
+    }
+
+    /**
+     * V39 (ADR-0052): the primary-administrator column exists, is nullable, and is unique per
+     * organization by construction rather than by convention.
+     */
+    @Test
+    void organizationHasANullablePrimaryAdministratorColumn() {
+        Integer present = jdbcTemplate.queryForObject(
+                "select count(*) from information_schema.columns "
+                        + "where table_name = 'organization' and column_name = 'primary_admin_user_id'",
+                Integer.class);
+        assertThat(present).as("organization.primary_admin_user_id should exist (V39)").isEqualTo(1);
+
+        String nullable = jdbcTemplate.queryForObject(
+                "select is_nullable from information_schema.columns "
+                        + "where table_name = 'organization' and column_name = 'primary_admin_user_id'",
+                String.class);
+        assertThat(nullable).as("no backfill: existing organizations keep a NULL primary").isEqualTo("YES");
+
+        // The FK is what makes 'at most one primary per organization' a schema property.
+        Integer fk = jdbcTemplate.queryForObject(
+                "select count(*) from information_schema.table_constraints "
+                        + "where table_name = 'organization' and constraint_name = 'fk_organization_primary_admin'",
+                Integer.class);
+        assertThat(fk).isEqualTo(1);
     }
 }

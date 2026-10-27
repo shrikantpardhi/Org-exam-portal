@@ -8,7 +8,6 @@ import {
   Info,
   KeyRound,
   LayoutDashboard,
-  List,
   Megaphone,
   Plug,
   ScrollText,
@@ -22,10 +21,19 @@ import {
 
 export interface ShellMenuItem {
   label: string;
-  href: string;
+  /**
+   * The destination. Optional because an entry can be listed before its route exists — such an
+   * entry is `disabled` and rendered as a non-link, so the sidebar can never offer a dead anchor.
+   */
+  href?: string;
   icon: LucideIcon;
   permission?: string;
+  /** Listed but not usable yet; rendered as a non-link with `note` as its tooltip. */
   disabled?: boolean;
+  /** Why a disabled entry is unavailable, shown as a tooltip and to assistive technology. */
+  note?: string;
+  /** Short status tag rendered beside the label, e.g. "V2". */
+  badge?: string;
 }
 
 export interface ShellMenuSection {
@@ -33,7 +41,13 @@ export interface ShellMenuSection {
   items: ShellMenuItem[];
 }
 
-/** SUPER_ADMIN sidebar ({@code docs/frontend/navigation.md}). */
+/**
+ * SUPER_ADMIN sidebar ({@code docs/frontend/navigation.md}).
+ *
+ * <p>The Lookups entry was removed: the lookup master data it points at is created by the seed
+ * migration and has no administrative workflow in V1.5, so the route existed while being unusable
+ * from this menu. The route itself is untouched.
+ */
 export const SUPER_ADMIN_MENU: ShellMenuSection[] = [
   {
     items: [
@@ -48,17 +62,28 @@ export const SUPER_ADMIN_MENU: ShellMenuSection[] = [
     items: [
       { label: "Roles", href: "/platform/seeds/roles", icon: KeyRound, permission: "PLATFORM_SYSTEM_VIEW" },
       { label: "Permissions", href: "/platform/seeds/permissions", icon: ShieldCheck, permission: "PLATFORM_SYSTEM_VIEW" },
-      { label: "Lookups", href: "/platform/seeds/lookups", icon: List, permission: "PLATFORM_SYSTEM_VIEW" },
     ],
   },
   {
     items: [
-      { label: "Multi-org", href: "/platform/multi-org", icon: Building2, permission: "PLATFORM_ORGANIZATION_VIEW", disabled: true },
+      {
+        label: "Multi-org",
+        icon: Building2,
+        permission: "PLATFORM_ORGANIZATION_VIEW",
+        disabled: true,
+        badge: "V2",
+        note: "Multi-organization management arrives in V2 (ADR-0033); V1.5 runs one business organization plus PLATFORM.",
+      },
     ],
   },
 ];
 
-/** ADMIN sidebar ({@code docs/frontend/navigation.md}). */
+/**
+ * ADMIN sidebar ({@code docs/frontend/navigation.md}).
+ *
+ * <p>The Lookups entry was removed for the same reason as its SUPER_ADMIN counterpart: V1.5 has no
+ * administrative lookup workflow. The route and the backing read are untouched.
+ */
 export const ADMIN_MENU: ShellMenuSection[] = [
   {
     items: [
@@ -68,7 +93,6 @@ export const ADMIN_MENU: ShellMenuSection[] = [
       { label: "Permissions", href: "/admin/permissions", icon: ShieldCheck, permission: "PERMISSION_VIEW" },
       { label: "Settings", href: "/admin/settings", icon: Settings, permission: "ORGANIZATION_SETTING_VIEW" },
       { label: "Business rules", href: "/admin/business-rules", icon: SlidersHorizontal, permission: "BUSINESS_RULE_VIEW" },
-      { label: "Lookups", href: "/admin/lookups", icon: List, permission: "LOOKUP_VIEW" },
       { label: "Analytics", href: "/analytics/organization", icon: BarChart3, permission: "ANALYTICS_VIEW" },
       { label: "Reports", href: "/admin/reports", icon: FileText, permission: "REPORT_EXECUTIVE_READ" },
       { label: "Audit", href: "/admin/audit", icon: ScrollText, permission: "AUDIT_LOG_VIEW" },

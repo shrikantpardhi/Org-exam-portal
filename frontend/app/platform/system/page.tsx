@@ -6,7 +6,7 @@ export default function SystemInfoPage() {
   return (
     <PlatformShell
       title="System info"
-      description="Version, build, migration and dependency health."
+      description="Versions and service status."
       permission="PLATFORM_SYSTEM_VIEW"
     >
       <SystemInfoScreen />

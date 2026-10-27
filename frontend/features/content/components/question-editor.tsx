@@ -13,7 +13,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { useLanguages } from "@/features/academic/hooks/use-academic";
 import { MathTextField } from "@/features/content/components/math-text-field";
 import { OptionsEditor, type AnswerModel } from "@/features/content/components/options-editor";
@@ -275,9 +275,19 @@ export function QuestionEditor() {
         </p>
       ) : null}
 
-      <Button type="submit" disabled={createQuestion.isPending}>
-        {createQuestion.isPending ? "Saving…" : "Create question"}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={createQuestion.isPending}>
+          {createQuestion.isPending ? "Saving…" : "Create question"}
+        </Button>
+        {/*
+          The editor is reached from /questions/new, but "back" is not an affordance the page offers —
+          the browser's own button is the only escape and users look for one in the form. A real link
+          back to the question list, so a deep-linked visit still lands somewhere useful.
+        */}
+        <ButtonLink variant="outline" href="/questions">
+          Cancel
+        </ButtonLink>
+      </div>
     </form>
   );
 }

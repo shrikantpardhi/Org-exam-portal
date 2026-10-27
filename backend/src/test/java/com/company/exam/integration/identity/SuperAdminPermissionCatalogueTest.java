@@ -37,6 +37,12 @@ class SuperAdminPermissionCatalogueTest extends AbstractIdentityIntegrationTest 
      * role authoring, the reserved-set bypass, and the recovery/view capabilities (Gate A A2/A2b/A4);
      * `V38` adds `LOOKUP_VIEW` so the read-only lookups seeds screen stops 403-ing (2026-10-26).
      *
+     * <p>`V40`/2026-10-26 moves business-rule authoring to the owner only: the three rule codes are
+     * granted here and withdrawn from ADMIN, because organization rules express platform policy and
+     * the organization administrator is their subject, not their author. `V41` adds the two
+     * administrator-management permissions behind ADR-0053. `V43` adds
+     * `PLATFORM_ADMIN_PRIMARY_ASSIGN` so the owner can transfer primacy (ADR-0054).
+     *
      * <p>The lookups grant is the same D-01 defect one screen later: the UI gated /platform/seeds/lookups
      * on PLATFORM_SYSTEM_VIEW while the API behind it required LOOKUP_VIEW. Write permissions for
      * lookups are deliberately still absent — the seeds screen is read-only.
@@ -49,6 +55,9 @@ class SuperAdminPermissionCatalogueTest extends AbstractIdentityIntegrationTest 
             "PLATFORM_ADMIN_VIEW", "PLATFORM_ADMIN_RECOVER",
             "ROLE_VIEW", "PERMISSION_VIEW", "LOOKUP_VIEW",
             "ROLE_CREATE", "ROLE_UPDATE", "ROLE_PERMISSION_ASSIGN",
+            "BUSINESS_RULE_VIEW", "BUSINESS_RULE_CREATE", "BUSINESS_RULE_UPDATE",
+            "PLATFORM_ADMIN_ROLE_UPDATE", "PLATFORM_ADMIN_DEACTIVATE",
+            "PLATFORM_ADMIN_PRIMARY_ASSIGN",
             "UNBOUNDED_PERMISSION_ASSIGN");
 
     private Set<String> superAdminPermissions() {
@@ -73,7 +82,11 @@ class SuperAdminPermissionCatalogueTest extends AbstractIdentityIntegrationTest 
                 .filter(code -> code.startsWith("PLATFORM_"))
                 .toList();
 
-        assertThat(platformCodes).hasSize(10);
+        // V29 seeded eight; V34 added PLATFORM_ADMIN_VIEW and PLATFORM_ADMIN_RECOVER; V41 added
+        // PLATFORM_ADMIN_ROLE_UPDATE and PLATFORM_ADMIN_DEACTIVATE (ADR-0053). This count is the
+        // second half of the forcing function: adding a platform permission without granting it to
+        // the owner fails here, and adding one with a grant still has to be counted.
+        assertThat(platformCodes).hasSize(13);
         assertThat(superAdminPermissions()).containsAll(platformCodes);
     }
 

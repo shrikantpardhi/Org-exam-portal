@@ -2847,16 +2847,37 @@ Permission: `PLATFORM_ORGANIZATION_CREATE`.
 Request.
 
 ```json
-{ "code": "ACME", "name": "Acme", "description": "…" }
+{
+  "code": "ACME",
+  "name": "Acme Institute",
+  "description": "…",
+  "addressLine1": "12 Main Street",
+  "addressLine2": "Suite 4",
+  "city": "Pune",
+  "stateRegion": "Maharashtra",
+  "postalCode": "411001",
+  "country": "India",
+  "contactEmail": "office@acme.test",
+  "contactPhone": "+91-20-1234",
+  "websiteUrl": "https://acme.test",
+  "logoUrl": "https://acme.test/logo.png"
+}
 ```
+
+**Required:** `code`, `name` only. Every profile field is optional and mirrors the nullable columns
+added by `V37` (ADR-0051); bounds match the column widths (`addressLine1`/`addressLine2` 200, `city`/
+`stateRegion`/`country` 100, `postalCode` 20, `contactEmail` 254 and a valid address, `contactPhone` 32,
+`websiteUrl`/`logoUrl` 500). An absent or blank field is stored as `NULL` — the two are not distinct
+states (ADR-0056).
 
 Response.
 
 ```json
-{ "success": true, "message": "Organization created", "data": { "id": "<uuid>", "code": "ACME", "name": "Acme" } }
+{ "success": true, "message": "Organization created", "data": { "id": "<uuid>", "code": "ACME", "name": "Acme Institute", "status": "ACTIVE" } }
 ```
 
-Errors: `VALIDATION_ERROR` (400), `CONFLICT` (409 duplicate code, PLATFORM excluded).
+Errors: `VALIDATION_ERROR` (400, including an invalid `contactEmail` or an over-long field),
+`CONFLICT` (409 duplicate code, PLATFORM excluded).
 
 Emits `ORGANIZATION_CREATE`.
 
@@ -2902,20 +2923,36 @@ Permission: `PLATFORM_ADMIN_CREATE`.
 Request.
 
 ```json
-{ "firstName": "Jane", "lastName": "Doe", "email": "jane@acme.example", "mobile": "…" }
+{ "firstName": "Jane", "lastName": "Doe", "email": "jane@acme.example", "mobile": "…", "makePrimary": true }
 ```
+
+`makePrimary` is optional (default `false`). It designates the created account as the
+organization's primary administrator in the same call — the "assign a primary while adding an
+administrator" requirement from ADR-0054. When `false`, an existing primary is kept, and the
+created account is designated only if the organization has none.
 
 Response.
 
 ```json
-{ "success": true, "message": "Administrator created", "data": { "userId": "<uuid>", "email": "jane@acme.example", "invitationSentAt": "2026-10-24T10:00:00Z" } }
+{ "success": true, "message": "Administrator created", "data": { "userId": "<uuid>", "email": "jane@acme.example", "invitationSentAt": "2026-10-24T10:00:00Z", "isPrimary": true } }
 ```
 
-Errors: `VALIDATION_ERROR` (400), `CONFLICT` (409 duplicate email/mobile, or
-`MAX_ADMINS_PER_ORG` cap reached), `NOT_FOUND` (404 organization).
+`isPrimary` reports what the server actually decided, so the client need not infer it from the
+request it sent.
+
+Errors: `VALIDATION_ERROR` (400), `AUTHORIZATION_ERROR` (403 `makePrimary` is true and the caller
+does not hold `PLATFORM_ADMIN_PRIMARY_ASSIGN` — choosing the primary is separately gated by ADR-0054),
+`CONFLICT` (409 duplicate email/mobile, or `MAX_ADMINS_PER_ORG` cap reached), `NOT_FOUND` (404
+organization).
 
 Sets `must_change_password = true`, generates a reset token, delivers it through
 `PasswordResetDelivery` (ADR-0034), emits `USER_CREATE` and `ADMIN_ASSIGN`.
+
+If the organization has no primary administrator yet, or `makePrimary` is true, this call also
+designates the created account as its primary administrator (ADR-0052, ADR-0054) and emits
+`PRIMARY_ADMIN_ASSIGN`. The implicit designation when no primary exists is deliberately *not*
+permission-gated: it is the only recovery path out of the fail-closed state in which an organization
+has a primary but nobody may edit roles.
 
 ### 72.6 Platform status
 
@@ -2983,6 +3020,252 @@ Stores credentials in `organization_setting.configuration` for the PLATFORM org
 V1.5 (GAP-099, GAP-108).
 
 Emits `PROVIDER_CONFIG_UPDATE`.
+### 72.10 List organization administrators
+
+> Amendment (ADR-0053, 2026-10-26). §72.5 defined creation only: an organization's administrator list
+> could not be read, its roles could not be corrected, and the ownership creation establishes could
+> not be revoked. §72.10-§72.13 close that gap.
+
+```http
+GET /api/v1/platform/organizations/{id}/admins?search=&sort=&page=0&size=10
+```
+
+Permission: `PLATFORM_ADMIN_VIEW`.
+
+Organization-scoped by construction: the caller cannot widen the range by supplying a different
+identifier. `search` filters email, first name and last name. Sortable fields: `email`,
+`firstName`, `lastName`, `status`, `createdOn`.
+
+Response.
+
+```json
+{ "success": true, "data": [ { "userId": "<uuid>", "firstName": "Jane", "lastName": "Doe", "email": "jane@acme.example", "status": "ACTIVE", "isPrimary": true, "createdAt": "2026-10-24T10:00:00Z", "roles": ["STUDENT"] } ], "pagination": { "page": 0, "size": 10, "totalElements": 1, "totalPages": 1 } }
+```
+
+`isPrimary` is reported by the server rather than inferred by the client, because the list is the
+screen an operator uses to decide who may edit roles. `roles` never repeats `ADMIN`.
+
+Errors: `NOT_FOUND` (404 organization, including the `PLATFORM` system organization).
+
+### 72.11 Update organization administrator roles
+
+```http
+PATCH /api/v1/platform/organizations/{id}/admins/{userId}/roles
+```
+
+Permission: `PLATFORM_ADMIN_ROLE_UPDATE`.
+
+Request. Replaces the non-`ADMIN` role set; an empty list is valid.
+
+```json
+{ "roles": ["STUDENT"] }
+```
+
+Response: the updated `AdminListEntry` (§72.10).
+
+Deliberately refused: `ADMIN` (administrator membership is governed by `MAX_ADMINS_PER_ORG` and the
+primary-administrator rule, and a second path to it would be a second unaudited route to privileged
+state) and `SUPER_ADMIN` (a platform-tier capability is never grantable from an organization
+screen). Both answer `CONFLICT` (409).
+
+Errors: `VALIDATION_ERROR` (400 missing/blank `roles`), `CONFLICT` (409 `ADMIN`/`SUPER_ADMIN`
+requested, or unknown role code), `NOT_FOUND` (404 organization, or `userId` is not an active
+administrator of that organization).
+
+### 72.12 Archive organization administrator
+
+```http
+DELETE /api/v1/platform/organizations/{id}/admins/{userId}
+```
+
+Permission: `PLATFORM_ADMIN_DEACTIVATE`.
+
+**Archives** the account: its status becomes `ARCHIVED`. Never deletes — the account owns audit
+history and may own content (§10-P1 retains user rows). Archived administrators remain visible in
+§72.10 with `?status=ARCHIVED` and can be restored by §72.15, which is what makes the operation
+history-preserving rather than a one-way retirement (ADR-0054).
+
+Three implementation details are part of the contract, because each is observable:
+
+1. The `user_role` ADMIN assignment is **left `ACTIVE`**. Restore must not require a role snapshot,
+   and the administrator cap excludes archived accounts, so a retained assignment occupies no slot.
+2. Live sessions are expired and the permission cache evicted. Authorization is decided from a
+   cached permission set and does not re-read account status per request, so without this an
+   archived administrator would retain access until token expiry.
+3. An archived account therefore resolves to **no effective permissions**, because
+   `findEffectivePermissionCodes` requires `user.status = ACTIVE`.
+
+Emits `ADMIN_ARCHIVE`.
+
+Errors: `CONFLICT` (409 the target is the primary administrator, is the last non-archived
+administrator, or is already archived), `NOT_FOUND` (404 organization, or `userId` is not an
+administrator of that organization).
+
+### 72.13 Cross-organization targets
+
+For §72.10-§72.15, a `userId` belonging to a different organization answers `NOT_FOUND`, never
+`FORBIDDEN`: a 403 would confirm that the identifier exists somewhere else, which is the
+cross-tenant disclosure these endpoints must not make.
+
+---
+
+
+### 72.14 Change the primary administrator
+
+```http
+PATCH /api/v1/platform/organizations/{id}/primary-admin
+```
+
+Permission: `PLATFORM_ADMIN_PRIMARY_ASSIGN`.
+
+Request.
+
+```json
+{ "userId": "<uuid>" }
+```
+
+Response: the updated `OrganizationDetail` (§72.4), including `primaryAdminUserId` and
+`primaryAdminEmail`.
+
+```json
+{ "success": true, "message": "Primary administrator updated", "data": { "id": "<uuid>", "primaryAdminUserId": "<uuid>", "primaryAdminEmail": "jane@acme.example", "…": "…" } }
+```
+
+A separate permission from `PLATFORM_ADMIN_ROLE_UPDATE` because the acts differ in strength: editing
+an administrator's roles changes what one account may do, while transferring primacy changes **who
+may edit everyone else's roles**. An installation may reasonably grant the first without the second.
+
+The primary administrator is the only account permitted to change other users' roles (ADR-0052), so
+this endpoint is the only way that authority moves after creation. Before it existed the designation
+was effectively permanent, which was recorded as GAP-197 and is closed by ADR-0054.
+
+Errors:
+
+- `VALIDATION_ERROR` (400) — `userId` missing.
+- `AUTHORIZATION_ERROR` (403) — caller lacks `PLATFORM_ADMIN_PRIMARY_ASSIGN`.
+- `NOT_FOUND` (404) — organization unknown, or `userId` is not an administrator of *that*
+  organization (§72.13: never `FORBIDDEN`, which would confirm the identifier exists elsewhere).
+- `CONFLICT` (409) — the target account is `ARCHIVED`. Designating an archived administrator would
+  point role-editing authority at an account that cannot log in, locking the organization out of its
+  own administration.
+
+Designating the account that is already primary is a successful no-op (`200`), not an error: the
+call is idempotent so a retry after a dropped response is safe. Emits `PRIMARY_ADMIN_TRANSFER` with
+the previous and new email in the remarks; that audit record is the history this endpoint exists to
+produce.
+
+### 72.15 Restore an archived administrator
+
+```http
+POST /api/v1/platform/organizations/{id}/admins/{userId}/restore
+```
+
+Permission: `PLATFORM_ADMIN_DEACTIVATE` (the archive capability governs its inverse).
+
+Response: the restored `AdminListEntry` (§72.10).
+
+```json
+{ "success": true, "message": "Administrator restored", "data": { "userId": "<uuid>", "email": "jane@acme.example", "status": "ACTIVE", "isPrimary": false, "roles": ["STUDENT"], "…": "…" } }
+```
+
+Sets the account status to `ACTIVE` and ensures the `ADMIN` assignment is `ACTIVE`, so the account
+is again an administrator of the organization, and evicts the permission cache so authority is
+recomputed on the next request. Non-`ADMIN` roles are left as they were when the account was
+archived and remain editable through §72.11 — the product decision (2026-10-27) was to restore the
+administrator and let roles be curated, not to replay a snapshot (ADR-0054).
+
+Errors:
+
+- `AUTHORIZATION_ERROR` (403) — caller lacks `PLATFORM_ADMIN_DEACTIVATE`.
+- `NOT_FOUND` (404) — organization unknown, or `userId` is not an administrator of that
+  organization (§72.13).
+- `CONFLICT` (409) — the account is **not** archived. Restore is a recovery action; running it on a
+  live account would silently hide an operator mistake.
+
+Emits `ADMIN_RESTORE`.
+### 72.16 Change business organization status
+
+```http
+PATCH /api/v1/platform/organizations/{id}/status
+```
+
+Permission: `PLATFORM_ORGANIZATION_UPDATE`.
+
+Request.
+
+```json
+{ "status": "INACTIVE" }
+```
+
+Response: the updated `OrganizationDetail` (§72.4).
+
+```json
+{ "success": true, "message": "Organization status updated", "data": { "id": "<uuid>", "code": "ACME", "name": "Acme", "status": "INACTIVE", "…": "…" } }
+```
+
+This is not a cosmetic label: `AuthenticationService` **refuses a login whose organization is not
+`ACTIVE`**, so `INACTIVE` suspends every user in the tenant. That consequence is the reason the
+endpoint exists and the reason the confirmation UI states it before applying.
+
+Accepted values are **`ACTIVE` and `INACTIVE` only**. `ARCHIVED` is refused: the login gate collapses
+every non-`ACTIVE` status to the same outcome, so a third value would add vocabulary without adding
+behaviour, and a state the product cannot explain is worse than two it can (ADR-0055).
+
+Errors:
+
+- `VALIDATION_ERROR` (400) — `status` missing, or not `ACTIVE`/`INACTIVE`.
+- `AUTHORIZATION_ERROR` (403) — caller lacks `PLATFORM_ORGANIZATION_UPDATE`.
+- `NOT_FOUND` (404) — unknown organization, or the `PLATFORM` tenant. `PLATFORM` is the installation
+  itself; suspending it would lock out every operator, including the caller who made the request.
+
+Re-applying the current status is a successful no-op (`200`) that emits **no** audit row: reporting a
+change that did not happen would put a false entry in the trail. A real change emits
+`ORGANIZATION_STATUS_CHANGE` carrying the previous and new value.
+
+This endpoint finally uses `PLATFORM_ORGANIZATION_UPDATE`, which `V29` seeded and granted while no
+endpoint consumed it — an authority the permission catalogue advertised and the API did not offer.
+
+### 72.17 Correct a business organization's profile
+
+```http
+PATCH /api/v1/platform/organizations/{id}
+```
+
+Permission: `PLATFORM_ORGANIZATION_UPDATE`.
+
+Request — any subset of the profile fields from §72.2, with the same bounds.
+
+```json
+{ "name": "Acme Institute", "city": "Mumbai", "contactEmail": "new@acme.test" }
+```
+
+Response: the updated `OrganizationDetail` (§72.4).
+
+```json
+{ "success": true, "message": "Organization updated", "data": { "id": "<uuid>", "code": "ACME", "name": "Acme Institute", "status": "ACTIVE", "…": "…" } }
+```
+
+Semantics, each observable:
+
+1. **An omitted field is left unchanged.** This is a patch, not a replace: a request naming only
+   `contactPhone` does not clear an address it never mentioned.
+2. **An empty string clears the field** (`NULL`). That is how an operator removes a stale phone
+   number, and it is the only way to distinguish "clear it" from "do not touch it".
+3. **`name` cannot be blank.** It is `NOT NULL` in the schema, so a whitespace-only `name` is
+   `VALIDATION_ERROR` (400). Omitting `name` leaves it unchanged.
+4. **`code`, `status` and the primary administrator cannot be changed here.** Each already has its
+   own endpoint with its own permission and audit action (§72.16 for status, §72.14 for primacy);
+   a profile edit that silently changed one of them would be an authority bypass wearing a form.
+   Sending such a field is `VALIDATION_ERROR` (400) rather than a silent partial apply, because the
+   application sets `fail-on-unknown-properties: true` — an operator is told the field is wrong
+   instead of believing it took effect.
+
+Errors: `VALIDATION_ERROR` (400 — unknown field, invalid `contactEmail`, over-long value, blank
+`name`); `AUTHORIZATION_ERROR` (403); `NOT_FOUND` (404 — unknown organization or the `PLATFORM`
+tenant).
+
+Emits `ORGANIZATION_UPDATE`.
+
 ---
 
 ## 73. Amendment — ADMIN org-scoped config and public contact endpoints (ADR-0037)

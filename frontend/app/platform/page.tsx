@@ -6,7 +6,6 @@ export default function PlatformDashboardPage() {
   return (
     <PlatformShell
       title="Dashboard"
-      description="Platform-wide counts, system summary, and the first-organization prompt."
       permission="PLATFORM_SYSTEM_VIEW"
     >
       <DashboardScreen />

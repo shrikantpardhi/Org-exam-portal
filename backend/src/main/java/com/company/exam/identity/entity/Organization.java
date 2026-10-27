@@ -4,6 +4,7 @@ import com.company.exam.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import java.util.UUID;
 
 /**
  * The organization operating this deployment ({@code specs/10-P1-Identity-V1.5.md §7}).
@@ -56,6 +57,19 @@ public class Organization extends BaseEntity {
     /** A URL to a stored asset; the organisation row never carries binary image data. */
     @Column(name = "logo_url", length = 500)
     private String logoUrl;
+
+    /**
+     * The administrator permitted to change other users' roles in this organization (ADR-0052).
+     *
+     * <p>Deliberately a plain column rather than an association: this entity is read on hot paths
+     * (session bootstrap, guard checks) and loading a {@code User} for each read would be waste. The
+     * service layer resolves the primary's email only where a screen actually displays it.
+     *
+     * <p>{@code null} means no primary is designated, and role editing inside the organization is
+     * then refused — the fail-closed rule from ADR-0052.
+     */
+    @Column(name = "primary_admin_user_id")
+    private UUID primaryAdminUserId;
 
     public String getCode() {
         return code;
@@ -159,5 +173,13 @@ public class Organization extends BaseEntity {
 
     public void setLogoUrl(String logoUrl) {
         this.logoUrl = logoUrl;
+    }
+
+    public UUID getPrimaryAdminUserId() {
+        return primaryAdminUserId;
+    }
+
+    public void setPrimaryAdminUserId(UUID primaryAdminUserId) {
+        this.primaryAdminUserId = primaryAdminUserId;
     }
 }

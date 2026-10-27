@@ -10,8 +10,8 @@ export const adminKeys = {
   user: (userId: string) => ["administration", "user", userId] as const,
   roles: (sort?: string) => ["administration", "roles", sort ?? "DEFAULT"] as const,
   rolePermissions: (roleId: string) => ["administration", "roles", roleId, "permissions"] as const,
-  permissions: (page: number, sort?: string) =>
-    ["administration", "permissions", page, sort ?? "DEFAULT"] as const,
+  permissions: (page: number, size: number, sort?: string) =>
+    ["administration", "permissions", page, size, sort ?? "DEFAULT"] as const,
   settings: () => ["administration", "settings"] as const,
   organizationProfile: () => ["administration", "organization-profile"] as const,
   businessRules: (status?: string) => ["administration", "business-rules", status ?? "ALL"] as const,

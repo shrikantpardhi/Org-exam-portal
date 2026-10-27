@@ -110,7 +110,23 @@ export async function listRolePermissions(roleId: string): Promise<PermissionSum
   return z.array(permissionSummarySchema).parse(result.data);
 }
 
-export function listPermissions(page = 0, size = 200, sort?: string): Promise<AdminPage<PermissionSummary>> {
+/**
+ * The permission catalogue ({@code GET /permissions}).
+ *
+ * <p>The catalogue is a fixed, finite list (~170 rows after the V1.5 permission work) that an operator
+ * needs to scan and search. It is **not** an unbounded business list, so asking for a real page size
+ * with server-side paging is honest: the count below the grid is the size of the catalogue, not the
+ * size of one screenful.
+ *
+ * <p>`size` is the operator's chosen page size (10/50/100), not a hard-coded 200. The old default
+ * fetched one enormous page and filtered it in the browser, which showed "1 row" pagination and made
+ * the search box quietly incomplete whenever the catalogue grew past the fetch.
+ */
+export function listPermissions(
+  page = 0,
+  size = 50,
+  sort?: string,
+): Promise<AdminPage<PermissionSummary>> {
   return loadPage("/permissions", permissionSummarySchema, {
     ...(sort ? { sort } : {}),
     page,

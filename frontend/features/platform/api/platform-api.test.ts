@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  changeOrganizationStatus,
   createOrganization,
   createOrganizationAdmin,
   getOrganization,
@@ -8,19 +9,22 @@ import {
   getPlatformSystem,
   getProviders,
   listOrganizations,
+  updateOrganization,
 } from "@/features/platform/api/platform-api";
-import { apiGet, apiPost } from "@/lib/api-client";
+import { apiGet, apiPatch, apiPost } from "@/lib/api-client";
 
 vi.mock("@/lib/api-client", () => ({
   apiGet: vi.fn(),
   apiPost: vi.fn(),
   apiPut: vi.fn(),
+  apiPatch: vi.fn(),
   apiDelete: vi.fn(),
   setUnauthorizedHandler: vi.fn(),
 }));
 
 const apiGetMock = vi.mocked(apiGet);
 const apiPostMock = vi.mocked(apiPost);
+const apiPatchMock = vi.mocked(apiPatch);
 
 const organizationSummary = {
   id: "org-1",
@@ -39,6 +43,21 @@ describe("platform API", () => {
   beforeEach(() => {
     apiGetMock.mockReset();
     apiPostMock.mockReset();
+    apiPatchMock.mockReset();
+  });
+
+  it("changes an organization's status through the frozen route and returns the updated detail", async () => {
+    apiPatchMock.mockResolvedValue({
+      data: { ...organizationSummary, status: "INACTIVE", adminCount: 0, userCount: 0 },
+      message: "ok",
+    });
+
+    const updated = await changeOrganizationStatus("org-1", "INACTIVE");
+
+    expect(apiPatchMock.mock.calls[0]![0]).toBe("/platform/organizations/org-1/status");
+    expect(apiPatchMock.mock.calls[0]![1]).toEqual({ status: "INACTIVE" });
+    // The status the server recorded, not the status that was requested.
+    expect(updated.status).toBe("INACTIVE");
   });
 
   it("lists organizations through the frozen route with server paging", async () => {
@@ -180,4 +199,40 @@ describe("platform API", () => {
     expect(system.dependencies).toHaveLength(1);
     expect(system.dependencies[0]!.status).toBe("UP");
   });
+
+  it("corrects an organization profile through the id-scoped PATCH route", async () => {
+    apiPatchMock.mockResolvedValue({
+      data: {
+        ...organizationSummary,
+        name: "Acme renamed",
+        city: "Mysuru",
+        contactPhone: null,
+        adminCount: 1,
+        userCount: 12,
+      },
+      message: "ok",
+    });
+
+    const updated = await updateOrganization("org-1", { name: "Acme renamed", city: "Mysuru" });
+
+    expect(apiPatchMock.mock.calls[0]![0]).toBe("/platform/organizations/org-1");
+    // Only the changed fields travel: an omitted field is left alone by the server, and an empty
+    // string is what clears one. Sending the whole form would rewrite every untouched column.
+    expect(apiPatchMock.mock.calls[0]![1]).toEqual({ name: "Acme renamed", city: "Mysuru" });
+    expect(updated.city).toBe("Mysuru");
+    // The refreshed detail is the server's answer, not the request echoed back.
+    expect(updated.contactPhone).toBeNull();
+  });
+
+  it("sends an empty string so the server clears a profile field", async () => {
+    apiPatchMock.mockResolvedValue({
+      data: { ...organizationSummary, contactPhone: null, adminCount: 0, userCount: 0 },
+      message: "ok",
+    });
+
+    await updateOrganization("org-1", { contactPhone: "" });
+
+    expect(apiPatchMock.mock.calls[0]![1]).toEqual({ contactPhone: "" });
+  });
+
 });

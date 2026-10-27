@@ -118,9 +118,14 @@ class IdentityRoleApiIntegrationTest extends AbstractIdentityIntegrationTest {
                         .contentType(JSON).content(rolesBody("ADMIN")))
                 .andExpect(status().isForbidden());
 
-        // With the permission but the DEFAULT org already has an ADMIN: the one-ADMIN-per-org cap
-        // (ADR-0032 C3) rejects the grant instead of creating a second administrator.
+        // With the permission, the DEFAULT org is filled to the cap before the grant is refused. The cap
+        // was raised from 1 to 5 by V42/ADR-0054 so an organization can hold several administrators with
+        // one designated primary; the guard itself is unchanged, so this pins that it still fires at the
+        // boundary rather than being deleted.
         String assignerToken = tokenFor(anAdminAssigner());
+        for (int index = 0; index < 5; index++) {
+            createUser(syntheticEmail("cap-fill-" + index), PASSWORD, "ADMIN");
+        }
         mockMvc.perform(put("/api/v1/users/" + target.getId()).header(AUTHORIZATION, bearer(assignerToken))
                         .contentType(JSON).content(rolesBody("ADMIN")))
                 .andExpect(status().isConflict())

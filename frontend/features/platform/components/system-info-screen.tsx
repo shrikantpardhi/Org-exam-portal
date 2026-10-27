@@ -54,8 +54,8 @@ export function SystemInfoScreen() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Build and migration</CardTitle>
-          <CardDescription>Version and schema provenance.</CardDescription>
+          <CardTitle>Versions</CardTitle>
+          <CardDescription>Application, frontend and schema version.</CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
@@ -66,14 +66,6 @@ export function SystemInfoScreen() {
             <div className="flex justify-between gap-2">
               <dt className="text-muted-foreground">Frontend</dt>
               <dd>{info.frontendVersion ?? "—"}</dd>
-            </div>
-            <div className="flex justify-between gap-2">
-              <dt className="text-muted-foreground">Git commit</dt>
-              <dd>{info.gitCommit ?? "—"}</dd>
-            </div>
-            <div className="flex justify-between gap-2">
-              <dt className="text-muted-foreground">Build date</dt>
-              <dd>{info.buildDate ?? "—"}</dd>
             </div>
             <div className="flex justify-between gap-2">
               <dt className="text-muted-foreground">Migration</dt>
@@ -94,13 +86,28 @@ export function SystemInfoScreen() {
         </CardContent>
       </Card>
 
-      <DataTable
-        caption="Dependencies"
-        columns={columns}
-        rows={info.dependencies}
-        getRowKey={(dep) => dep.name}
-        emptyMessage="No dependency status reported."
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle>Service status</CardTitle>
+          <CardDescription>
+            Each backing service this installation depends on, as the server last observed it.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/*
+            Whatever the server reports is rendered, in the server's order: the list is a report of
+            dependencies, not a fixed form, so adding a dependency (redis, background workers) must
+            not need a client change.
+          */}
+          <DataTable
+            caption="Service status"
+            columns={columns}
+            rows={info.dependencies}
+            getRowKey={(dep) => dep.name}
+            emptyMessage="No dependency status reported."
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

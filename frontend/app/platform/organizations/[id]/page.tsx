@@ -11,7 +11,6 @@ export default async function OrganizationDetailPage({
   return (
     <PlatformShell
       title="Organization"
-      description="Business organization detail and ADMIN handover."
       permission="PLATFORM_ORGANIZATION_VIEW"
     >
       <OrganizationDetailScreen organizationId={id} />

@@ -52,7 +52,7 @@ export function SeedsRolesScreen() {
 export function SeedsPermissionsScreen() {
   const [page, setPage] = useState(0);
   const [sort, setSort] = useState<SortState | null>(null);
- const query = usePermissions(page, toSortParam(sort, "permissions"));
+ const query = usePermissions(page, 50, toSortParam(sort, "permissions"));
 
   const columns: DataTableColumn<PermissionSummary>[] = [
  {

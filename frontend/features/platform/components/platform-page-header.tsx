@@ -13,7 +13,10 @@ export function PlatformPageHeader({
   return (
     <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
       <div className="space-y-1">
-        <p className="text-sm text-muted-foreground">Platform</p>
+        {/*
+          No eyebrow line: the breadcrumb root above already says "Platform", so a second, static
+          "Platform" paragraph was the same word twice within an inch of page chrome.
+        */}
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
       </div>

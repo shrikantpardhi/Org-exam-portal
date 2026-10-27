@@ -51,7 +51,6 @@ export function DashboardScreen() {
     { label: "Audit events (24h)", value: dashboard.auditEventsLast24h },
     { label: "Business rules", value: dashboard.businessRules },
     { label: "Lookups", value: dashboard.lookups },
-    { label: "Active lookup values", value: dashboard.activeLookupValues },
   ];
 
   const generated = formatDateTime(dashboard.generatedOn);

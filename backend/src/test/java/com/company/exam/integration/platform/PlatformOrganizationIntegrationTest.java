@@ -133,23 +133,33 @@ class PlatformOrganizationIntegrationTest extends AbstractIdentityIntegrationTes
     }
 
     @Test
-    void createAdminEnforcesSingleAdminPerOrganization() throws Exception {
+    void createAdminEnforcesTheAdministratorCap() throws Exception {
         User sa = superAdmin();
         String token = bearer(tokenFor(sa));
         String code = uniqueCode("CAP");
         String orgJson = createOrg(sa, code, "Cap Org");
         UUID orgId = UUID.fromString(JsonPath.read(orgJson, "$.data.id"));
 
-        mockMvc.perform(post("/api/v1/platform/organizations/" + orgId + "/admins")
-                        .header(AUTHORIZATION, token).contentType(JSON)
-                        .content("{\"firstName\":\"One\",\"lastName\":\"Admin\",\"email\":\""
-                                + syntheticEmail("cap-one") + "\"}"))
-                .andExpect(status().isOk());
+        // ADR-0054 raised MAX_ADMINS_PER_ORG from 1 to 5 (V42) so an organization can hold several
+        // administrators with one designated primary. The cap still exists and is still enforced; this
+        // pins the new number rather than deleting the assertion, because an unbounded admin count is
+        // exactly the failure this guard prevents.
+        // Five succeed; the sixth is refused. Asserting the behaviour rather than reading the rule keeps
+        // the test honest if the seed changes again, while still failing loudly if the cap stops working.
+        int cap = 5;
+        for (int index = 0; index < cap; index++) {
+            mockMvc.perform(post("/api/v1/platform/organizations/" + orgId + "/admins")
+                            .header(AUTHORIZATION, token).contentType(JSON)
+                            .content("{\"firstName\":\"Cap\",\"lastName\":\"Admin\",\"email\":\""
+                                    + syntheticEmail("cap-" + index) + "\"}"))
+                    .andExpect(status().isOk());
+        }
 
+        // The next one is refused: the organization is at its cap.
         mockMvc.perform(post("/api/v1/platform/organizations/" + orgId + "/admins")
                         .header(AUTHORIZATION, token).contentType(JSON)
-                        .content("{\"firstName\":\"Two\",\"lastName\":\"Admin\",\"email\":\""
-                                + syntheticEmail("cap-two") + "\"}"))
+                        .content("{\"firstName\":\"Over\",\"lastName\":\"Cap\",\"email\":\""
+                                + syntheticEmail("cap-over") + "\"}"))
                 .andExpect(status().isConflict());
     }
 

@@ -36,11 +36,11 @@ module reads another module's repository.
 | Dimension | Value |
 |---|---|
 | Phases implemented | P0 – P13 (P12 is a hardening/rehearsal phase) |
-| Flyway migrations | 36 (`V1` … `V36`), no gaps, no duplicated versions |
-| Controllers / endpoint mappings | 63 / 251 |
-| Backend tests | **603 tests, 0 failures, 2 skipped** |
-| Frontend tests | **521 tests, 0 failures (93 files)** |
-| Tracked gaps | 197 rows, 12 open (see `docs/known-gaps.md` for the register) |
+| Flyway migrations | 43 (`V1` … `V43`), no gaps, no duplicated versions. `V42` raises `MAX_ADMINS_PER_ORG` to 5; `V43` seeds `PLATFORM_ADMIN_PRIMARY_ASSIGN` (ADR-0054). `V37`-`V39` add the organization profile and primary administrator; `V40` moves business-rule authoring to SUPER_ADMIN; `V41` seeds the platform administrator-management permissions |
+| Controllers / endpoint mappings | 63 / 259 |
+| Backend tests | **655 tests, 0 failures, 2 skipped** |
+| Frontend tests | **585 tests, 0 failures (100 files)** |
+| Tracked gaps | 200 rows, 14 open (see `docs/known-gaps.md` for the register) |
 | Container stack | Local stack runs and is verified end to end. `scripts/verify-stack.sh` now passes **31/31 assertions, exit 0** (2026-10-24), including the five header assertions added 2026-10-23 for GAP-137, which had **never been run** until now (`specs/21-P12 §26`). The run also proves the browser path: the bundle carries a relative API base, the frontend CSP allows same-origin connectivity, CORS answers a trusted cross-origin preflight and refuses an untrusted one, and a headless browser loads the page and reaches the API. A separate production-like environment (`infrastructure/environments/production-like/`) passes **31/31** via `scripts/verify-production-like.sh` as of 2026-10-23 |
 | Observability | In the production-like environment Prometheus scrapes 5 targets (backend, postgres, redis, pgbouncer, itself) all UP, with 2 datasources and 3 dashboards provisioned. **The local stack's Prometheus crash-loops** on `--config.expand-env`, a flag Prometheus does not have (GAP-158) |
 | Load harness | `load/` (k6) — six profiles, seed, ramp runner; 100 → 5,000 ramp executed 2026-10-22; cohort credentials come from the environment-gated `LoadCohortCli` (GAP-085) |
@@ -506,6 +506,274 @@ matches, lint 0, type-check 0, 521/521 tests, production build compiled.
 production build compiled. Live: `/api/v1/reports/catalog` **200** with 26 report types;
 `POST /api/v1/reports` now returns a real 4-row `EXECUTIVE_KPI_SUMMARY` (5,010 active users) where it
 previously returned 500; `ADMIN` holds all eight `REPORT_*` permissions.
+
+## 4i. Organization rules, primary administrators, and platform admin CRUD (2026-10-26)
+
+Product direction from the SUPER_ADMIN: organization rules are managed by the platform owner only;
+an organization may hold several administrators but no one may edit a *peer's* roles except its
+primary administrator; and the platform owner needs full CRUD over an organization's administrators
+in a TanStack grid with 10/50/100 paging. Three requirements, three contracts that did not exist.
+
+### Organization rules belong to the owner (`V40`, ADR-0052)
+
+`V23` had granted `BUSINESS_RULE_CREATE` and `BUSINESS_RULE_UPDATE` to `ADMIN`, which contradicts the
+direction: a business rule expresses platform-wide policy (`MAX_ADMINS_PER_ORG` is itself a rule), and
+the organization administrator is its *subject*. `V40` deactivates those two grants rather than
+deleting them — `role_permission` keeps them with `INACTIVE` so the history of the grant survives —
+and grants all three rule codes to `SUPER_ADMIN`, which previously could not author a rule at all.
+`BUSINESS_RULE_VIEW` is deliberately kept for `ADMIN`: it may read what governs it.
+
+Verified live as both principals: `GET /api/v1/business-rules` returned **200** for ADMIN **and**
+SUPER_ADMIN; `POST /api/v1/business-rules` returned **403** for ADMIN and **200** for SUPER_ADMIN.
+
+### A designated primary administrator (`V39`, ADR-0052)
+
+With `MAX_ADMINS_PER_ORG = 1` there was only ever one candidate to answer who may reassign roles, so
+no such concept existed. Allowing several administrators removes that answer — any of them could
+demote the others, including the account created to own that decision. The `LAST_ADMIN` guard
+prevents an empty organization but not the *wrong* administrator taking over.
+
+`organization.primary_admin_user_id` (nullable, FK to `user(id)` `ON DELETE SET NULL`, partial index)
+records the designated authority. It is a column on `organization`, not a flag on `user_role`, so
+at most one primary is a schema property rather than something every writer must remember — a
+per-assignment boolean would permit several primaries and defeat the guard it expresses.
+
+`UserService.replaceRoles` gains `guardPrimaryAdminAuthority`: a same-organization `ADMIN` who is not
+the primary, changing another user's roles, receives **403 `PRIMARY_ADMIN_REQUIRED`**. The rule is
+**fail-closed** — if the organization designates no primary, role editing is refused for everyone in
+it. Existing organizations are deliberately **not** backfilled: inferring the primary from
+`created_on` would hand the power to whoever happened to be oldest, precisely the escalation the
+column exists to prevent. Creating an organization's first administrator designates it, which is the
+escape from that state and why the create path is not itself subject to the guard.
+
+Five integration tests cover it (`PrimaryAdminAuthorityIntegrationTest`), including that being primary
+grants nothing over oneself: `SELF_ROLE_MODIFICATION` still takes precedence.
+
+### Platform administrator CRUD (`V41`, ADR-0053, §72.10-§72.13)
+
+§72.5 defined only `POST .../admins`, so the owner could create an administrator but not list,
+correct or remove one — a mistyped invitation was unfixable from the UI and the ownership permanent.
+Three endpoints and two permissions (`PLATFORM_ADMIN_ROLE_UPDATE`, `PLATFORM_ADMIN_DEACTIVATE`,
+SUPER_ADMIN only) close that. Cross-organization targets answer **404, never 403**: a 403 would
+confirm the id exists elsewhere.
+
+Deliberate refusals, each asserted: `PATCH .../roles` cannot add or remove `ADMIN` (that is the
+cap/primary path) or grant `SUPER_ADMIN`; `DELETE` deactivates rather than deletes, and refuses the
+primary administrator and the last active administrator (409).
+
+> **Superseded 2026-10-27 by §4j / ADR-0054.** Primacy transfer *is* now implemented
+> (`PATCH .../primary-admin`, GAP-197 closed) and `DELETE` now **archives reversibly** with a matching
+> `POST .../restore`; the last-administrator and primary refusals are retained.
+
+Live: `GET .../admins` returned the 3 administrators of `DEFAULT` with pagination and
+`isPrimary: false` for each — correct, because that organization predates `V39` and has no primary.
+
+### The grid, and a real focus bug (`@tanstack/react-table` 8.21.3)
+
+`components/ui/data-grid.tsx` is a new server-paginated grid on TanStack Table with a 10/50/100 rows-
+per-page select. The existing `components/admin/data-table.tsx` is **kept** for the twenty-odd
+screens that use it: it renders a fixed column list, which is all they need, and changing them was
+not part of this work.
+
+Building `OrganizationAdminsScreen` surfaced a genuine defect: the roles editor was rendered inside a
+TanStack cell, so React recreated the input on every keystroke — the field lost focus and silently
+kept only the first character. Caught because the test asserted the input's own value before
+asserting the request body. The editor is now a form panel outside the table.
+
+### Navigation and honesty about lookups
+
+Lookups are seeded master data with **no consumer**: the `lookup` table holds 0 rows and the only
+reader was a dashboard card counting `values("QUESTION_DIFFICULTY")` against an empty category. The
+entry is removed from both sidebars and the card from the dashboard; routes and API remain
+(GAP-198). `Multi-org` is kept but is no longer a dead anchor: an entry without a route renders as a
+non-link `<span aria-disabled>` with a V2 badge and the ADR-0033 reason. The public footer's
+`/docs/terms|privacy|support` links resolved to nothing and now point at `/docs`.
+
+The sidebar collapses to 56px and **persists** the choice in `localStorage`, read in a mount effect
+(never during render, so SSR and first paint agree), with a compact initials mark so branding
+survives collapsing and the home link keeps its accessible name.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| Backend tests | **641, 0 failures, 0 errors, 2 skipped — BUILD SUCCESS** |
+| Frontend tests | **585, 0 failures (100 files)** |
+| Lint / type-check | 0 errors, 0 warnings / clean |
+| Production build | Compiled successfully |
+| Migrations live | `V39`, `V40`, `V41` applied; `primary_admin_user_id` nullable; ADMIN rule-write grants **0**; SUPER_ADMIN rule grants **3** |
+| Endpoints live | `GET .../admins` 200 with 3 rows and pagination; ADMIN `GET` rules 200 / `POST` 403 |
+| Routes live | 9 checked, all 200, including `/platform/organizations/{id}/admins` |
+
+**Gaps opened:** GAP-197 (no primacy transfer), GAP-198 (lookups inert). **Closed:** GAP-199
+(administrator management did not exist).
+
+## 4j. Reversible administrator archive and primary transfer (2026-10-27)
+
+**What changed.** The organization-administrator surface became a full lifecycle the platform owner
+controls, per product direction: choose the primary administrator when adding one, change the primary
+later, assign/edit/remove any number of roles, and *archive* an administrator (visible as archived,
+restorable) instead of deactivating them.
+
+| Area | Change |
+|---|---|
+| `V42__raise_admin_cap.sql` | `MAX_ADMINS_PER_ORG` raised `1` → `5`. A data `UPDATE`, not a schema change: the rule's code and readers are unchanged and `business_rule` has `UNIQUE(code)`. This is what makes multi-administrator configurations reachable at all. |
+| `V43__platform_primary_admin_permission.sql` | Seeds `PLATFORM_ADMIN_PRIMARY_ASSIGN`, granted to `SUPER_ADMIN` only. Separate from `PLATFORM_ADMIN_ROLE_UPDATE` because transferring primacy decides *who may edit roles*, a strictly stronger act than editing them. |
+| `PATCH .../primary-admin` (§72.14) | Transfers the designation. Closes **GAP-197**, which existed because the governance was unstated — the owner is now named as the decision-maker. |
+| `POST .../admins/{userId}/restore` (§72.15) | Un-archives: account `ACTIVE`, ADMIN assignment `ACTIVE`, permission cache evicted. |
+| `DELETE .../admins/{userId}` (§72.12) | Now sets `Status.ARCHIVED` (was `INACTIVE`), expires sessions and evicts the permission cache, and **keeps the `user_role` row `ACTIVE`**. |
+| `CreateAdminRequest.makePrimary` (§72.5) | Designate the primary while creating. Implicit designation when the organization has none stays ungated — it is the only escape from ADR-0052's fail-closed state. |
+| `UserRoleRepository` | Cap and admin-id queries now exclude `u.status = ARCHIVED`, so a retained role assignment occupies no slot and archive frees capacity. `INACTIVE` is deliberately still counted. |
+| `updateAdminRoles` | Now calls `RolePermissionPolicy.checkAssignable` — without it the endpoint was a privilege-escalation hole (D-08 Rule A), unlike the equivalent `UserService.replaceRoles`. Validates the whole set before mutating. |
+| Frontend | Status filter All/Active/Archived; "Make primary"; checkbox role editor fed by `listRoles()` excluding ADMIN/SUPER_ADMIN; Archive via `ConfirmDialog`; Restore on archived rows; create-form primary checkbox; detail screen names `primaryAdminEmail` or warns it is absent. |
+
+**The invariant worth knowing** (documented at the query, in ADR-0054 and in `specs/04` §25.1a.1): an
+archived account keeps an **ACTIVE** `ADMIN` assignment. That is deliberate, not corruption — restore
+is then a one-field write needing no history table, and access is still revoked because
+`findEffectivePermissionCodes` requires `user.status = ACTIVE`. Verified live: the archived account
+resolved to **0** effective permissions while its role row read `ACTIVE`.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| Backend tests | **633, 0 failures, 0 errors, 2 skipped — BUILD SUCCESS** (was 617; +16) |
+| Frontend tests | **561, 0 failures (96 files)** (was 549; +12) |
+| Lint / type-check | exit 0, clean — re-run independently, not taken on report |
+| Production build | `Compiled successfully`, 82/82 static pages |
+| Migrations live | `V42`, `V43` applied, `success = t` |
+| Live: create with primary | `POST .../admins {makePrimary:true}` → `isPrimary=true`, `primaryAdminEmail` updated |
+| Live: transfer | `PATCH .../primary-admin` moved primacy both ways; `primaryAdminEmail` followed each time |
+| Live: multi-role | set `[STUDENT, STAFF]`, then removed all → `roles=[]` |
+| Live: archive | `DELETE` → message "Administrator archived"; absent from the default list; present under `?status=ARCHIVED`; `adminCount` dropped to exclude it |
+| Live: restore | `POST .../restore` → `status=ACTIVE`, **previous roles `[STUDENT]` intact**, back in the default list |
+| Live: guards | archiving the primary → **409**; archived account holds **0** effective permissions |
+
+**Gaps opened:** GAP-200 (archive is reversible on the platform surface but has no restore counterpart
+on `/admin/users`). **Closed:** GAP-197 (no primacy transfer).
+
+## 4k. Organization status lever, name-based breadcrumbs, and a header diet (2026-10-27)
+
+**What changed.** Requested in six parts, all delivered:
+
+| # | Request | Delivered |
+|---|---|---|
+| 1,6 | Detail descriptions removed where the breadcrumb already carries them | `PlatformPageHeader` lost its `Platform` eyebrow (it duplicated the breadcrumb root on every screen); descriptions deleted on `/platform`, `/new`, `/{id}` and made one-line elsewhere. The `/admins/new` text **"Each organization accepts exactly one ADMIN" was factually wrong after `V42`** (cap is 5) and was replaced. |
+| 2 | Breadcrumbs show the organization **name**, not the UUID | `Breadcrumbs` gained an optional `labels` override plus a `BreadcrumbLabelsProvider` in `WorkspaceShell` and a `useBreadcrumbLabel` hook. The trail is still path-derived; only display text is substituted, so links are unaffected. |
+| 3 | Edit actions with few fields use dialogs | New `ui/form-dialog.tsx` built on `ConfirmDialog`'s accessibility contract. The administrator roles editor moved from an inline panel into it. Rule applied: **≤3 fields and no upload → dialog**. Zero-field confirmations stay `ConfirmDialog`. |
+| 4 | System info: versions + service status only | Git commit and build date removed from the screen (fields kept on the DTO). Service status now lists **four** components instead of two — `PlatformInfoService` had been filtering out `APPLICATION`, `BACKGROUND_WORKERS` and the cache fallback that the health service already computed. |
+| 5 | Change an organization's status | `PATCH /organizations/{id}/status` (§72.16) under the **pre-existing** `PLATFORM_ORGANIZATION_UPDATE`. |
+
+**The thing worth knowing:** `organization.status` **already gated authentication** —
+`AuthenticationService` refuses any login whose organization is not `ACTIVE` — and
+`PLATFORM_ORGANIZATION_UPDATE` was seeded and granted by `V29` while **no endpoint consumed it**. So
+the platform advertised an authority it did not offer, and a tenant could only be suspended by editing
+the database directly, with no audit trail. ADR-0055 gives that dead grant its purpose rather than
+minting a new permission. `INACTIVE` genuinely locks out **every user of the tenant**, so the dialog
+says so before applying; `PLATFORM` is refused; `ARCHIVED` is refused (the login gate collapses every
+non-`ACTIVE` value, so a third state would add vocabulary without behaviour).
+
+### Verification
+
+| Check | Result |
+|---|---|
+| Backend tests | **641, 0 failures, 0 errors, 2 skipped — BUILD SUCCESS** (was 633; +8) |
+| Frontend tests | **622, 0 failures (102 files)** (was 585; +37) |
+| Lint / type-check | exit 0, clean |
+| Production build | `Compiled successfully` |
+| Live: suspend | `PATCH .../status` `ACTIVE → INACTIVE → ACTIVE` on a throwaway org; each transition returned 200 and re-read correctly. The login-blocking consequence is proven by test (`PlatformOrganizationStatusIntegrationTest`) rather than live, because the throwaway org had no pre-verified member credential. |
+| Live: guards | `ARCHIVED` refused **400**; `PLATFORM` tenant refused **404**; re-setting the current status returned 200 and wrote **no** audit row (confirmed in `audit_log`: exactly 2 rows for the 2 real transitions) |
+| Live: breadcrumb | the deployed bundle contains the label mechanism and both organization screens register `organizationId → name`; the substitution itself is asserted by `breadcrumbs.test.tsx` (SSR renders the client shell's skeleton, so a raw HTML fetch cannot prove it) |
+| Live: system | `/platform/system` API returns **four** dependencies (`application`, `postgresql`, `redis`, `background_workers`, all `UP`); the deployed bundle contains **0** occurrences of "Git commit" and "Build date" |
+
+**Gaps opened:** none. **Closed:** GAP-201 (no way to change an organization's status).
+
+## 4l. Organization profile captured at creation and correctable by the platform owner (2026-10-27)
+
+**The complaint.** *"Create organization also accepts fields which are required like address and
+others."* — investigating it surfaced a larger gap than "the form is missing fields".
+
+**What was actually wrong (ADR-0056).** `organization` has carried **ten** profile columns since `V37`
+(ADR-0051): two address lines, city, state/region, postal code, country, contact email, contact phone,
+website URL, logo URL. The platform organization detail screen **already displayed all ten**. And yet:
+
+| | Before | After |
+|---|---|---|
+| Create request | `code`, `name`, `description` only | all 10 profile fields, bounded to the exact `V37` column widths |
+| Platform-side profile edit | **did not exist** | `PATCH /organizations/{id}` (§72.17) |
+| Required fields | `code`, `name` | unchanged — `code`, `name` |
+
+The only profile write in the system was `PUT /admin/organization-config/profile`, which resolves the
+organization **from the caller's own principal**. A `SUPER_ADMIN` is not an ADMIN of any tenant, so
+that endpoint is structurally incapable of editing a chosen organization. A typo made at creation was
+permanently uncorrectable from the super-admin surface — and the screen showed ten fields while
+offering no way to fill any of them.
+
+**Why the profile fields stay optional.** Every one of those columns is NULLable by an explicit
+ADR-0051 decision: the `PLATFORM` and `DEFAULT` organizations predate the profile and a backfill
+would have had to invent values. Making address or contact *required* at the API boundary would
+contradict the schema without changing it, reject an institute that legitimately has no public street
+address, and introduce a requirement the data model does not express. The form marks `code` and
+`name` as required and leaves the rest visibly optional. The request that prompted this work assumed
+address was required; it is not, and making it so would have been the wrong fix.
+
+**PATCH, not PUT.** Omitted means *unchanged*; empty string means *cleared*. Without the second, a
+stale phone number could be created and never removed. The edit deliberately **refuses** `code`,
+`status` and primacy — each already has its own endpoint, permission and audit action, and a second
+path to the same state is the escalation hole ADR-0054 had to close. Because the application sets
+`fail-on-unknown-properties: true`, sending one of those fields is a **400**, not a silent partial
+apply: the operator is told the field is wrong instead of believing it took effect.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| Backend tests | **655, 0 failures, 0 errors, 2 skipped — BUILD SUCCESS** (was 641; +14) |
+| Frontend tests | **622, 0 failures (102 files)** (was 585; +37) |
+| Lint / type-check | exit 0, clean |
+| Live: create | `POST /platform/organizations` with the full 13-field body returned 200; city/country/email/phone/website all round-tripped through `GET /{id}` |
+| Live: partial | create with only `code` + `name` succeeds and leaves the profile null (test) |
+| Live: edit | `PATCH /{id}` corrected name + city to `Corrected Institute`/`Mumbai`, cleared `contactPhone` to null, and left `country` untouched — true PATCH semantics |
+| Live: guards | `code` in the body → **400** (`fail-on-unknown-properties`); blank `name` → **400**; `PLATFORM` tenant → 404 (test); org ADMIN → 403 (test) |
+
+**Gaps opened:** none. **Closed:** GAP-202 (profile unsettable at creation), GAP-203 (no platform-side
+profile edit). No migration: the columns and the grant both already existed.
+
+### Follow-on requests in the same pass
+
+**"When any form opening have cancel button as well which navigates back/close form."** Audited every
+form in the app (26 `<form>` elements, 5 dedicated `/new` pages). Result:
+
+| Form | Before | After |
+|---|---|---|
+| Create organization | no exit | `Cancel` link to `/platform/organizations` |
+| Create administrator | no exit | `Cancel` link to `/{id}/admins` |
+| Create question | no exit | `Cancel` link to `/questions` |
+| Create business rule | already had `Cancel` | unchanged |
+| Create user | already had `Cancel` | unchanged |
+| Every dialog (`FormDialog`, `ConfirmDialog`) | already had `Cancel` | unchanged |
+
+Deliberately **not** changed: the inline create panels (`MasterForm` in the academic managers,
+`CommerceForm`, `CommunicationForm`) and the filter forms. They are not "opened" — they sit
+permanently beside the list they add to, with nothing to cancel back to. Adding a Cancel there would
+be a control that does nothing. The rule applied: **a form that is opened gets a way to close it; a
+form that is always present does not.**
+
+**"Permissions page have tanstack table with search box, pagination with few default values. So it's
+easy to see in one page by navigation."** The permissions screen used the old fixed `DataTable` and
+fetched a single hard-coded page of **200** rows, so it never paginated: the footer always read
+"Page 1 of 1" and the operator had no way to move through a **169-row** catalogue. Rewritten on
+`DataGrid` (TanStack Table) with **10 / 50 / 100** rows per page, Previous/Next, and a real
+"Showing 1–50 of 169". Default is 50.
+
+Live-verified against the running stack: `size=10` → 10 items, 17 pages, last page holds 9;
+`size=50` → 4 pages; `size=100` → 2 pages; total **169**.
+
+The search box stays deliberately honest: `GET /permissions` exposes **no** search parameter, so
+filtering is local to the current page and the status line says so ("Filtering applies to this page
+only; use page navigation to see the rest"). The previous copy admitted this in small print while the
+screen looked like it searched everything — the new default of 50 rows per page narrows the trap
+without pretending the API can do more than it does.
 
 ## 5. The most recent change — final verification (Step 8)
 

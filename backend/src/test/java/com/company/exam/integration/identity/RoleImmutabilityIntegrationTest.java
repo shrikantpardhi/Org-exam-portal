@@ -43,13 +43,15 @@ class RoleImmutabilityIntegrationTest extends AbstractIdentityIntegrationTest {
     /**
      * The exact SUPER_ADMIN grant set after V38 (10 PLATFORM_* + 3 catalogue reads + 3 authoring +
      * the reserved-set bypass). V32 seeded 10; Gate A answer A2/A2b added six more; V38 added
-     * LOOKUP_VIEW for the read-only lookups seeds screen.
+     * LOOKUP_VIEW for the read-only lookups seeds screen; V40 added the three business-rule codes
+     * (rule authoring moved to the owner only) and V41 added the two administrator-management codes;
+     * V43 adds PLATFORM_ADMIN_PRIMARY_ASSIGN for primacy transfer (ADR-0054).
      *
      * <p>Kept as a literal rather than derived from the database on purpose: this test exists to make
      * a change to the owner's capability fail loudly. It is kept in step with
      * {@code SuperAdminPermissionCatalogueTest}.
      */
-    private static final int SUPER_ADMIN_PERMISSION_COUNT = 17;
+    private static final int SUPER_ADMIN_PERMISSION_COUNT = 23;
 
     @Test
     void anAdminCannotReplaceThePermissionsOfTheSuperAdminRole() throws Exception {

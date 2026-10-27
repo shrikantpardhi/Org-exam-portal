@@ -515,13 +515,23 @@ P13 Broader Reporting and Operational Reporting:
 
 ## Latest verified result
 
-- **Backend:** 603 tests, 0 failures, 0 errors, 2 skipped — `BUILD SUCCESS`
-- **Frontend:** 521 tests, 0 failures (93 files); lint and type-check clean; production build succeeds
-  (permission model hardening, tasks 1-11: 47 tests added across findings D-01, D-02, D-03, D-04/D-09,
-  D-05, D-07, D-08, D-10, D-11 and D-12)
-  (`mvnw.cmd clean verify`, `JAVA_HOME=C:\java\jdk-25.0.4.1`, compiled with `--release 21`).
-- **Frontend:** lint clean, 86 test files / 487 tests passing (Step 5 platform + Step 6 user-management + Step 7 docs tests + the GAP-171 route-existence guard), `next build` succeeds and emits the public routes (`/`, `/login/{student,organization,admin}`, `/change-password`, `/docs` + `/docs/[slug]`), the authenticated shells (`/platform`, `/admin/{dashboard,users,roles,permissions,settings,business-rules,lookups,audit,system-health}`), and the analytics routes (`/analytics`, `/analytics/student`, `/analytics/organization`, `/analytics/assessments/[id]`, `/analytics/questions/[id]`, `/analytics/topics/[id]`) and the results routes (`/results`, `/results/[id]`, `/results/[id]/scorecard`, `/attempts/[id]/result`) and the commerce routes (`/student/store`, `/student/packages/[id]`, `/student/checkout`, `/student/purchases`, `/student/purchases/[id]`, `/student/access`, `/finance/{purchases,payments,refunds,coupons,plans}`, `/staff/access-grants`, `/admin/commerce`) and the communication routes (`/student/notifications`, `/student/announcements`, `/admin/communication`, `/admin/communication/templates`, `/admin/communication/templates/[id]`, `/admin/communication/templates/[id]/preview`, `/admin/communication/announcements`, `/admin/communication/announcements/[id]`) and the administration routes (`/admin`, `/admin/{dashboard,users,students,roles,permissions,settings,business-rules,lookups,audit,system-health}`) and the student home (`/student`, GAP-171).
-- **Schema:** 36 Flyway migrations `V1`–`V36` apply cleanly with no numbering gaps. `V32` grants
+- **Backend:** 655 tests, 0 failures, 0 errors, 2 skipped — `BUILD SUCCESS` (120 surefire classes).
+  Previously 641; **+14** from `PlatformOrganizationProfileIntegrationTest` (ADR-0056).
+  (permission model hardening, tasks 1-11, contributed 47 tests across D-01, D-02, D-03, D-04/D-09,
+  D-05, D-07, D-08, D-10, D-11 and D-12.)
+  (`mvnw.cmd -o test`, `JAVA_HOME=C:\java\jdk-25.0.4.1`, compiled with `--release 21`).
+- **Frontend:** 622 tests, 0 failures (102 files); lint and type-check clean; production build succeeds
+  (`Compiled successfully`, 82/82 static pages). Previously 585 / 100 files; **+37** across
+  `organization-form`, `organization-profile-fields`, `permissions-screen` (new TanStack grid),
+  `organization-detail-screen` and the platform schema/API suites;
+  `form-dialog`, `breadcrumbs`, `organization-detail-screen`, `system-info-screen` and the extended
+  administrators screen (ADR-0055 and the platform information-architecture pass).
+- **Frontend (historical, Step 5-7 baseline):** lint clean, 86 test files / 487 tests passing (Step 5 platform + Step 6 user-management + Step 7 docs tests + the GAP-171 route-existence guard), `next build` succeeds and emits the public routes (`/`, `/login/{student,organization,admin}`, `/change-password`, `/docs` + `/docs/[slug]`), the authenticated shells (`/platform`, `/admin/{dashboard,users,roles,permissions,settings,business-rules,lookups,audit,system-health}`), and the analytics routes (`/analytics`, `/analytics/student`, `/analytics/organization`, `/analytics/assessments/[id]`, `/analytics/questions/[id]`, `/analytics/topics/[id]`) and the results routes (`/results`, `/results/[id]`, `/results/[id]/scorecard`, `/attempts/[id]/result`) and the commerce routes (`/student/store`, `/student/packages/[id]`, `/student/checkout`, `/student/purchases`, `/student/purchases/[id]`, `/student/access`, `/finance/{purchases,payments,refunds,coupons,plans}`, `/staff/access-grants`, `/admin/commerce`) and the communication routes (`/student/notifications`, `/student/announcements`, `/admin/communication`, `/admin/communication/templates`, `/admin/communication/templates/[id]`, `/admin/communication/templates/[id]/preview`, `/admin/communication/announcements`, `/admin/communication/announcements/[id]`) and the administration routes (`/admin`, `/admin/{dashboard,users,students,roles,permissions,settings,business-rules,lookups,audit,system-health}`) and the student home (`/student`, GAP-171).
+- **Schema:** **43 Flyway migrations `V1`–`V43`** apply cleanly with no numbering gaps (`V42` raises the
+  per-organization administrator cap to 5; `V43` seeds `PLATFORM_ADMIN_PRIMARY_ASSIGN`. Both are
+  data-only — no table and no column, per ADR-0054). No migration accompanies ADR-0055: the status
+  lever reuses the pre-existing `PLATFORM_ORGANIZATION_UPDATE` grant and the `organization.status`
+  column, so there is nothing to add. `V32` grants
   `ROLE_VIEW` + `PERMISSION_VIEW` to `SUPER_ADMIN` (D-01, ADR-0032 amendment); `V33` adds the
   `UNBOUNDED_PERMISSION_ASSIGN` permission plus the `RESERVED_PERMISSIONS` business rule (D-03,
   ADR-0039); `V34` grants role authoring and the reserved-set bypass to `SUPER_ADMIN` and seeds the

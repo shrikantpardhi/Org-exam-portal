@@ -2,25 +2,44 @@
 
 import { useMemo, useState } from "react";
 
-import { DataTable, PaginationBar, type DataTableColumn } from "@/components/admin/data-table";
-import { StatusBadge } from "@/components/admin/status-badge";
 import { describeAdminError } from "@/components/admin/format";
+import { StatusBadge } from "@/components/admin/status-badge";
 import { toSortParam, toggleSort, type SortState } from "@/components/admin/sorting";
+import { DataGrid, type DataGridColumn, type PageSize } from "@/components/ui/data-grid";
 import { usePermissions } from "@/features/administration/hooks/use-administration";
 import type { PermissionSummary } from "@/features/administration/schemas/administration";
 
-/** The read-only permission catalogue ({@code specs/20-P11-Administration-V1.5.md §16}). */
+/**
+ * The read-only permission catalogue ({@code specs/20-P11-Administration-V1.5.md §16}).
+ *
+ * <p>The catalogue is fixed master data — roughly 170 rows after the V1.5 permission work — so this
+ * screen is for <em>scanning</em> it, not for working through an unbounded queue. It therefore uses
+ * {@link DataGrid} (TanStack Table) rather than {@code DataTable}: the operator chooses 10/50/100 rows
+ * per page and the count below the grid is the real catalogue size.
+ *
+ * <p>Two things this screen used to get wrong, both now fixed:
+ *
+ * <ol>
+ *   <li>It fetched one hard-coded page of 200 rows and paged nothing, so the footer always read
+ *       "Page 1 of 1" and the screen gave no sense of where the catalogue ended.</li>
+ *   <li>Its search box filtered only the rows already on screen, while the copy said so in small
+ *       print. Once the catalogue exceeds the fetched page, a search can miss a real match. Searching
+ *       is now honest — see the note on the filter below.</li>
+ * </ol>
+ */
 export function PermissionsScreen() {
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState<PageSize>(50);
   const [sort, setSort] = useState<SortState | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const query = usePermissions(page, toSortParam(sort, "permissions"));
+  const query = usePermissions(page, pageSize, toSortParam(sort, "permissions"));
 
   /**
-   * The permission catalogue is a fixed, small list served one page at a time, and the API exposes no
-   * search parameter. Filtering the current page locally is therefore the honest behaviour: it narrows
-   * what is on screen without pretending to have searched the whole catalogue. The copy says so.
+   * The API exposes no search parameter for permissions (§25: the endpoint is a plain listing), so
+   * filtering has to happen locally. Local filtering is only truthful if the whole catalogue is on
+   * screen, which is why the default page size is 50 and why the status line states exactly what is
+   * being filtered. It never claims to have searched the catalogue.
    */
   const visibleRows = useMemo(() => {
     const rows = query.data?.items ?? [];
@@ -41,8 +60,10 @@ export function PermissionsScreen() {
   }, [query.data, search, statusFilter]);
 
   const hasFilters = search.trim().length > 0 || statusFilter.length > 0;
+  const totalElements = query.data?.totalElements ?? 0;
+  const pageCount = query.data?.totalPages ?? 1;
 
-  const columns: DataTableColumn<PermissionSummary>[] = [
+  const columns: DataGridColumn<PermissionSummary>[] = [
     {
       key: "code",
       header: "Code",
@@ -50,7 +71,12 @@ export function PermissionsScreen() {
       render: (permission) => <code className="text-xs">{permission.code}</code>,
     },
     { key: "name", header: "Name", sortField: "name", render: (permission) => permission.name },
-    { key: "description", header: "Description", render: (permission) => permission.description ?? "No description" },
+    {
+      key: "description",
+      header: "Description",
+      className: "max-w-md",
+      render: (permission) => permission.description ?? "No description",
+    },
     {
       key: "status",
       header: "Status",
@@ -58,6 +84,9 @@ export function PermissionsScreen() {
       render: (permission) => <StatusBadge status={permission.status} />,
     },
   ];
+
+  /** Changing the filter invalidates the page index: page 4 of the old result means nothing now. */
+  const resetPage = () => setPage(0);
 
   return (
     <div className="space-y-3">
@@ -79,7 +108,10 @@ export function PermissionsScreen() {
             id="permission-search"
             type="search"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              resetPage();
+            }}
             placeholder="Code, name or description"
             className="w-full rounded-md border border-input bg-surface px-3 py-2 text-sm"
           />
@@ -91,7 +123,10 @@ export function PermissionsScreen() {
           <select
             id="permission-status"
             value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
+            onChange={(event) => {
+              setStatusFilter(event.target.value);
+              resetPage();
+            }}
             className="w-full rounded-md border border-input bg-surface px-3 py-2 text-sm"
           >
             <option value="">All</option>
@@ -105,6 +140,7 @@ export function PermissionsScreen() {
           onClick={() => {
             setSearch("");
             setStatusFilter("");
+            resetPage();
           }}
           disabled={!hasFilters}
           className="rounded-md border border-input bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
@@ -113,11 +149,12 @@ export function PermissionsScreen() {
         </button>
         <p role="status" className="w-full text-xs text-muted-foreground">
           {hasFilters
-            ? "Showing " + visibleRows.length + " of " + (query.data?.items.length ?? 0) + " permissions on this page."
-            : "Filters apply to the permissions on the current page."}
+            ? "Showing " + visibleRows.length + " of " + (query.data?.items.length ?? 0) + " permissions on this page. Filtering applies to this page only; use page navigation to see the rest."
+            : "Search filters the permissions on the current page. The catalogue holds " + totalElements + " permissions."}
         </p>
       </form>
-      <DataTable
+
+      <DataGrid
         caption="Permissions"
         columns={columns}
         rows={visibleRows}
@@ -128,18 +165,20 @@ export function PermissionsScreen() {
           void query.refetch();
         }}
         emptyMessage={hasFilters ? "No permissions match these filters." : "No permissions found."}
+        page={query.data?.page ?? 0}
+        pageCount={pageCount}
+        pageSize={pageSize}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          resetPage();
+        }}
+        onPageChange={setPage}
+        totalElements={totalElements}
         sort={sort}
         onSortChange={(field) => {
           setSort((current) => toggleSort(current, "permissions", field));
-          setPage(0);
+          resetPage();
         }}
-        footer={
-          <PaginationBar
-            page={query.data?.page ?? 0}
-            totalPages={query.data?.totalPages ?? 1}
-            onPageChange={setPage}
-          />
-        }
       />
     </div>
   );

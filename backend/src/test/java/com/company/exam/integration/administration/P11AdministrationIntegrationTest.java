@@ -25,6 +25,14 @@ import org.springframework.beans.factory.annotation.Autowired;
  */
 class P11AdministrationIntegrationTest extends AbstractEvaluationIntegrationTest {
 
+    /**
+     * A SUPER_ADMIN token. The installation owner is created through the same helper as any other
+     * user; what matters is the role code, which is what the authorization check reads.
+     */
+    private String superAdminToken() {
+        return tokenFor(createUser(syntheticEmail("p11-super-admin"), PASSWORD, "SUPER_ADMIN"));
+    }
+
     @Autowired
     private GlobalSearchService globalSearchService;
     @Autowired
@@ -68,7 +76,11 @@ class P11AdministrationIntegrationTest extends AbstractEvaluationIntegrationTest
 
     @Test
     void businessRulesAreDataOnlyAndCodeIsUnique() throws Exception {
-        String admin = adminToken();
+        // V40 (2026-10-26): rule authoring moved to the installation owner, because a business rule
+        // expresses platform policy and the organization administrator is subject to it, not its
+        // author. This test is about the data-only contract of a rule, so it drives the endpoint as
+        // the account that may actually write one; the refusal below is asserted separately.
+        String admin = superAdminToken();
 
         // A rule is never a hidden scripting engine (§9.3).
         mockMvc.perform(post("/api/v1/business-rules").header(AUTHORIZATION, bearer(admin))
@@ -243,6 +255,32 @@ class P11AdministrationIntegrationTest extends AbstractEvaluationIntegrationTest
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.sources.length()").value(5))
                 .andExpect(jsonPath("$.data.activeUsers").isNumber());
+    }
+
+    /**
+     * V40: the organization administrator reads the rules that govern it but cannot author them.
+     *
+     * <p>Asserted here rather than only in a migration test, because the migration proves the grant
+     * was withdrawn while this proves the withdrawal actually refuses the HTTP call — the two can
+     * diverge if a controller-level check were ever added or removed.
+     */
+    @Test
+    void organizationAdminCanReadRulesButNotWriteThem() throws Exception {
+        String admin = adminToken();
+
+        mockMvc.perform(get("/api/v1/business-rules").header(AUTHORIZATION, bearer(admin)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/business-rules").header(AUTHORIZATION, bearer(admin))
+                        .contentType(JSON)
+                        .content("{\"code\":\"P11_ADMIN_CANNOT_WRITE\",\"configuration\":{\"x\":1}}"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(put("/api/v1/business-rules/" + UUID.randomUUID())
+                        .header(AUTHORIZATION, bearer(admin))
+                        .contentType(JSON)
+                        .content("{\"configuration\":{\"x\":2}}"))
+                .andExpect(status().isForbidden());
     }
 
     @Test

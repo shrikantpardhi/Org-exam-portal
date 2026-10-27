@@ -17,6 +17,7 @@ import com.company.exam.identity.entity.User;
 import com.company.exam.identity.entity.UserRole;
 import com.company.exam.identity.exception.AdminCapExceededException;
 import com.company.exam.identity.exception.LastAdminException;
+import com.company.exam.identity.exception.PrimaryAdminRequiredException;
 import com.company.exam.identity.exception.SelfRoleModificationException;
 import com.company.exam.identity.exception.SuperAdminImmutabilityException;
 import com.company.exam.identity.mapper.IdentityMapper;
@@ -35,6 +36,7 @@ import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -258,6 +260,7 @@ public class UserService {
         if (actorId != null && actorId.equals(user.getId())) {
             throw new SelfRoleModificationException();
         }
+        guardPrimaryAdminAuthority(user, actorId);
         List<Role> desiredRoles = requireActiveRoles(desiredRoleIds);
         // D-08 Rule A (ADR-0044): a caller may not assign a role carrying a permission it does not
         // hold. Checked on the desired set, so "assign this role" cannot become a quieter way to
@@ -340,6 +343,59 @@ public class UserService {
         if (userRoleRepository.countActiveAssignmentsByRoleCodeInOrganization(
                 IdentityConstants.ADMIN_ROLE_CODE, user.getOrganizationId()) >= maxAdminsPerOrg()) {
             throw new AdminCapExceededException();
+        }
+    }
+
+    /**
+     * Only an organization's primary administrator may change another user's roles (ADR-0052).
+     *
+     * <p>Rationale: once an organization holds more than one ADMIN, "an administrator" is no longer a
+     * sufficient answer to "who may reassign roles" — without this guard any of them could demote the
+     * others, including the account created to own that decision. Designating one primary makes the
+     * authority answerable.
+     *
+     * <p>Fail-closed: if the organization has no designated primary, the attempt is refused. A guess
+     * here would hand out exactly the power this rule exists to concentrate. The state is recoverable
+     * because creating the first administrator designates a primary.
+     *
+     * <p>Rules deliberately NOT applied here: the SUPER_ADMIN (guarded above as immutable) and a
+     * platform actor, who manages administrators through the platform endpoints under separate
+     * permissions. Only same-organization ADMIN actors are subject to this check.
+     */
+    private void guardPrimaryAdminAuthority(User target, UUID actorId) {
+        if (actorId == null || actorId.equals(target.getId())) {
+            return; // self-modification is already refused above with its own, more specific error
+        }
+        Optional<Role> adminRole = roleRepository.findByCodeAndOrganizationIdIsNull(
+                IdentityConstants.ADMIN_ROLE_CODE);
+        if (adminRole.isEmpty()) {
+            return;
+        }
+        UUID adminRoleId = adminRole.get().getId();
+        boolean actorIsAdmin = userRoleRepository.findByUserIdAndRoleId(actorId, adminRoleId)
+                .filter(userRole -> userRole.getStatus() == Status.ACTIVE)
+                .isPresent();
+        if (!actorIsAdmin) {
+            return; // other role combinations are governed by permission checks, not this rule
+        }
+        if (isSuperAdmin(actorId)) {
+            return; // the installation owner is not an organization administrator
+        }
+        User actor = userRepository.findById(actorId).orElse(null);
+        if (actor == null || !Objects.equals(actor.getOrganizationId(), target.getOrganizationId())) {
+            return; // cross-organization attempts are rejected elsewhere as not-found
+        }
+        UUID primaryId = organizationRepository.findById(actor.getOrganizationId())
+                .map(Organization::getPrimaryAdminUserId)
+                .orElse(null);
+        if (primaryId == null) {
+            throw new PrimaryAdminRequiredException(
+                    "This organization has no primary administrator, so roles cannot be changed."
+                            + " Ask the platform owner to designate one.");
+        }
+        if (!primaryId.equals(actorId)) {
+            throw new PrimaryAdminRequiredException(
+                    "Only this organization's primary administrator may change another user's roles.");
         }
     }
 

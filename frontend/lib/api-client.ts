@@ -140,6 +140,18 @@ export async function apiPut<T>(url: string, body?: unknown): Promise<ApiResult<
   return toResult(response.data);
 }
 
+/**
+ * Sends a partial update.
+ *
+ * <p>Separate from {@link apiPut} on purpose: PATCH means "change these fields", PUT means "replace
+ * this resource". The administrator-roles endpoint is a PATCH because it replaces exactly one field
+ * of a user record and must not touch the rest.
+ */
+export async function apiPatch<T>(url: string, body?: unknown): Promise<ApiResult<T>> {
+  const response = await apiClient.patch<ApiEnvelope<T>>(url, body);
+  return toResult(response.data);
+}
+
 /** Sends a DELETE (archive) request. Archive responses carry no body (HTTP 204). */
 export async function apiDelete(url: string): Promise<void> {
   await apiClient.delete(url);

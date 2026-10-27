@@ -72,10 +72,13 @@ export function useRolePermissions(roleId: string, enabled = true) {
   });
 }
 
-export function usePermissions(page = 0, sort?: string) {
+export function usePermissions(page = 0, size = 50, sort?: string) {
   return useQuery({
-    queryKey: adminKeys.permissions(page, sort),
-    queryFn: () => listPermissions(page, undefined, sort),
+    queryKey: adminKeys.permissions(page, size, sort),
+    queryFn: () => listPermissions(page, size, sort),
+    // Paging through a fixed catalogue: keeping the previous page visible avoids a full-height
+    // collapse between pages, which makes the grid jump under the cursor.
+    placeholderData: (previous) => previous,
   });
 }
 
